@@ -1,0 +1,16 @@
+[
+  {
+    "variables": {},
+    "response": [
+      {
+        "urn": "urn:li:domain:mcmr-codebases",
+        "domainProperties": {
+          "value": {
+            "name": "Codebases",
+            "description": "Repositories MCMR publishes as fact tables and rule jobs."
+          }
+        }
+      }
+    ]
+  }
+]

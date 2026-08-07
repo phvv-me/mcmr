@@ -16,6 +16,7 @@ from mcmr.commands.quality import (
     Judgment,
     backends,
     check,
+    history,
     judgment,
 )
 from mcmr.execution.providers import ProviderExecutionError
@@ -82,6 +83,42 @@ def test_check_reports_an_external_provider_failure_without_a_traceback(
 
     assert exited.value.code == 2
     assert "external provider `datahub` failed" in capsys.readouterr().out
+
+
+def test_history_reports_an_external_provider_failure_without_a_traceback(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The analysis that names governed assets fails as cleanly as `check` does."""
+
+    def failed(analysis: Judgment) -> None:
+        raise ProviderExecutionError("datahub", ValueError("DATAHUB_GMS_URL is missing"))
+
+    monkeypatch.setattr(Judgment, "run", failed)
+
+    with pytest.raises(SystemExit) as exited:
+        history(tmp_path)
+
+    assert exited.value.code == 2
+    assert "external provider `datahub` failed" in capsys.readouterr().out
+
+
+def test_history_reports_an_external_provider_failure_without_a_traceback_for_named_assets(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The `--assets` fast path skips the analysis but still fails as one clean line."""
+    monkeypatch.delenv("DATAHUB_GMS_URL", raising=False)
+
+    with pytest.raises(SystemExit) as exited:
+        history(tmp_path, assets=("urn:li:dataset:(urn:li:dataPlatform:snowflake,x,PROD)",))
+
+    assert exited.value.code == 2
+    output = capsys.readouterr().out
+    assert "external provider `datahub` failed" in output
+    assert "server" in output
 
 
 def test_backends_shows_the_normal_check_backend_without_running_it(

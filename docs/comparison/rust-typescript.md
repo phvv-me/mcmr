@@ -902,11 +902,11 @@ claim.
 The stale TypeScript `SyntaxFact` gap was removed from `tests/test_language_coverage.py`. Its
 remaining TypeScript gap is `CommentFact`, which is explicit and fails in both directions.
 
-`src/rules/mcmr/rules/rust/deterministic/lifetimes/r0001.py` documents an exception its implementation does
+`src/mcmr/rules/rust/deterministic/lifetimes/r0001.py` documents an exception its implementation does
 not honour, "A trait or type that names a lifetime is not judged here at all", and `is_elidable`
 never reads `annotation.kind`.
 
-`src/rules/mcmr/rules/typescript/deterministic/types/r0002.py` documents "Each finding names the module,
+`src/mcmr/rules/typescript/deterministic/types/r0002.py` documents "Each finding names the module,
 its measured lines, and every hatch with its kind and line", and returns a bare `Percentage` with no
 findings. The same mismatch between a documented `Evidence` section and a bare value appears in all
 five `RS-` rules and all four `TS-` rules.

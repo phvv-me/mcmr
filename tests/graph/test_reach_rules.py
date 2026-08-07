@@ -147,7 +147,11 @@ def test_a_public_declaration_nothing_reaches_is_reported() -> None:
 
 
 def test_a_public_declaration_only_its_own_file_reaches_is_reported() -> None:
-    """A name published to the repository and used in one place states a contract it lacks."""
+    """A name published to the repository and used in one place states a contract it lacks.
+
+    A class in that same position is not reported, because the only repair this rule offers is a
+    nonpublic name and an underscore on a type says something else entirely.
+    """
     subject = module(
         declaration("service.parse", own_file_references=3),
         declaration("service.render", own_file_references=1, other_file_references=2),
@@ -155,6 +159,7 @@ def test_a_public_declaration_only_its_own_file_reaches_is_reported() -> None:
         declaration("service.limit", kind="attribute", own_file_references=2),
         declaration("service.outer.inner", own_file_references=2, form="nested"),
         declaration("service.registered", own_file_references=2, form="decorated"),
+        declaration("service.Policy", kind="class", own_file_references=4),
     )
 
     query = retained_query(subject, file_local_public_declaration)

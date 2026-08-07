@@ -10,7 +10,7 @@ from mcmr.rulebook.discovery import RuleModuleDiscovery
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-_SOURCE = Path(__file__).parents[2] / "src" / "rules"
+_SOURCE = Path(__file__).parents[2] / "src"
 
 # A rule page presents its measure, evidence, exceptions, examples, and sources in reading order.
 

@@ -158,10 +158,8 @@ def _classification() -> ModelQuery[CriterionValue]:
 @pytest.mark.anyio
 async def test_a_classification_states_what_selecting_each_category_reports() -> None:
     """The model is told the effect of each label, since a name alone never carries it."""
-    policy = Category.outcomes(
-        CriterionValue,
-        good={CriterionValue.YES},
-        neutral={CriterionValue.UNKNOWN},
+    policy = Category.outcomes(good={CriterionValue.YES}, neutral={CriterionValue.UNKNOWN}).closed(
+        "ALL-DEMO2001", CriterionValue
     )
     judged = _classification().judged(policy.reported(CriterionValue))
     backend = LabeledBackend(classification_value=str(CriterionValue.YES))
@@ -181,7 +179,7 @@ async def test_a_classification_states_what_selecting_each_category_reports() ->
 
 def test_an_unjudged_query_keeps_the_instructions_the_rule_wrote() -> None:
     """A policy that judges none of the categories, or an assessment, says nothing extra."""
-    judging = Category.outcomes(CriterionValue, good={CriterionValue.YES})
+    judging = Category.outcomes(good={CriterionValue.YES}).closed("ALL-DEMO2001", CriterionValue)
     assess = ModelQuery[CriterionValue](
         candidates=ContextualSweep.table(Fact, "ALL-DEMO2001").lazy(GenericRelation.FACTS),
         category=CriterionValue,

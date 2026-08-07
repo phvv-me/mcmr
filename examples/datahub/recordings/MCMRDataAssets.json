@@ -1,7 +1,7 @@
 [
   {
     "variables": {
-      "query": "*",
+      "query": "ecommerce.*",
       "count": 10,
       "start": 0
     },
@@ -10,45 +10,6 @@
         "searchAcrossEntities": {
           "total": 5,
           "searchResults": [
-            {
-              "entity": {
-                "urn": "urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.raw.orders,PROD)",
-                "properties": {
-                  "description": "Raw order events landed from the storefront.",
-                  "lastModified": {
-                    "time": 1736899200000
-                  }
-                },
-                "deprecation": null,
-                "ownership": null,
-                "domain": {
-                  "domain": {
-                    "urn": "urn:li:domain:sales",
-                    "properties": {
-                      "name": "Sales"
-                    }
-                  }
-                },
-                "schemaMetadata": {
-                  "fields": [
-                    {
-                      "fieldPath": "order_id",
-                      "type": "NUMBER",
-                      "description": "Stable order identifier.",
-                      "globalTags": null,
-                      "glossaryTerms": null
-                    },
-                    {
-                      "fieldPath": "payload",
-                      "type": "STRING",
-                      "description": "Raw storefront event payload.",
-                      "globalTags": null,
-                      "glossaryTerms": null
-                    }
-                  ]
-                }
-              }
-            },
             {
               "entity": {
                 "urn": "urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.analytics.orders,PROD)",
@@ -113,56 +74,8 @@
                     },
                     {
                       "fieldPath": "placed_at",
-                      "type": "TIMESTAMP",
+                      "type": "TIME",
                       "description": "When the storefront accepted the order.",
-                      "globalTags": null,
-                      "glossaryTerms": null
-                    }
-                  ]
-                }
-              }
-            },
-            {
-              "entity": {
-                "urn": "urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.revenue,PROD)",
-                "properties": {
-                  "description": "Daily revenue by acquisition channel.",
-                  "lastModified": {
-                    "time": 1736899200000
-                  }
-                },
-                "deprecation": null,
-                "ownership": {
-                  "owners": [
-                    {
-                      "owner": {
-                        "urn": "urn:li:corpGroup:finance",
-                        "name": "finance"
-                      }
-                    }
-                  ]
-                },
-                "domain": {
-                  "domain": {
-                    "urn": "urn:li:domain:finance",
-                    "properties": {
-                      "name": "Finance"
-                    }
-                  }
-                },
-                "schemaMetadata": {
-                  "fields": [
-                    {
-                      "fieldPath": "day",
-                      "type": "DATE",
-                      "description": "Reporting day.",
-                      "globalTags": null,
-                      "glossaryTerms": null
-                    },
-                    {
-                      "fieldPath": "revenue",
-                      "type": "NUMBER",
-                      "description": "Revenue recognised on the day.",
                       "globalTags": null,
                       "glossaryTerms": null
                     }
@@ -174,7 +87,7 @@
               "entity": {
                 "urn": "urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)",
                 "properties": {
-                  "description": "",
+                  "description": null,
                   "lastModified": {
                     "time": 1785715200000
                   }
@@ -250,6 +163,93 @@
                       "fieldPath": "retained",
                       "type": "NUMBER",
                       "description": "Buyers still active.",
+                      "globalTags": null,
+                      "glossaryTerms": null
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "entity": {
+                "urn": "urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.revenue,PROD)",
+                "properties": {
+                  "description": "Daily revenue by acquisition channel.",
+                  "lastModified": {
+                    "time": 1736899200000
+                  }
+                },
+                "deprecation": null,
+                "ownership": {
+                  "owners": [
+                    {
+                      "owner": {
+                        "urn": "urn:li:corpGroup:finance",
+                        "name": "finance"
+                      }
+                    }
+                  ]
+                },
+                "domain": {
+                  "domain": {
+                    "urn": "urn:li:domain:finance",
+                    "properties": {
+                      "name": "Finance"
+                    }
+                  }
+                },
+                "schemaMetadata": {
+                  "fields": [
+                    {
+                      "fieldPath": "day",
+                      "type": "DATE",
+                      "description": "Reporting day.",
+                      "globalTags": null,
+                      "glossaryTerms": null
+                    },
+                    {
+                      "fieldPath": "revenue",
+                      "type": "NUMBER",
+                      "description": "Revenue recognised on the day.",
+                      "globalTags": null,
+                      "glossaryTerms": null
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "entity": {
+                "urn": "urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.raw.orders,PROD)",
+                "properties": {
+                  "description": "Raw order events landed from the storefront.",
+                  "lastModified": {
+                    "time": 1736899200000
+                  }
+                },
+                "deprecation": null,
+                "ownership": null,
+                "domain": {
+                  "domain": {
+                    "urn": "urn:li:domain:sales",
+                    "properties": {
+                      "name": "Sales"
+                    }
+                  }
+                },
+                "schemaMetadata": {
+                  "fields": [
+                    {
+                      "fieldPath": "order_id",
+                      "type": "NUMBER",
+                      "description": "Stable order identifier.",
+                      "globalTags": null,
+                      "glossaryTerms": null
+                    },
+                    {
+                      "fieldPath": "payload",
+                      "type": "STRING",
+                      "description": "Raw storefront event payload.",
                       "globalTags": null,
                       "glossaryTerms": null
                     }

@@ -1,0 +1,276 @@
+From 39ede623e3b00aab832c116640d16a3e528b28fc Mon Sep 17 00:00:00 2001
+From: Pedro CVLAB <vaz.valois@hotmail.com>
+Date: Fri, 7 Aug 2026 21:47:37 +0900
+Subject: [PATCH 1/3] Batch 1: name the duplicated literals and the magic
+ constants
+
+Fixes ALL-DUPL0005, ALL-STRI0002, PY-CONS0001, ALL-COMM0001, ALL-COMM0002
+and PY-TYPE0003. The repeated refusal strings become one named constant per
+module, the decorative banners go, the essay comments shrink to one line, the
+commented-out entry point is deleted, and the project targets Python 3.14.
+---
+ mcp_server.py  | 64 +++++++++++++++++---------------------------------
+ mcp_tools.py   | 52 ++++++++++++++--------------------------
+ pyproject.toml |  3 ++-
+ 3 files changed, 40 insertions(+), 79 deletions(-)
+
+diff --git a/demo/mcp_server.py b/demo/mcp_server.py
+index 7564a3a..57342c2 100644
+--- a/demo/mcp_server.py
++++ b/demo/mcp_server.py
+@@ -8,25 +8,17 @@ import uuid
+ 
+ from mcp_tools import ToolCatalogue, run_tool_by_name
+ 
+-PROTOCOL_VERSION = "2025-06-18"
+-SERVER_NAME = "overengineered-mcp"
+-SERVER_VERSION = "0.1.0"
+-DEFAULT_TIMEOUT = 30
+-MAX_PAYLOAD = 1048576
+-BANNER = "=" * 60
+-
+-# ============================================================================
+-# The dispatch table lives here because the router below needs it and the tool
+-# module needs it too, and moving it anywhere else would mean an import cycle,
+-# which we discovered the hard way on the third afternoon of this project when
+-# the whole thing refused to start and nobody could work out why, so please do
+-# not move it again without talking to somebody first, and if you do move it
+-# then remember that the smoke test drives this exact module by name and will
+-# fail in a way that looks completely unrelated to whatever you were trying to
+-# change at the time.
+-# ============================================================================
+-
+-METHOD_TABLE = [
++_PROTOCOL_VERSION = "2025-06-18"
++_SERVER_NAME = "overengineered-mcp"
++_SERVER_VERSION = "0.1.0"
++_DEFAULT_TIMEOUT = 30
++_MAX_PAYLOAD = 1048576
++
++# The one refusal every malformed envelope gets, named once so all four routes agree.
++_REJECTED = "the request envelope could not be accepted"
++
++# The dispatch table the router walks. Moving it means an import cycle with `mcp_tools`.
++_METHOD_TABLE = [
+     ("initialize", "handle_initialize"),
+     ("notifications/initialized", "handle_initialized"),
+     ("ping", "handle_ping"),
+@@ -40,11 +32,11 @@ class ServerConfiguration:
+     """Every knob the server has, in one place, because that seemed tidy at the time."""
+ 
+     def __init__(self):
+-        self.name = SERVER_NAME
+-        self.version = SERVER_VERSION
+-        self.protocol_version = PROTOCOL_VERSION
+-        self.timeout = DEFAULT_TIMEOUT
+-        self.max_payload = MAX_PAYLOAD
++        self.name = _SERVER_NAME
++        self.version = _SERVER_VERSION
++        self.protocol_version = _PROTOCOL_VERSION
++        self.timeout = _DEFAULT_TIMEOUT
++        self.max_payload = _MAX_PAYLOAD
+         self.verbose = False
+         self.strict = False
+         self.enabled_tools = list(ToolCatalogue.EVERY_TOOL)
+@@ -173,27 +165,24 @@ class ProtocolServer:
+                 params = {}
+             if method == "__unparseable__" or method == "__oversized__":
+                 self.error_count = self.error_count + 1
+-                rejected = "the request envelope could not be accepted"
+-                self.transport.write_one_message(self.factory.make_error(None, -32700, rejected))
++                self.transport.write_one_message(self.factory.make_error(None, -32700, _REJECTED))
+                 continue
+             if message.get("jsonrpc") != "2.0":
+                 self.error_count = self.error_count + 1
+-                rejected = "the request envelope could not be accepted"
+                 self.transport.write_one_message(
+-                    self.factory.make_error(request_id, -32600, rejected)
++                    self.factory.make_error(request_id, -32600, _REJECTED)
+                 )
+                 continue
+             found = None
+-            for pair in METHOD_TABLE:
++            for pair in _METHOD_TABLE:
+                 if pair[0] == method:
+                     found = pair[1]
+                     break
+             if found is None:
+                 if request_id is not None:
+                     self.error_count = self.error_count + 1
+-                    rejected = "the request envelope could not be accepted"
+                     self.transport.write_one_message(
+-                        self.factory.make_error(request_id, -32601, rejected)
++                        self.factory.make_error(request_id, -32601, _REJECTED)
+                     )
+                 continue
+             if found == "handle_initialize":
+@@ -212,9 +201,8 @@ class ProtocolServer:
+             elif found == "handle_tools_list":
+                 if self.initialized is False and self.config.strict:
+                     self.error_count = self.error_count + 1
+-                    rejected = "the request envelope could not be accepted"
+                     self.transport.write_one_message(
+-                        self.factory.make_error(request_id, -32002, rejected)
++                        self.factory.make_error(request_id, -32002, _REJECTED)
+                     )
+                 else:
+                     listing = {"tools": self.catalogue.describe_all()}
+@@ -258,7 +246,6 @@ class ProtocolServer:
+     def log(self, message: str, is_lifecycle: bool, is_timing: bool):
+         if self.config.verbose:
+             if is_lifecycle:
+-                print(BANNER, file=sys.stderr)
+                 print(message, file=sys.stderr)
+             elif is_timing:
+                 print(message, file=sys.stderr)
+@@ -274,14 +261,12 @@ class ProtocolServer:
+     ):
+         """Render the counters as text, with every counter passed in by hand."""
+         lines = []
+-        lines.append(BANNER)
+         lines.append(title)
+         lines.append(subtitle)
+         lines.append("requests " + str(request_count))
+         lines.append("errors " + str(error_count))
+         lines.append("calls " + str(call_count))
+         lines.append("session " + str(session_id))
+-        lines.append(BANNER)
+         return "\n".join(lines)
+ 
+ 
+@@ -328,12 +313,5 @@ def main(argv=None):
+     return 0 if served >= 0 else 1
+ 
+ 
+-# def legacy_main():
+-#     config = ServerConfiguration()
+-#     server = ProtocolServer(config, StandardStreamTransportLayer(config))
+-#     server.serve_forever()
+-#     return 0
+-
+-
+ if __name__ == "__main__":
+     sys.exit(main())
+diff --git a/demo/mcp_tools.py b/demo/mcp_tools.py
+index aad189a..eb5e606 100644
+--- a/demo/mcp_tools.py
++++ b/demo/mcp_tools.py
+@@ -4,20 +4,11 @@ import json
+ import re
+ import sys
+ 
+-MAX_TEXT = 100000
+-MAX_NUMBERS = 10000
+-SEPARATOR = "-" * 40
+-
+-# ============================================================================
+-# Every handler below follows the same three steps, which are pull the argument
+-# out of the mapping, decide what to do when it is missing or the wrong shape,
+-# and then do the one line of work the tool is actually for. The steps were
+-# copied from the first handler into the second, and from the second into the
+-# third, and by the fourth nobody was reading them any more, which is roughly
+-# how the refusal messages ended up written out five separate times even though
+-# they are supposed to say the same thing to the same client on the same
+-# failure, and why changing one of them changes nothing anybody can observe.
+-# ============================================================================
++_MAX_TEXT = 100000
++_MAX_NUMBERS = 10000
++
++# The one refusal both argument readers raise, named once so they cannot drift apart.
++_REFUSAL = "the argument is missing or the wrong shape for this tool"
+ 
+ 
+ class ToolSchemaBuilder:
+@@ -74,59 +65,50 @@ class ToolCatalogue:
+                 out.append(self.number_entry("statistics", "Summarise the numbers."))
+         return out
+ 
++    def entry(self, name, description, schema):
++        return {"name": name, "description": description, "inputSchema": schema}
++
+     def text_entry(self, name, description):
+-        return {
+-            "name": name,
+-            "description": description,
+-            "inputSchema": self.builder.build_text_schema("text", "the text"),
+-        }
++        return self.entry(name, description, self.builder.build_text_schema("text", "the text"))
+ 
+     def number_entry(self, name, description):
+-        return {
+-            "name": name,
+-            "description": description,
+-            "inputSchema": self.builder.build_number_schema("numbers", "the numbers"),
+-        }
++        schema = self.builder.build_number_schema("numbers", "the numbers")
++        return self.entry(name, description, schema)
+ 
+ 
+ def warn(message):
+-    print(SEPARATOR, file=sys.stderr)
+     print(message, file=sys.stderr)
+ 
+ 
+ def read_text_argument(arguments, config, strict):
+     if "text" not in arguments:
+-        refusal = "the argument is missing or the wrong shape for this tool"
+         if strict:
+-            raise ValueError(refusal)
++            raise ValueError(_REFUSAL)
+         return ""
+     given = arguments["text"]
+     if isinstance(given, str) is False:
+-        refusal = "the argument is missing or the wrong shape for this tool"
+         if strict:
+-            raise ValueError(refusal)
++            raise ValueError(_REFUSAL)
+         given = str(given)
+     if config.verbose:
+         warn("a tool received " + str(len(given)) + " characters")
+-    return given[0:MAX_TEXT]
++    return given[0:_MAX_TEXT]
+ 
+ 
+ def read_number_argument(arguments, config, strict):
+     if "numbers" not in arguments:
+-        refusal = "the argument is missing or the wrong shape for this tool"
+         if strict:
+-            raise ValueError(refusal)
++            raise ValueError(_REFUSAL)
+         return []
+     given = arguments["numbers"]
+     if isinstance(given, list) is False:
+-        refusal = "the argument is missing or the wrong shape for this tool"
+         if strict:
+-            raise ValueError(refusal)
++            raise ValueError(_REFUSAL)
+         given = [given]
+     if config.verbose:
+         warn("a tool received " + str(len(given)) + " numbers")
+     kept = []
+-    for entry in given[0:MAX_NUMBERS]:
++    for entry in given[0:_MAX_NUMBERS]:
+         if isinstance(entry, bool) is False and isinstance(entry, (int, float)):
+             kept.append(entry)
+     return kept
+diff --git a/demo/pyproject.toml b/demo/pyproject.toml
+index a1db194..a72b505 100644
+--- a/demo/pyproject.toml
++++ b/demo/pyproject.toml
+@@ -3,7 +3,7 @@ name = "mcmr-demo-server"
+ version = "0.1.0"
+ description = "A very complex MCP server in only two scripts."
+ readme = "README.md"
+-requires-python = ">=3.11"
++requires-python = ">=3.14"
+ dependencies = []
+ 
+ [tool.mcmr.execution]
+@@ -19,6 +19,7 @@ report_url = "https://github.com/phvv-me/mcmr"
+ # purpose linter is switched off here. MCMR is the only judge that runs against it.
+ [tool.ruff]
+ line-length = 99
++target-version = "py314"
+ 
+ [tool.ruff.lint]
+ select = []

@@ -1,0 +1,62 @@
+[
+  {
+    "variables": {},
+    "response": [
+      {
+        "urn": "urn:li:dataset:(urn:li:dataPlatform:mcmr,ecommerce-pipeline/facts/data_asset_fact,PROD)",
+        "datasetProfile": {
+          "value": {
+            "columnCount": 2,
+            "rowCount": 1,
+            "timestampMillis": 1786090000000
+          }
+        },
+        "datasetProperties": {
+          "value": {
+            "name": "ecommerce-pipeline/facts/data_asset_fact",
+            "externalUrl": "https://github.com/phvv-me/mcmr",
+            "description": "Retain one governed catalog asset.",
+            "customProperties": {
+              "family": "DataAssetFact"
+            }
+          }
+        },
+        "schemaMetadata": {
+          "value": {
+            "fields": [
+              {
+                "fieldPath": "key",
+                "description": "",
+                "type": {
+                  "type": {
+                    "com.linkedin.schema.StringType": {}
+                  }
+                },
+                "nativeDataType": "str"
+              },
+              {
+                "fieldPath": "assets.identifier",
+                "description": "",
+                "type": {
+                  "type": {
+                    "com.linkedin.schema.StringType": {}
+                  }
+                },
+                "nativeDataType": "str"
+              }
+            ],
+            "schemaName": "DataAssetFact",
+            "version": 0,
+            "platformSchema": {
+              "com.linkedin.schema.OtherSchema": {
+                "rawSchema": ""
+              }
+            },
+            "hash": "",
+            "platform": "urn:li:dataPlatform:mcmr"
+          }
+        }
+      }
+    ]
+  }
+]

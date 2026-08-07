@@ -1,4 +1,4 @@
-use super::Expression;
+use super::expression::Expression;
 use crate::protocol::Node;
 use serde::{Deserialize, Serialize};
 

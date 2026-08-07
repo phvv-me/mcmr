@@ -18,6 +18,80 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 
 ### Added
 
+- MCMR now publishes its own fact graph, so a repository has somewhere for a verdict about
+  ordinary source to live. Each fact family a run materialized becomes one dataset named
+  `<repo>/facts/<family>` on the `mcmr` platform, carrying the pydantic fact model flattened into
+  dotted schema field paths and a profile stating the rows this run read. One `DataFlow` names the
+  repository, one extraction job outputs every fact dataset, and one job per executed rule inputs
+  exactly the datasets its signature declared, described by the rule's own one-line summary. That
+  is a lineage graph for source code, published where a data team already reads lineage. GraphQL
+  has no mutation for declaring a dataset with a schema, so this half of the writeback goes through
+  `POST /openapi/v3/entity/<type>` over HTTPX and the same transport seam the queries use, without
+  the runtime growing an `acryl-datahub` dependency. Every request is an upsert keyed by the entity
+  URN, so a scheduled run rewrites the graph rather than growing a second one.
+
+- Every rule is one entity for the whole instance. Rules live as `DataJob`s under one canonical
+  `mcmr/rulebook` flow rather than as a copy under every repository that ran them, so search
+  returns a single `ALL-DUPL0005` instead of one per codebase. Publishing a repository reads what
+  earlier repositories wrote onto each rule and merges into it, so a rule's `inputDatasets` are the
+  union of every codebase's fact tables for the families it reads, and its properties carry
+  `lastResult.<repo>`, `findings.<repo>`, `lastRun.<repo>`, `since.<repo>` and `anchor.<repo>`
+  beside the `reposFailing`, `reposPassing` and `totalFindings` rollups. A rule page now answers
+  which codebases run it and how much each of them reports. Concurrent publishes race and the later
+  write wins.
+
+- What a run publishes is reachable rather than only searchable. An owner and a `Codebases` domain
+  travel with every fact dataset and flow, both configurable and both defaulting to something a
+  fresh DataHub already knows about, so the home page fills on the first run. The platform card
+  carries its own mark as a data URI, every published entity states what the UI should call it
+  (`Fact table`, `Rule`, `Extraction`) instead of the generic type, each rule links the codebases
+  it is failing, and a project can ask for one home page card per repository keyed by that
+  repository. A placeholder or unset `report_url` now writes no institutional memory and no
+  assertion `externalUrl` at all, because a link nobody can follow is worse than no link.
+
+- A file-scoped verdict is now closed when the run stops reporting that file. One was written the
+  moment a rule failed there and nothing ever wrote it again, so a repaired, renamed, or deleted
+  file read as failing forever. Each publication now reconciles the files each rule that ran still
+  reports against the ones it used to, and every file that dropped out receives one passing result
+  stating that it is no longer reported. A rule that did not run closes nothing.
+
+- Every rule lane can now record a verdict, not only the ones that name a warehouse asset. A rule
+  that named a governed identity keeps storing its verdict there, and every other rule anchors on
+  the fact dataset published for the first table in its signature. The verdict's identity is the
+  file and fact a finding named, so a rule failing at two files inside one table keeps two
+  timelines under one subject, and the file travels with the verdict as a property. `mcmr history`
+  reads the same assertions back and groups them by the warehouse asset or the fact table each
+  timeline belongs to, so a code-only repository finally has a history to read. A rule that read no
+  published table still records nothing.
+
+- Assertions are now declared for a whole run before any result is reported against them. DataHub
+  resolves an assertion through an index its own upsert reaches seconds later, so reporting in the
+  same breath as the upsert paid that settling window once per assertion. Declaring first spends it
+  on the rest of the batch, which is what keeps a repository with two hundred rules recording in
+  seconds rather than minutes.
+
+- `ALL-DUPL0005` reports one string literal a single module states over and over, which is the
+  decision that module already made and never named. Only text the module states as its own is
+  counted, so an assignment, a collection element, and one side of an equality test add up while a
+  column name, a mode flag, or a format token handed to a callable belongs to the callee and is
+  left alone. A docstring never joins a count, since a statement that is nothing but a string
+  documents the code rather than stating a value the program uses. Cross-file repetition remains
+  `ALL-DUPL0002`.
+
+- Every MCMR run can leave a queryable enforcement history in DataHub. Each rule and asset pair a
+  run judged becomes one custom assertion whose identity is derived from the rule identifier and
+  the asset, so a later run lands on the same assertion, and each run reports one result against it
+  carrying the measurement, the finding count, the repair outcome, and for a contextual rule the
+  model's reasoning and confidence. A custom assertion is DataHub's own model for a check an
+  external tool owns, so the result is a timeline the catalog already shows and queries rather than
+  a document only MCMR can read.
+
+- `mcmr history` reads that back. For the governed assets a repository names, it states per rule
+  whether it is passing or failing, since when, how many repairs already landed, and why it last
+  failed. This is what an agent converging a legacy repository reads before it acts, so it does not
+  rediscover a failure somebody already recorded or reattempt a repair that was already refused.
+  Naming assets directly skips the analysis entirely.
+
 - `mcmr writeback` publishes one completed run back to the systems that supplied its evidence.
   Providers opt in through a `ResultPublisher` protocol, so no analysis path can publish and no
   configuration turns it on. The DataHub publisher attaches one institutional memory link to each
@@ -278,6 +352,29 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 
 ### Fixed
 
+- The DataHub provider survives a live DataHub Core. Every optional collection in its GraphQL
+  schema is answered with `null` rather than an empty list when the aspect behind it was never
+  written, so reading `fineGrainedLineages`, `owners`, `tags`, `terms`, `nativeResults` or
+  `institutionalMemory` off an asset that never received one no longer fails validation mid-run.
+
+- A verdict is no longer reported against an assertion the catalog has not indexed yet. DataHub
+  resolves the asserted entity through an index its own `upsertCustomAssertion` reaches about a
+  second later, which rejected the first result of every new assertion and failed the whole
+  writeback. The report is retried across a bounded settling window and the attempt that closes it
+  raises the server's own error, so a request that is wrong rather than early still fails loudly.
+
+- A second `--writeback` run against the same asset no longer fails. `addLink` refuses a link an
+  asset already holds, so the publisher reads that asset's institutional memory first and writes
+  only the link that is missing.
+
+- An applied repair is recorded. A repaired rule passes on the rerun, and the passing verdict
+  dropped the repair state, so no recorded timeline could ever state that a repair had landed and
+  `mcmr history` never printed one.
+
+- `examples/datahub/recordings` now holds exchanges captured from a running DataHub Core 1.6.0
+  rather than authored ones, the example scopes its catalog read with `query`, and
+  `docs/upstream-contribution.md` records the six live checklist verdicts.
+
 - A contextual classification prompt now states what selecting each category reports. A category
   name says what the model observed and never what the engine will do with it, so a rule offering
   `appropriate` beside `use_plain_class` read as two recommendations while the policy scored the
@@ -517,6 +614,52 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
   Ruff and Pylint oracles compares the lines or the declarations instead.
 
 ### Changed
+
+- A contextual policy names only what the project accepts and tolerates. `Category.outcomes` no
+  longer takes the answer enum, because `@rule` already reads the closed answer set from the
+  `ModelQuery` type argument on the return annotation, and `Category.advisory()` states outright
+  that a rule recommends without judging. A category the annotation does not hold is refused where
+  it was written rather than far away in the catalog. All 44 contextual rules moved to the short
+  form.
+
+- A file-local class is no longer reported by `ALL-REAC0002`. The only repair that rule offers is a
+  nonpublic name, and a leading underscore belongs to functions, methods, and variables rather than
+  to a type, so the advice would have been worse than the shape it replaced. A class that nothing
+  reaches at all is still `ALL-REAC0001`. Every class MCMR itself carried under an underscore now
+  has the public name it always described.
+
+- `ModelQuery.where` reads the columns its predicate needs from the predicate. The applicability
+  contract that let a sparse fixture skip a filter was written twice, once as an expression and
+  once as a list beside it, and the list had already drifted from the expression in two rules.
+
+- `mcmr check --writeback` replaces the standalone `writeback` command. It reuses the report of the
+  analysis that just ran instead of analyzing a second time, so what a provider stores is exactly
+  what the reader on screen was shown. A check still returns no evidence of its own unless somebody
+  asks, and `publish_runs = true` under a provider asks once for a scheduled job while
+  `--no-writeback` suppresses it for a single run.
+
+- `PublicationContext` carries the run rather than a rendering of it. A `RunRecord` states one
+  rule's verdict about one governed subject, the measurement behind it, its finding count, how far
+  its repair got, and what a contextual backend said. `ResultPublisher` stays the write seam and
+  `RunHistoryReader` is the matching read seam, so a provider opts into either independently.
+
+- A recorded DataHub exchange states only the variables it is keyed by. A request matches when it
+  agrees on every one of them, which lets a volatile value such as a run timestamp go unpredicted
+  and an exchange naming none answer a whole operation. Existing recordings that state every
+  variable keep matching exactly as before.
+
+- One distribution named `mcmr` now ships the engine, the built-in rule catalog, and the DataHub
+  integration together. The `mcmr-api` and `mcmr-datahub` sub-distributions are gone, `src/api` and
+  `src/rules` collapsed into `src/mcmr`, and maturin builds the single wheel from `src`, which is
+  the one Python source root a mixed Rust and Python wheel can have.
+
+- The DataHub integration is a plugin rather than a privileged part of the engine. It lives at
+  `src/mcmr_datahub` with its `ALL-DATA` rules under `rules/` and its provider, settings, SQL
+  resolver, and transports under `services/`, and it registers through the same public
+  `mcmr.rules` and `mcmr.providers` entry points a third-party package uses. Shipping it inside the
+  one distribution means every install exercises that plugin mechanism. Rule identifiers, lanes,
+  families, and external flags are unchanged, because a plugin rule module still sits at
+  `rules.<scope>.<lane>.<family>` below its own package.
 
 - `ALL-FILE0003` exempts a definition catalog by default. The rule documented a catalog as
   measuring zero under the default while the signature declared `allow_definition_catalogs=False`,

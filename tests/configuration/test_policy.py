@@ -235,12 +235,21 @@ def test_a_shape_without_a_rule_policy_is_never_judged() -> None:
 
 
 def test_category_outcomes_close_one_rule_enum_without_repeating_its_bad_members() -> None:
+    """A declaration names what it accepts, and the annotated answer set closes the rest.
+
+    Nothing here spells `ModuleCohesion`, which is the point. The enum reaches the policy from the
+    rule's own return annotation, and a category the enum does not hold is refused rather than
+    silently added to a partition the catalog would then reject far from where it was written.
+    """
+    answers = [str(item) for item in ModuleCohesion]
     policy = Category.outcomes(
-        ModuleCohesion,
-        good={ModuleCohesion.COHESIVE, ModuleCohesion.INTENTIONAL_INTEGRATION},
-        neutral={ModuleCohesion.UNCERTAIN},
-    )
+        good={"cohesive", "intentional_integration"}, neutral={"uncertain"}
+    ).closed("ALL-ARCH1001", answers)
 
     assert policy.good == {"cohesive", "intentional_integration"}
     assert policy.neutral == {"uncertain"}
     assert policy.bad == {"mixed"}
+    assert Category.advisory().closed("ALL-ARCH1001", answers).neutral == set(answers)
+
+    with pytest.raises(ValueError, match="names absent categories layered"):
+        Category.outcomes(good={"layered"}).closed("ALL-ARCH1001", answers)

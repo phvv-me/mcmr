@@ -1,0 +1,119 @@
+1. What the catalog says about this change
+pipeline.py:3:12: ALL-DATA0002 [*] field `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.analytics.orders,PROD).legacy_total` is absent from the catalog schema (1, allowed <= 0)
+pipeline.py:5:13: ALL-DATA0003 field `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD).amount` expects `TEXT` but the catalog declares `NUMBER` (1, allowed <= 0)
+datahub:1:1: ALL-DATA0007 data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` has no owner (1, allowed <= 0)
+datahub:1:1: ALL-DATA0009 asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` has no description (5.88235294117647, allowed <= 5)
+datahub:1:1: ALL-DATA0011 data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.raw.orders,PROD)` has no owner and 4 downstream assets depend on it (1, allowed <= 0)
+datahub:1:1: ALL-DATA0012 field `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.analytics.orders,PROD).customer_email` tagged `PII` has no glossary term (1, allowed <= 0)
+pipeline.py:5:13: ALL-DATA0013 data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` read here has no owner and no description (1, allowed <= 0)
+
+1 files, 6 facts, 11/12 rules, 1 skipped, 11 table queries, 17 observations, 7 failures, 7 findings, 0 unassessed, kernel 6 ms, rules 22 ms
+
+2. The repair the catalog proves
+pipeline.py:3:12: ALL-DATA0002 [*] field `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.analytics.orders,PROD).legacy_total` is absent from the catalog schema (1, allowed <= 0)
+
+1 files, 2 facts, 1/1 rules, 0 skipped, 1 table queries, 2 observations, 1 failures, 1 findings, 0 unassessed, kernel 3 ms, rules 4 ms
+                                    Autofix                                     
+                                                                                
+  State     Rule           Safety   Plan                     Detail      Count  
+ ────────────────────────────────────────────────────────────────────────────── 
+  preview   ALL-DATA0002   safe     Name the column the      diff only       1  
+                                    catalog proves                              
+                                    replaced the retired                        
+                                    one.                                        
+                                                                                
+╭─ ALL-DATA0002  safe preview ─────────────────────────────────────────────────╮
+│ --- a/pipeline.py                                                            │
+│ +++ b/pipeline.py                                                            │
+│ @@ -1,5 +1,5 @@                                                              │
+│  """Nightly rollups the ecommerce warehouse runs against its                 │
+│ DataHub-governed assets."""                                                  │
+│                                                                              │
+│ -_REVENUE = "SELECT order_id, legacy_total FROM ecommerce.analytics.orders"  │
+│ +_REVENUE = "SELECT order_id, total FROM ecommerce.analytics.orders"         │
+│                                                                              │
+│  _INVOICES = "SELECT invoice_id, CAST(amount AS STRING) FROM                 │
+│ ecommerce.marts.invoices"                                                    │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+3. The repair applied and verified by a rerun
+
+1 files, 2 facts, 1/1 rules, 0 skipped, 1 table queries, 2 observations, 0 failures, 0 findings, 0 unassessed, kernel 3 ms, rules 1 ms
+                                    Autofix                                     
+                                                                                
+  State     Rule           Safety   Plan                 Detail          Count  
+ ────────────────────────────────────────────────────────────────────────────── 
+  applied   ALL-DATA0002   safe     Name the column      rule verified       1  
+                                    the catalog proves                          
+                                    replaced the                                
+                                    retired one.                                
+                                                                                
+
+4. Every verdict recorded as a DataHub assertion
+pipeline.py:5:13: ALL-DATA0003 field `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD).amount` expects `TEXT` but the catalog declares `NUMBER` (1, allowed <= 0)
+datahub:1:1: ALL-DATA0007 data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` has no owner (1, allowed <= 0)
+datahub:1:1: ALL-DATA0009 asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` has no description (5.88235294117647, allowed <= 5)
+datahub:1:1: ALL-DATA0011 data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.raw.orders,PROD)` has no owner and 4 downstream assets depend on it (1, allowed <= 0)
+datahub:1:1: ALL-DATA0012 field `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.analytics.orders,PROD).customer_email` tagged `PII` has no glossary term (1, allowed <= 0)
+pipeline.py:5:13: ALL-DATA0013 data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` read here has no owner and no description (1, allowed <= 0)
+
+1 files, 6 facts, 11/12 rules, 1 skipped, 11 table queries, 17 observations, 6 failures, 6 findings, 0 unassessed, kernel 2 ms, rules 20 ms
+urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD) 9 
+verdicts recorded (5 passing, 4 failing), linked https://github.com/phvv-me/mcmr
+urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.raw.orders,PROD) 6 
+verdicts recorded (5 passing, 1 failing), linked https://github.com/phvv-me/mcmr
+urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.analytics.orders,PROD) 6
+verdicts recorded (5 passing, 1 failing), linked https://github.com/phvv-me/mcmr
+21 verdicts recorded for 3 governed assets.
+
+5. What the next agent reads before touching this pipeline
+
+ecommerce.analytics.orders
+  ALL-DATA0001  passing since 2026-08-07 05:21   
+  ALL-DATA0002  passing since 2026-08-07 05:22  1 repair applied, previously    
+                                                field                           
+                                                `ecommerce.analytics.orders.lega
+                                                cy_total` is absent from the    
+                                                catalog schema                  
+  ALL-DATA0004  passing since 2026-08-07 05:21   
+  ALL-DATA0006  passing since 2026-08-07 05:21   
+  ALL-DATA0010  passing since 2026-08-07 05:21   
+  ALL-DATA0012  failing since 2026-08-07 05:20  field                           
+                                                `ecommerce.analytics.orders.cust
+                                                omer_email` tagged `PII` has no 
+                                                glossary term                   
+
+ecommerce.marts.invoices
+  ALL-DATA0001  passing since 2026-08-07 05:21   
+  ALL-DATA0002  passing since 2026-08-07 05:22  1 repair applied
+  ALL-DATA0003  failing since 2026-08-07 05:20  field                           
+                                                `ecommerce.marts.invoices.amount
+                                                ` expects `TEXT` but the catalog
+                                                declares `NUMBER`               
+  ALL-DATA0004  passing since 2026-08-07 05:21   
+  ALL-DATA0006  passing since 2026-08-07 05:21   
+  ALL-DATA0007  failing since 2026-08-07 05:20  data asset                      
+                                                `ecommerce.marts.invoices` has  
+                                                no owner                        
+  ALL-DATA0009  failing since 2026-08-07 05:20  asset `ecommerce.marts.invoices`
+                                                has no description              
+  ALL-DATA0010  passing since 2026-08-07 05:21   
+  ALL-DATA0013  failing since 2026-08-07 05:21  data asset                      
+                                                `ecommerce.marts.invoices` read 
+                                                here has no owner and no        
+                                                description                     
+
+ecommerce.raw.orders
+  ALL-DATA0001  passing since 2026-08-07 05:21   
+  ALL-DATA0002  passing since 2026-08-07 05:22  1 repair applied
+  ALL-DATA0004  passing since 2026-08-07 05:21   
+  ALL-DATA0006  passing since 2026-08-07 05:21   
+  ALL-DATA0010  passing since 2026-08-07 05:21   
+  ALL-DATA0011  failing since 2026-08-07 05:20  data asset                      
+                                                `ecommerce.raw.orders` has no   
+                                                owner and 4 downstream assets   
+                                                depend on it                    
+
+review 0.30s  preview 0.10s  apply 0.19s  record 0.17s  history 0.31s  total 
+1.07s

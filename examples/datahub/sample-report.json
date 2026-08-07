@@ -1,0 +1,341 @@
+{
+  "root": "examples/datahub",
+  "file_count": 1,
+  "fact_count": 6,
+  "rule_count": 12,
+  "rule_execution_count": 11,
+  "skipped_rule_count": 1,
+  "rule_counts_by_lane": {
+    "deterministic": 12,
+    "contextual": 0
+  },
+  "rule_executions_by_lane": {
+    "deterministic": 11,
+    "contextual": 0
+  },
+  "skipped_rules": [
+    "ALL-DATA0008"
+  ],
+  "table_query_count": 11,
+  "table_queries_by_family": {
+    "DataAssetReferenceFact": 4,
+    "LineageEdgeFact": 1,
+    "DataFieldReferenceFact": 2,
+    "DataAssetFact": 4
+  },
+  "observation_count": 17,
+  "unassessed_count": 0,
+  "parse_failure_count": 0,
+  "kernel_milliseconds": 6.867014,
+  "rule_milliseconds": 22.128502,
+  "total_failure_count": 7,
+  "total_finding_count": 7,
+  "failures": [
+    {
+      "rule": "ALL-DATA0002",
+      "callable": "mcmr_datahub.rules.general.deterministic.data_assets.references.r0002.missing_data_field_reference",
+      "summary": "Count referenced fields absent from an existing data asset schema.",
+      "where": "pipeline.py:100:string:data-fields",
+      "span": {
+        "path": "pipeline.py",
+        "start_line": 3,
+        "start_column": 11,
+        "end_line": 3,
+        "end_column": 74
+      },
+      "value": 1,
+      "allowed": "<= 0",
+      "findings": [
+        {
+          "message": "field `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.analytics.orders,PROD).legacy_total` is absent from the catalog schema",
+          "span": {
+            "path": "pipeline.py",
+            "start_line": 3,
+            "start_column": 11,
+            "end_line": 3,
+            "end_column": 74
+          },
+          "measurements": [
+            {
+              "name": "missing data field reference",
+              "value": 1.0,
+              "unit": "count"
+            }
+          ],
+          "evidence": [],
+          "provenance": null,
+          "repair": {
+            "kind": "edit",
+            "plan": {
+              "summary": "Name the column the catalog proves replaced the retired one.",
+              "rewrites": [
+                {
+                  "kind": "replace",
+                  "target": {
+                    "id": "pipeline.py:100:string",
+                    "span": {
+                      "path": "pipeline.py",
+                      "start_line": 3,
+                      "start_column": 11,
+                      "end_line": 3,
+                      "end_column": 74
+                    },
+                    "kind": "string",
+                    "text": "\"SELECT order_id, legacy_total FROM ecommerce.analytics.orders\""
+                  },
+                  "source": "\"SELECT order_id, total FROM ecommerce.analytics.orders\"",
+                  "imports": []
+                }
+              ]
+            },
+            "safety": "safe"
+          }
+        }
+      ]
+    },
+    {
+      "rule": "ALL-DATA0003",
+      "callable": "mcmr_datahub.rules.general.deterministic.data_assets.schema.r0003.incompatible_data_field_type",
+      "summary": "Count explicit source type expectations that disagree with catalog schemas.",
+      "where": "pipeline.py:177:string:data-fields",
+      "span": {
+        "path": "pipeline.py",
+        "start_line": 5,
+        "start_column": 12,
+        "end_line": 5,
+        "end_column": 85
+      },
+      "value": 1,
+      "allowed": "<= 0",
+      "findings": [
+        {
+          "message": "field `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD).amount` expects `TEXT` but the catalog declares `NUMBER`",
+          "span": {
+            "path": "pipeline.py",
+            "start_line": 5,
+            "start_column": 12,
+            "end_line": 5,
+            "end_column": 85
+          },
+          "measurements": [
+            {
+              "name": "incompatible data field type",
+              "value": 1.0,
+              "unit": "count"
+            }
+          ],
+          "evidence": [],
+          "provenance": null,
+          "repair": null
+        }
+      ]
+    },
+    {
+      "rule": "ALL-DATA0007",
+      "callable": "mcmr_datahub.rules.general.deterministic.data_assets.governance.r0007.data_asset_governance_gap",
+      "summary": "Count governed assets missing an owner or required domain.",
+      "where": "datahub-assets",
+      "span": {
+        "path": "datahub",
+        "start_line": 1,
+        "start_column": 0,
+        "end_line": 1,
+        "end_column": 0
+      },
+      "value": 1,
+      "allowed": "<= 0",
+      "findings": [
+        {
+          "message": "data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` has no owner",
+          "span": {
+            "path": "datahub",
+            "start_line": 1,
+            "start_column": 0,
+            "end_line": 1,
+            "end_column": 0
+          },
+          "measurements": [
+            {
+              "name": "missing governance fields",
+              "value": 1.0,
+              "unit": "count"
+            }
+          ],
+          "evidence": [],
+          "provenance": null,
+          "repair": null
+        }
+      ]
+    },
+    {
+      "rule": "ALL-DATA0009",
+      "callable": "mcmr_datahub.rules.general.deterministic.data_assets.schema.r0009.data_definition_gap_percentage",
+      "summary": "Measure cataloged assets and fields lacking a business description.",
+      "where": "datahub-assets",
+      "span": {
+        "path": "datahub",
+        "start_line": 1,
+        "start_column": 0,
+        "end_line": 1,
+        "end_column": 0
+      },
+      "value": 5.88235294117647,
+      "allowed": "<= 5",
+      "findings": [
+        {
+          "message": "asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` has no description",
+          "span": {
+            "path": "datahub",
+            "start_line": 1,
+            "start_column": 0,
+            "end_line": 1,
+            "end_column": 0
+          },
+          "measurements": [
+            {
+              "name": "missing description",
+              "value": 1.0,
+              "unit": "count"
+            }
+          ],
+          "evidence": [],
+          "provenance": null,
+          "repair": null
+        }
+      ]
+    },
+    {
+      "rule": "ALL-DATA0011",
+      "callable": "mcmr_datahub.rules.general.deterministic.data_assets.lineage.r0011.unowned_high_impact_asset",
+      "summary": "Count assets nobody owns that many downstream assets depend on.",
+      "where": "datahub-assets",
+      "span": {
+        "path": "datahub",
+        "start_line": 1,
+        "start_column": 0,
+        "end_line": 1,
+        "end_column": 0
+      },
+      "value": 1,
+      "allowed": "<= 0",
+      "findings": [
+        {
+          "message": "data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.raw.orders,PROD)` has no owner and 4 downstream assets depend on it",
+          "span": {
+            "path": "datahub",
+            "start_line": 1,
+            "start_column": 0,
+            "end_line": 1,
+            "end_column": 0
+          },
+          "measurements": [
+            {
+              "name": "unowned high impact asset",
+              "value": 1.0,
+              "unit": "count"
+            }
+          ],
+          "evidence": [],
+          "provenance": null,
+          "repair": null
+        }
+      ]
+    },
+    {
+      "rule": "ALL-DATA0012",
+      "callable": "mcmr_datahub.rules.general.deterministic.data_assets.governance.r0012.ungoverned_sensitive_field",
+      "summary": "Count fields the catalog marks sensitive while leaving their governance incomplete.",
+      "where": "datahub-assets",
+      "span": {
+        "path": "datahub",
+        "start_line": 1,
+        "start_column": 0,
+        "end_line": 1,
+        "end_column": 0
+      },
+      "value": 1,
+      "allowed": "<= 0",
+      "findings": [
+        {
+          "message": "field `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.analytics.orders,PROD).customer_email` tagged `PII` has no glossary term",
+          "span": {
+            "path": "datahub",
+            "start_line": 1,
+            "start_column": 0,
+            "end_line": 1,
+            "end_column": 0
+          },
+          "measurements": [
+            {
+              "name": "ungoverned sensitive field",
+              "value": 1.0,
+              "unit": "count"
+            }
+          ],
+          "evidence": [],
+          "provenance": null,
+          "repair": null
+        }
+      ]
+    },
+    {
+      "rule": "ALL-DATA0013",
+      "callable": "mcmr_datahub.rules.general.deterministic.data_assets.references.r0013.ungoverned_data_reference",
+      "summary": "Count source references to catalog assets that name no owner or no description.",
+      "where": "pipeline.py:177:string:data-assets",
+      "span": {
+        "path": "pipeline.py",
+        "start_line": 5,
+        "start_column": 12,
+        "end_line": 5,
+        "end_column": 85
+      },
+      "value": 1,
+      "allowed": "<= 0",
+      "findings": [
+        {
+          "message": "data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` read here has no owner and no description",
+          "span": {
+            "path": "pipeline.py",
+            "start_line": 5,
+            "start_column": 12,
+            "end_line": 5,
+            "end_column": 85
+          },
+          "measurements": [
+            {
+              "name": "ungoverned data reference",
+              "value": 1.0,
+              "unit": "count"
+            }
+          ],
+          "evidence": [],
+          "provenance": null,
+          "repair": null
+        }
+      ]
+    }
+  ],
+  "passes": [
+    {
+      "rule": "ALL-DATA0001",
+      "callable": "mcmr_datahub.rules.general.deterministic.data_assets.references.r0001.missing_data_asset_reference",
+      "summary": "Count source references to assets absent from the supplied catalog snapshot."
+    },
+    {
+      "rule": "ALL-DATA0004",
+      "callable": "mcmr_datahub.rules.general.deterministic.data_assets.references.r0004.nonactive_data_asset_reference",
+      "summary": "Count source references to assets explicitly deprecated or removed."
+    },
+    {
+      "rule": "ALL-DATA0006",
+      "callable": "mcmr_datahub.rules.general.deterministic.data_assets.governance.r0006.unhealthy_data_dependency",
+      "summary": "Count source references exposed to explicitly unhealthy data dependencies."
+    },
+    {
+      "rule": "ALL-DATA0010",
+      "callable": "mcmr_datahub.rules.general.deterministic.data_assets.lineage.r0010.unresolved_lineage_endpoint",
+      "summary": "Count lineage edges whose endpoint is absent from the catalog snapshot."
+    }
+  ]
+}

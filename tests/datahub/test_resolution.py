@@ -3,10 +3,6 @@ from functools import partial
 import anyio
 import httpx
 import pytest
-from mcmr_datahub.resolution.catalog import DataHubCatalog
-from mcmr_datahub.resolution.references import SQLReferenceExtractor
-from mcmr_datahub.settings import DataHubSettings
-from mcmr_datahub.transport.graphql import DataHubGraphQL
 
 from mcmr.facts import (
     DataAsset,
@@ -17,6 +13,12 @@ from mcmr.facts import (
     StringExpressionFact,
 )
 from mcmr.plugins import Table, fact_table
+from mcmr_datahub import (
+    DataHubCatalog,
+    DataHubGraphQL,
+    DataHubSettings,
+    SQLReferenceExtractor,
+)
 
 _SPAN = SourceSpan(path="query.py", start_line=1, start_column=0, end_column=40)
 

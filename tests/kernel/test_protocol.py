@@ -349,7 +349,7 @@ class TestKernelLocation:
     def test_the_binary_locator_finds_the_package_source_checkout(self, tmp_path: Path) -> None:
         """An installed module can recover its source checkout without fixed parent indexes."""
         checkout = tmp_path / "checkout"
-        source = checkout / "src/api/mcmr/kernel/analysis.py"
+        source = checkout / "src/mcmr/kernel/analysis.py"
         manifest = checkout / "src/core/Cargo.toml"
         binary = checkout / "src/core/target/debug/mcmr-kernel"
         manifest.parent.mkdir(parents=True)

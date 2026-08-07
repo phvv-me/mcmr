@@ -45,17 +45,30 @@ repair rows are collected only for retained failures.
 
 ## Source layout
 
+One distribution named `mcmr` ships everything, and `src` holds the three trees it is built from.
+
 `src/core` is the Rust kernel and PyO3 extension. It owns discovery, parsing, repository graphs,
 primitive evidence, and direct Polars frames.
 
-`src/api` is the Python API and CLI. It owns contracts, configuration, dependency injection,
-query planning, judgment, rendering, and plugin discovery.
+`src/mcmr` is the Python engine, CLI, and built-in rule catalog. It owns contracts, configuration,
+dependency injection, query planning, judgment, rendering, and plugin discovery, and `src/mcmr/rules`
+holds every rule that needs nothing beyond the repository itself.
 
-`src/rules` is the built-in rule distribution. It depends on the API just like a third-party rule
-package does.
+`src/mcmr_datahub` is the bundled DataHub plugin, and it is a plugin in the ordinary sense rather
+than a privileged one. `rules/` holds the `ALL-DATA` catalog and `services/` holds the provider,
+its settings, its SQL resolver, and its transports. It reaches the engine only through the public
+`mcmr` imports a third-party package uses, and the engine reaches it only through the `mcmr.rules`
+and `mcmr.providers` entry points below. Because one distribution ships both, the entry-point
+mechanism is exercised on every install rather than only by outside packages.
 
-This split keeps the public extension surface in Python while measured source work remains in
-Rust.
+The typed fact families those rules read stay in `mcmr.facts` beside every other external family.
+A fact model is the engine's own legal value domain rather than a vendor schema, and a family is
+owned at run time by whichever provider claims it, so a second catalog could supply `DataAssetFact`
+without depending on this plugin at all.
+
+Maturin builds that one wheel from exactly one Python source root, which is why `src` holds the
+importable packages directly. This split keeps the public extension surface in Python while
+measured source work remains in Rust.
 
 ## Facts and tables
 
@@ -149,10 +162,12 @@ datahub = "mcmr_datahub.rules"
 ```
 
 Discovery imports leaf modules in stable order. Plugin rules use the same identifiers,
-documentation, typing, numbering, policy, and query validation as built-ins. IDs are globally
-unique.
+documentation, typing, numbering, policy, and query validation as built-ins, so a plugin rule
+module still sits at `rules.<scope>.<lane>.<family>.<optional groups>.rNNNN` below its own package
+and its identifier is still checked against that path. IDs are globally unique.
 
-A rule-only package depends on `mcmr-api`. It does not need the built-in rule distribution.
+A rule-only package depends on `mcmr`. Nothing else is needed, and the bundled DataHub plugin at
+`src/mcmr_datahub` registers itself exactly this way rather than through a private path.
 
 ## External fact providers
 
@@ -161,7 +176,7 @@ the `mcmr.providers` entry point group.
 
 ```toml
 [project.entry-points."mcmr.providers"]
-datahub = "mcmr_datahub.provider:DataHubProvider"
+datahub = "mcmr_datahub.services:DataHubProvider"
 ```
 
 The entry point loads a zero-argument factory. Its instance implements the structural
@@ -202,21 +217,148 @@ field, which is the anchor a verified repair edits, and the column the asset's o
 lineage proves replaced a retired one.
 
 A `recorded` setting names a directory of captured exchanges instead of a live server. One JSON
-file per operation holds request variables beside the exact response envelope, so replay is a
-lookup rather than a simulation and a live capture is a drop-in replacement. `mcmr demo` runs the
-complete workflow over one such recording with no service, no network, and no edit to the example.
+file per operation holds the variables that identify a request beside the exact response envelope,
+so replay is a lookup rather than a simulation and a live capture is a drop-in replacement. An
+exchange states only the variables it is keyed by, which is what lets a volatile value such as a
+run timestamp go unpredicted and an exchange naming none answer the whole operation. `mcmr demo`
+runs the complete workflow over one such recording with no service, no network, and no edit to the
+example.
 
 ## Result publication
 
-A provider that can write a completed run back to its own system implements `ResultPublisher`
-beside `FactProvider`. Publication is not part of reading evidence, so no analysis path reaches it
-and no configuration turns it on. Only `mcmr writeback` calls it, and it passes the governed assets
-the run actually named rather than the whole catalog.
+A run that judges a governed asset knows something the next run would otherwise rediscover, so
+MCMR can leave that conclusion where the asset already lives. A provider that can write a
+completed run back to its own system implements `ResultPublisher` beside `FactProvider`, and one
+that can read those conclusions back implements `RunHistoryReader`.
 
-The bundled DataHub publisher attaches one institutional memory link to each of those assets
-through `addLink`. That aspect is additive and editable, so a tool states what it found without
-overwriting a sentence a person wrote. `updateDescription` would do the opposite, which is why an
-agent must not reach for it.
+Publication is never part of reading evidence. A check reads and returns nothing of its own unless
+somebody says so, which `mcmr check --writeback` does for one run and `publish_runs` does for a
+scheduled one. The flag is three-valued like the execution overrides, so `--no-writeback`
+suppresses recording a project already asked for.
+
+```toml
+[tool.mcmr.providers.datahub]
+publish_runs = true
+```
+
+What crosses the seam is the run itself rather than a rendering of it. A `RunRecord` states one
+rule's verdict about one subject, the measurement behind it, how many findings it carried, how far
+its repair got, and for a contextual rule what the model said and how sure it was. Those records
+come from the report the run already produced, so nothing is analyzed twice and what a provider
+stores is exactly what the reader on screen was shown.
+
+A `RunGraph` crosses the same seam beside them. A run already knows which fact families it
+materialized, how many rows each carried, which columns the fact model declares, and which rule
+declared which of them, so stating that graph costs no second pass. It is what gives a verdict
+about ordinary source somewhere to live, because the fact table a rule queried is the closest
+thing a repository has to a subject a catalog can hold.
+
+### Where a verdict is stored
+
+A rule that names a governed identity keeps storing its verdict there, since that asset is a
+subject somebody else already owns. Every other rule anchors on the fact dataset published for the
+first table in its signature. The verdict's own identity is the file and fact a finding named, so
+a rule failing at two files inside one table keeps two timelines under one subject, and the file
+travels with the verdict as a property. A rule that read no published table still produces no
+record, which is what keeps an unanchored repository-wide verdict out of a catalog.
+
+Nothing writes a file-scoped verdict again once that file is repaired, renamed, or deleted, so
+each publication closes the ones this run no longer reports. A rule that ran knows every file it
+still reports, and every earlier file of that rule receives one passing result stating that it is
+no longer reported. A rule that did not run closes nothing, because silence is not a resolution.
+
+The bundled DataHub publisher records each rule and subject pair as one custom assertion, which is
+DataHub's own model for a check an external tool owns. The assertion identity is derived from the
+rule identifier and what the verdict is about, so a later run lands on the same assertion instead
+of creating a second one, and each run reports one result against it with the record's fields as
+properties. That leaves a timeline the catalog already knows how to show and query rather than a
+document only MCMR can read.
+
+### The graph a repository publishes
+
+The same gate publishes the graph, because a verdict has nowhere to be stored until the fact
+tables exist. One dataset per fact family carries `schemaMetadata` flattened from the pydantic
+fact model as dotted field paths and a `datasetProfile` stating the rows this run read. One
+`DataFlow` names the repository and holds its extraction job, which outputs every fact dataset.
+That is a lineage graph for source code, published into the place a data team already reads
+lineage.
+
+A rule is one thing, so it is one entity. Every rule lives as a single `DataJob` under one
+canonical `mcmr/rulebook` flow for the whole instance, keyed by its identifier, rather than as a
+copy under each repository that ran it. Publishing a repository reads what earlier repositories
+already wrote onto that job and merges into it, so the rule's `inputDatasets` become the union of
+every codebase's fact tables for the families it reads, which is what makes a rule page answer
+which codebases run it. Two repositories publishing at the same moment race, and the later write
+wins.
+
+The same merge carries what each codebase currently reports, as `lastResult.<repo>`,
+`findings.<repo>`, `lastRun.<repo>`, `since.<repo>` and `anchor.<repo>`, beside the
+`reposFailing`, `reposPassing` and `totalFindings` rollups recomputed from the merged set. A
+reader following lineage lands on the rule and reads what it concluded everywhere without opening
+anything, and one link per codebase, failing first, points at the fact table its verdicts are
+recorded against.
+
+What the UI calls each of these is stated rather than inferred. A fact dataset is a `Fact table`,
+a rule job is a `Rule`, and a repository's own job is an `Extraction`, so a search result says
+what it found instead of naming the generic type every platform contributes.
+
+None of this reaches a home page on its own, so an owner and a domain travel with everything a run
+publishes. Both are settings, both default to something a fresh DataHub already knows about, and
+the `Codebases` domain every published flow is filed under is the codebase registry rather than a
+second mechanism beside one. The platform card carries its own mark, since DataHub reads `logoUrl`
+as an ordinary image source and a data URI needs nothing served from anywhere. A project that asks
+for it also receives one home page post per repository, keyed by that repository so a later run
+rewrites the same card.
+
+A link nobody can follow is worse than no link. An unset or placeholder `report_url` writes no
+institutional memory and no assertion `externalUrl` at all, rather than pointing a catalog at
+something that answers nothing.
+
+```toml
+[tool.mcmr.providers.datahub]
+publish_runs = true
+report_url = "https://github.com/phvv-me/mcmr"
+owner = "datahub"
+domain = "Codebases"
+announce = false
+frontend = "http://localhost:9002"
+```
+
+GraphQL has no mutation for declaring a dataset with a schema, so this half of the publication
+goes through the ingestion surface the catalog itself is loaded through, `POST /openapi/v3/entity/
+<type>`, over HTTPX through the same transport seam the queries use, and reads what a shared rule
+already holds back through `batchGet` on the same path. The runtime never grows an
+`acryl-datahub` dependency for it. Every write is an upsert keyed by the entity URN, so a
+scheduled run rewrites the same graph rather than growing a new one, and no read-before-write is
+needed the way `addLink` needs one.
+
+Assertions are declared for the whole run before any result is reported against them. DataHub
+resolves an assertion through an index its own upsert reaches seconds later, so reporting in the
+same breath as the upsert pays that settling window once per assertion. Declaring first spends it
+on the rest of the batch, which is what keeps a repository with two hundred rules recording in
+seconds rather than minutes.
+
+Each judged asset also receives one institutional memory link through `addLink`. That aspect is
+additive and editable, so a tool states what it found without overwriting a sentence a person
+wrote. `updateDescription` would do the opposite, which is why an agent must not reach for it.
+`addLink` refuses a link an asset already holds, so the publisher reads the existing memory first
+and writes only what is missing, which is what lets a scheduled job run twice.
+
+Two facts about the running service shape this path. A result reported against an assertion the
+same run created is still rejected until that write settles, so it is reported again across a
+bounded settling window rather than failing the writeback. And every optional collection in its
+GraphQL schema is answered with `null` instead of an empty list when the aspect behind it was
+never written, so the provider reads each one as absent rather than empty.
+
+`mcmr history` is the other direction and the reason the first one is worth doing. It reads the
+recorded verdicts for the subjects a repository names and states, per rule, whether it is passing
+or failing, since when, how many repairs already landed, and why it last failed, grouped by the
+warehouse asset or the fact table each timeline belongs to. An agent converging a legacy
+repository reads that before it acts, so it does not spend a batch rediscovering a failure
+somebody already recorded or reattempting a repair that was already refused. Naming assets
+directly skips the analysis entirely, which is the fast path an agent takes. Learning which
+subjects a repository names needs neither a model nor a network read the project did not already
+enable, so this command runs neither lane beyond the configuration.
 
 The official `datahub` CLI remains useful for setup and diagnostics. DataHub MCP is a separate
 agent surface for targeted lineage exploration and verified writeback. It does not become the
@@ -232,6 +374,12 @@ A category name states what the model observed and never what the engine will do
 prompt carries the project's own outcome map beside the rule instructions. Each category is named
 with what selecting it reports, drawn from the resolved policy through `Policy.reported`, and the
 model is told to answer what the evidence states rather than what it would prefer to report.
+
+The closed answer set of a contextual rule is the type argument of its `ModelQuery` return
+annotation, so a policy declaration never repeats it. `Category.outcomes(good=..., neutral=...)`
+names what this project accepts and tolerates, `Category.advisory()` says every answer is a
+recommendation, and `@rule` closes the partition against the annotation. A named category the
+annotation does not hold is refused at declaration.
 
 Contextual execution is separate from external evidence. A local model rule needs `--contextual`.
 A DataHub-backed deterministic rule needs `--external`. A DataHub-backed contextual rule needs

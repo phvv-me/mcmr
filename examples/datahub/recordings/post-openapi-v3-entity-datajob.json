@@ -1,0 +1,97 @@
+[
+  {
+    "variables": {},
+    "response": [
+      {
+        "urn": "urn:li:dataJob:(urn:li:dataFlow:(mcmr,ecommerce-pipeline,PROD),extract)",
+        "browsePathsV2": {
+          "value": {
+            "path": [
+              {
+                "urn": "urn:li:dataFlow:(mcmr,ecommerce-pipeline,PROD)",
+                "id": "urn:li:dataFlow:(mcmr,ecommerce-pipeline,PROD)"
+              }
+            ]
+          }
+        },
+        "dataJobInputOutput": {
+          "value": {
+            "inputDatasets": [],
+            "outputDatasets": [
+              "urn:li:dataset:(urn:li:dataPlatform:mcmr,ecommerce-pipeline/facts/data_asset_fact,PROD)"
+            ]
+          }
+        },
+        "dataPlatformInstance": {
+          "value": {
+            "platform": "urn:li:dataPlatform:mcmr"
+          }
+        },
+        "dataJobInfo": {
+          "value": {
+            "name": "extract",
+            "externalUrl": "https://github.com/phvv-me/mcmr",
+            "description": "Extract repository facts from ecommerce-pipeline.",
+            "customProperties": {
+              "repository": "ecommerce-pipeline"
+            },
+            "type": {
+              "string": "MCMR"
+            }
+          }
+        },
+        "dataJobKey": {
+          "value": {
+            "jobId": "extract",
+            "flow": "urn:li:dataFlow:(mcmr,ecommerce-pipeline,PROD)"
+          }
+        }
+      },
+      {
+        "urn": "urn:li:dataJob:(urn:li:dataFlow:(mcmr,ecommerce-pipeline,PROD),all-data0002)",
+        "browsePathsV2": {
+          "value": {
+            "path": [
+              {
+                "urn": "urn:li:dataFlow:(mcmr,ecommerce-pipeline,PROD)",
+                "id": "urn:li:dataFlow:(mcmr,ecommerce-pipeline,PROD)"
+              }
+            ]
+          }
+        },
+        "dataJobInputOutput": {
+          "value": {
+            "inputDatasets": [
+              "urn:li:dataset:(urn:li:dataPlatform:mcmr,ecommerce-pipeline/facts/data_asset_fact,PROD)"
+            ],
+            "outputDatasets": []
+          }
+        },
+        "dataPlatformInstance": {
+          "value": {
+            "platform": "urn:li:dataPlatform:mcmr"
+          }
+        },
+        "dataJobInfo": {
+          "value": {
+            "name": "ALL-DATA0002",
+            "externalUrl": "https://github.com/phvv-me/mcmr",
+            "description": "Report a field the catalog does not declare.",
+            "customProperties": {
+              "callable": "mcmr_datahub.rules.x"
+            },
+            "type": {
+              "string": "MCMR"
+            }
+          }
+        },
+        "dataJobKey": {
+          "value": {
+            "jobId": "all-data0002",
+            "flow": "urn:li:dataFlow:(mcmr,ecommerce-pipeline,PROD)"
+          }
+        }
+      }
+    ]
+  }
+]

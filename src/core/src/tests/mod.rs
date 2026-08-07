@@ -15,7 +15,7 @@ fn request(root: &str) -> Request {
 }
 
 fn python_corpus() -> &'static str {
-    concat!(env!("CARGO_MANIFEST_DIR"), "/../api/mcmr")
+    concat!(env!("CARGO_MANIFEST_DIR"), "/../mcmr")
 }
 
 #[test]

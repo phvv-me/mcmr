@@ -32,3 +32,13 @@ htmlcov/
 .chefe/
 .dist/
 target/
+
+# demo
+# `demo/` is deliberately overengineered code MCMR is pointed at on purpose, so the repository's
+# own `check .` must not judge it. The kernel's only project-level path exclusion is the Git ignore
+# contract, read from the nearest ancestor holding a `.gitignore` and never from above it
+# (`src/core/src/discovery/walk/scope.rs`, `parents(false)`). Naming `demo/` here therefore skips
+# the subtree for `check .`, while `check demo/` reads `demo/.gitignore` as its own contract root
+# and still fires everything. The files are tracked with `git add -f demo`, because Git honors the
+# index over this file while the kernel only ever reads the file.
+/demo/

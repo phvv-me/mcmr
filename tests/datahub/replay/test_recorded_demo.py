@@ -6,14 +6,13 @@ from typing import TYPE_CHECKING
 import anyio
 import httpx
 import pytest
-from mcmr_datahub.provider import DataHubProvider
-from mcmr_datahub.transport.recorded import RecordedTransport
 
 from mcmr.commands.interface import RepairMode
 from mcmr.commands.quality import check, demo
 from mcmr.facts import DataFieldReferenceFact, StringExpressionFact
 from mcmr.kernel import Kernel
 from mcmr.plugins import ProviderContext, RepositoryTables
+from mcmr_datahub import DataHubProvider, RecordedTransport
 
 from ...support import kernel_binary, needs_kernel, project_root, written
 
@@ -143,6 +142,8 @@ def test_the_demo_command_runs_the_whole_workflow_without_editing_the_example(
 
     output = capsys.readouterr().out
     assert (_EXAMPLE / "pipeline.py").read_text() == original
-    assert "The finding is closed" in output
+    assert "Every verdict recorded as a DataHub assertion" in output
+    assert "What the next agent reads before touching this pipeline" in output
     assert "rule verified" in output
+    assert "passing since" in output and "failing since" in output
     assert "total " in output

@@ -180,6 +180,6 @@ def test_every_rule_number_matches_its_lane_and_every_rule_is_table_native() -> 
     ]
 
     assert not wrong
-    assert len(catalog.rules) == 284
+    assert len(catalog.rules) == 285
     assert all(rule.table_native for rule in catalog.rules)
     assert all(rule.query_native for rule in catalog.rules)

@@ -39,10 +39,6 @@ _GAPS: dict[str, dict[str, str]] = {
         "cuda": "the same",
         "rust": "the same, where the base arrives as `crate::sample::Base`",
     },
-    "ALL-REAC0002": {
-        "c": "a header and its translation unit are one module, so the fixture declares nothing "
-        "this file reads and no other file does"
-    },
 }
 
 

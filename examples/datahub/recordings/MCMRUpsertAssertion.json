@@ -1,0 +1,13 @@
+[
+  {
+    "variables": {},
+    "response": {
+      "data": {
+        "upsertCustomAssertion": {
+          "urn": "urn:li:assertion:mcmr-all-data0003-0356c023c326"
+        }
+      },
+      "extensions": {}
+    }
+  }
+]

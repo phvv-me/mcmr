@@ -1,6 +1,6 @@
 # Table rule execution
 
-MCMR executes its complete 279-rule catalog over typed Polars tables built by the Rust kernel.
+MCMR executes its complete 285-rule catalog over typed Polars tables built by the Rust kernel.
 Tables are the production boundary and the rule authoring surface. A check does not reconstruct
 Pydantic facts, dispatch one Python call per fact, or keep an alternate row executor.
 

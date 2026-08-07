@@ -136,9 +136,6 @@ _INVARIANT: dict[str, str] = {
     "TryBlockFact.regions[].has_following_raising_operation": (
         "derived, and every protected region in the corpus holds more than leading assignments"
     ),
-    "TryBlockFact.regions[].has_else": (
-        "derived, and no protected region in the corpus states an `else` clause"
-    ),
     "TryBlockFact.regions[].is_exception_group": (
         "derived, and no protected region in the corpus uses an exception group handler"
     ),

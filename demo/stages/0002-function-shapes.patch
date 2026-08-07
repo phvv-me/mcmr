@@ -1,0 +1,497 @@
+From d4c10582a631600afd32a187806993c6e40d504e Mon Sep 17 00:00:00 2001
+From: Pedro CVLAB <vaz.valois@hotmail.com>
+Date: Fri, 7 Aug 2026 21:51:03 +0900
+Subject: [PATCH 2/3] Batch 2: give every function one shape a reader can hold
+
+Fixes ALL-FUNC0001, ALL-FUNC0005, ALL-FUNC0007, ALL-FUNC0008, ALL-FUNC0009,
+ALL-FUNC0010, ALL-PARA0001, ALL-PARA0003, ALL-PARA0004, ALL-NAMI0001 and
+ALL-BRAN0001 on the server. The 60-line serve_forever loop becomes a read loop
+over an answer method and one small method per JSON-RPC route, the boolean
+flag pairs and the six-parameter metrics renderer go, and the transparent
+one-line wrappers are inlined.
+---
+ mcp_server.py | 251 ++++++++++++++++++++++----------------------------
+ mcp_tools.py  | 104 +++++++++------------
+ smoke.py      |  17 ++--
+ 3 files changed, 168 insertions(+), 204 deletions(-)
+
+diff --git a/demo/mcp_server.py b/demo/mcp_server.py
+index 57342c2..0fa6443 100644
+--- a/demo/mcp_server.py
++++ b/demo/mcp_server.py
+@@ -123,16 +123,13 @@ class MessageEnvelopeFactory:
+         return {"jsonrpc": "2.0", "id": request_id, "result": body}
+ 
+ 
+-def build_envelope_factory(config):
+-    return MessageEnvelopeFactory(config)
+-
+-
+ def now_in_milliseconds():
+     return int(time.time() * 1000)
+ 
+ 
+-def coerce_to_text(value):
+-    return str(value)
++def log_to_stderr(message, verbose):
++    if verbose:
++        print(message, file=sys.stderr)
+ 
+ 
+ class ProtocolServer:
+@@ -141,7 +138,7 @@ class ProtocolServer:
+     def __init__(self, config, transport):
+         self.config = config
+         self.transport = transport
+-        self.factory = build_envelope_factory(config)
++        self.factory = MessageEnvelopeFactory(config)
+         self.catalogue = ToolCatalogue(config)
+         self.initialized = False
+         self.shutdown_requested = False
+@@ -150,166 +147,142 @@ class ProtocolServer:
+         self.call_count = 0
+ 
+     def serve_forever(self):
+-        """Read, parse, route, dispatch, execute, encode, and write, in one loop."""
+-        while True:
+-            if self.shutdown_requested:
+-                break
++        """Answer one message at a time until the client stops sending them."""
++        while not self.shutdown_requested:
+             message = self.transport.read_one_message()
+             if message is None:
+                 break
+             self.request_count = self.request_count + 1
+-            method = message.get("method")
+-            request_id = message.get("id")
+-            params = message.get("params")
+-            if params is None:
+-                params = {}
+-            if method == "__unparseable__" or method == "__oversized__":
+-                self.error_count = self.error_count + 1
+-                self.transport.write_one_message(self.factory.make_error(None, -32700, _REJECTED))
+-                continue
+-            if message.get("jsonrpc") != "2.0":
+-                self.error_count = self.error_count + 1
+-                self.transport.write_one_message(
+-                    self.factory.make_error(request_id, -32600, _REJECTED)
+-                )
+-                continue
+-            found = None
+-            for pair in _METHOD_TABLE:
+-                if pair[0] == method:
+-                    found = pair[1]
+-                    break
+-            if found is None:
+-                if request_id is not None:
+-                    self.error_count = self.error_count + 1
+-                    self.transport.write_one_message(
+-                        self.factory.make_error(request_id, -32601, _REJECTED)
+-                    )
+-                continue
+-            if found == "handle_initialize":
+-                self.initialized = True
+-                greeting = {
+-                    "protocolVersion": self.config.protocol_version,
+-                    "capabilities": {"tools": {"listChanged": False}},
+-                    "serverInfo": {"name": self.config.name, "version": self.config.version},
+-                    "instructions": self.config.instructions,
+-                }
+-                self.transport.write_one_message(self.factory.make_result(request_id, greeting))
+-            elif found == "handle_initialized":
+-                self.log("client finished initializing", True, False)
+-            elif found == "handle_ping":
+-                self.transport.write_one_message(self.factory.make_result(request_id, {}))
+-            elif found == "handle_tools_list":
+-                if self.initialized is False and self.config.strict:
+-                    self.error_count = self.error_count + 1
+-                    self.transport.write_one_message(
+-                        self.factory.make_error(request_id, -32002, _REJECTED)
+-                    )
+-                else:
+-                    listing = {"tools": self.catalogue.describe_all()}
+-                    self.transport.write_one_message(self.factory.make_result(request_id, listing))
+-            elif found == "handle_tools_call":
+-                self.call_count = self.call_count + 1
+-                self.transport.write_one_message(
+-                    self.execute_tool_call(params, request_id, self.config.strict, False)
+-                )
+-            elif found == "handle_shutdown":
+-                self.shutdown_requested = True
+-                self.transport.write_one_message(self.factory.make_result(request_id, {}))
++            answer = self.answer(message)
++            if answer is not None:
++                self.transport.write_one_message(answer)
+         return self.request_count
+ 
+-    def execute_tool_call(self, params, request_id, strict, dry_run):
+-        """Validate the call, pick the handler, run it, and wrap whatever came back."""
++    def answer(self, message):
++        """Return the envelope one message earns, or nothing when it earns silence."""
++        request_id = message.get("id")
++        if message.get("method") in ("__unparseable__", "__oversized__"):
++            return self._refuse(None, -32700)
++        if message.get("jsonrpc") != "2.0":
++            return self._refuse(request_id, -32600)
++        answered = self.routes().get(message.get("method"))
++        if answered is None:
++            if request_id is None:
++                return None
++            return self._refuse(request_id, -32601)
++        return answered(message.get("params") or {}, request_id)
++
++    def routes(self):
++        """Map every JSON-RPC method this server answers to the method that answers it."""
++        return {
++            "initialize": self.greet,
++            "notifications/initialized": self.acknowledge,
++            "ping": self.pong,
++            "tools/list": self.list_tools,
++            "tools/call": self.call_tool,
++            "shutdown": self.stop,
++        }
++
++    def greet(self, params, request_id):
++        """State the protocol version, the capabilities, and who this server is."""
++        self.initialized = True
++        greeting = {
++            "protocolVersion": self.config.protocol_version,
++            "capabilities": {"tools": {"listChanged": False}},
++            "serverInfo": {"name": self.config.name, "version": self.config.version},
++            "instructions": self.config.instructions,
++        }
++        return self.factory.make_result(request_id, greeting)
++
++    def acknowledge(self, params, request_id):
++        """Record that the client finished initializing, which earns no reply."""
++        log_to_stderr("client finished initializing", self.config.verbose)
++        return None
++
++    def pong(self, params, request_id):
++        """Answer a liveness check with the empty result the protocol asks for."""
++        return self.factory.make_result(request_id, {})
++
++    def list_tools(self, params, request_id):
++        """List the enabled tools, unless a strict server was asked before it was ready."""
++        if self.initialized is False and self.config.strict:
++            return self._refuse(request_id, -32002)
++        return self.factory.make_result(request_id, {"tools": self.catalogue.describe_all()})
++
++    def call_tool(self, params, request_id):
++        """Run the named tool and wrap whatever it produced as MCP text content."""
++        self.call_count = self.call_count + 1
+         name = params.get("name")
+-        arguments = params.get("arguments")
+-        if arguments is None:
+-            arguments = {}
+-        if name is None or self.config.is_tool_enabled(name) is False:
+-            self.error_count = self.error_count + 1
+-            refused = "the tool call named nothing this server runs"
+-            return self.factory.make_error(request_id, -32602, refused)
+-        if dry_run:
+-            return self.factory.make_result(request_id, {"content": [], "isError": False})
++        if self.config.is_tool_enabled(name) is False:
++            return self._refuse(request_id, -32602)
++        produced = self._produce(name, params.get("arguments") or {})
++        if produced is None:
++            return self._refuse(request_id, -32603)
++        body = {"content": [{"type": "text", "text": str(produced)}], "isError": False}
++        return self.factory.make_result(request_id, body)
++
++    def stop(self, params, request_id):
++        """Let the loop finish after this reply reaches the client."""
++        self.shutdown_requested = True
++        return self.factory.make_result(request_id, {})
++
++    def _produce(self, name, arguments):
++        """Run one tool, timing it, and read a refused argument as nothing produced."""
+         started = now_in_milliseconds()
+         try:
+-            produced = run_tool_by_name(name, arguments, self.config, strict)
++            produced = run_tool_by_name(name, arguments, self.config, self.config.strict)
+         except ValueError:
+-            produced = None
+-        if produced is None:
+-            self.error_count = self.error_count + 1
+-            refused = "the tool call named nothing this server runs"
+-            return self.factory.make_error(request_id, -32603, refused)
++            return None
+         elapsed = now_in_milliseconds() - started
+-        self.log("ran " + name + " in " + str(elapsed) + "ms", False, True)
+-        body = {"content": [{"type": "text", "text": coerce_to_text(produced)}], "isError": False}
+-        return self.factory.make_result(request_id, body)
++        log_to_stderr("ran " + name + " in " + str(elapsed) + "ms", self.config.verbose)
++        return produced
++
++    def _refuse(self, request_id, code):
++        """Count one refusal and state it in the shape a client expects."""
++        self.error_count = self.error_count + 1
++        return self.factory.make_error(request_id, code, _REJECTED)
+ 
+-    def log(self, message: str, is_lifecycle: bool, is_timing: bool):
+-        if self.config.verbose:
+-            if is_lifecycle:
+-                print(message, file=sys.stderr)
+-            elif is_timing:
+-                print(message, file=sys.stderr)
+-
+-    def render_metrics_report(
+-        self,
+-        title: str,
+-        subtitle: str,
+-        request_count: int,
+-        error_count: int,
+-        call_count: int,
+-        session_id: str,
+-    ):
+-        """Render the counters as text, with every counter passed in by hand."""
+-        lines = []
+-        lines.append(title)
+-        lines.append(subtitle)
+-        lines.append("requests " + str(request_count))
+-        lines.append("errors " + str(error_count))
+-        lines.append("calls " + str(call_count))
+-        lines.append("session " + str(session_id))
+-        return "\n".join(lines)
+-
+-
+-def emit_metrics(server):
+-    return server.render_metrics_report(
+-        "metrics",
+-        "since start",
+-        server.request_count,
+-        server.error_count,
+-        server.call_count,
+-        server.config.session_id,
+-    )
++
++def render_metrics_report(server):
++    """Render the counters the server kept, reading them off the server itself."""
++    lines = [
++        "metrics since start",
++        "requests " + str(server.request_count),
++        "errors " + str(server.error_count),
++        "calls " + str(server.call_count),
++        "session " + str(server.config.session_id),
++    ]
++    return "\n".join(lines)
+ 
+ 
+ def apply_command_line_overrides(config, args):
+     """Copy the argparse flags onto the configuration object, one at a time."""
+-    if args.verbose:
+-        config.verbose = True
+-    if args.strict:
+-        config.strict = True
+-    if args.timeout:
+-        config.timeout = args.timeout
+-    if args.name:
+-        config.name = args.name
+-    if args.only:
+-        config.enabled_tools = [one for one in args.only.split(",") if one]
++    config.verbose = args.verbose
++    config.strict = args.strict
++    config.timeout = args.timeout or config.timeout
++    config.name = args.name or config.name
++    config.enabled_tools = [one for one in args.only.split(",") if one] or config.enabled_tools
+     return config
+ 
+ 
+-def main(argv=None):
+-    """Parse the command line, build the world, and run the loop until the client leaves."""
++def parse_command_line(argv):
++    """Declare every flag this server accepts and read the ones it was given."""
+     parser = argparse.ArgumentParser(description="An overengineered MCP server in two scripts.")
+     parser.add_argument("--verbose", action="store_true")
+     parser.add_argument("--strict", action="store_true")
+     parser.add_argument("--timeout", type=int, default=0)
+     parser.add_argument("--name", type=str, default="")
+     parser.add_argument("--only", type=str, default="")
+-    args = parser.parse_args(argv)
+-    config = apply_command_line_overrides(ServerConfiguration(), args)
++    return parser.parse_args(argv)
++
++
++def main(argv=None):
++    """Build the world from the command line and run the loop until the client leaves."""
++    config = apply_command_line_overrides(ServerConfiguration(), parse_command_line(argv))
+     server = ProtocolServer(config, StandardStreamTransportLayer(config))
+     served = server.serve_forever()
+     if config.verbose:
+-        sys.stderr.write(emit_metrics(server) + "\n")
++        sys.stderr.write(render_metrics_report(server) + "\n")
+     return 0 if served >= 0 else 1
+ 
+ 
+diff --git a/demo/mcp_tools.py b/demo/mcp_tools.py
+index eb5e606..43a88f5 100644
+--- a/demo/mcp_tools.py
++++ b/demo/mcp_tools.py
+@@ -76,42 +76,35 @@ class ToolCatalogue:
+         return self.entry(name, description, schema)
+ 
+ 
+-def warn(message):
+-    print(message, file=sys.stderr)
++def warn(message, verbose):
++    if verbose:
++        print(message, file=sys.stderr)
++
++
++def read_argument(arguments, name, expected, strict):
++    """Return the argument under `name`, refusing or coercing what does not fit."""
++    given = arguments.get(name)
++    if isinstance(given, expected):
++        return given
++    if strict:
++        raise ValueError(_REFUSAL)
++    return None
+ 
+ 
+ def read_text_argument(arguments, config, strict):
+-    if "text" not in arguments:
+-        if strict:
+-            raise ValueError(_REFUSAL)
+-        return ""
+-    given = arguments["text"]
+-    if isinstance(given, str) is False:
+-        if strict:
+-            raise ValueError(_REFUSAL)
+-        given = str(given)
+-    if config.verbose:
+-        warn("a tool received " + str(len(given)) + " characters")
+-    return given[0:_MAX_TEXT]
++    """Read the `text` argument as a bounded string, however it arrived."""
++    given = read_argument(arguments, "text", str, strict)
++    text = "" if given is None else given
++    warn("a tool received " + str(len(text)) + " characters", config.verbose)
++    return text[0:_MAX_TEXT]
+ 
+ 
+ def read_number_argument(arguments, config, strict):
+-    if "numbers" not in arguments:
+-        if strict:
+-            raise ValueError(_REFUSAL)
+-        return []
+-    given = arguments["numbers"]
+-    if isinstance(given, list) is False:
+-        if strict:
+-            raise ValueError(_REFUSAL)
+-        given = [given]
+-    if config.verbose:
+-        warn("a tool received " + str(len(given)) + " numbers")
+-    kept = []
+-    for entry in given[0:_MAX_NUMBERS]:
+-        if isinstance(entry, bool) is False and isinstance(entry, (int, float)):
+-            kept.append(entry)
+-    return kept
++    """Read the `numbers` argument as a bounded list of real numbers."""
++    given = read_argument(arguments, "numbers", list, strict)
++    numbers = [] if given is None else given[0:_MAX_NUMBERS]
++    warn("a tool received " + str(len(numbers)) + " numbers", config.verbose)
++    return [one for one in numbers if isinstance(one, (int, float)) and one is not True]
+ 
+ 
+ def run_echo_tool(arguments, config, strict):
+@@ -119,10 +112,8 @@ def run_echo_tool(arguments, config, strict):
+ 
+ 
+ def run_sum_tool(arguments, config, strict):
+-    total = 0
+-    for e in read_number_argument(arguments, config, strict):
+-        total = total + e
+-    return str(total)
++    """Add every number the caller sent."""
++    return str(sum(read_number_argument(arguments, config, strict)))
+ 
+ 
+ def run_word_count_tool(arguments, config, strict):
+@@ -130,37 +121,34 @@ def run_word_count_tool(arguments, config, strict):
+ 
+ 
+ def run_slugify_tool(arguments, config, strict):
+-    t = read_text_argument(arguments, config, strict).lower()
+-    t = re.sub(r"[^a-z0-9]+", "-", t)
+-    return t.strip("-")
++    """Lower the text and join whatever is left with single hyphens."""
++    lowered = read_text_argument(arguments, config, strict).lower()
++    return re.sub(r"[^a-z0-9]+", "-", lowered).strip("-")
++
++
++def median_of(sorted_numbers):
++    """Return the middle number, averaging the two middles of an even-length run."""
++    middle = len(sorted_numbers) // 2
++    if len(sorted_numbers) % 2 == 1:
++        return sorted_numbers[middle]
++    return (sorted_numbers[middle - 1] + sorted_numbers[middle]) / 2
+ 
+ 
+ def run_statistics_tool(arguments, config, strict):
+-    """Sort the numbers, then compute the five summaries this tool reports."""
+-    d = read_number_argument(arguments, config, strict)
+-    if len(d) == 0:
++    """Summarise the numbers the caller sent with the five statistics this tool reports."""
++    numbers = sorted(read_number_argument(arguments, config, strict))
++    if not numbers:
+         return json.dumps({"count": 0})
+-    d.sort()
+-    n = len(d)
+-    total = 0
+-    for e in d:
+-        total = total + e
+-    mean = total / n
+-    if n % 2 == 1:
+-        median = d[n // 2]
+-    else:
+-        median = (d[n // 2 - 1] + d[n // 2]) / 2
+-    spread = 0
+-    for e in d:
+-        spread = spread + (e - mean) * (e - mean)
++    mean = sum(numbers) / len(numbers)
++    variance = sum((one - mean) ** 2 for one in numbers) / len(numbers)
+     return json.dumps(
+         {
+-            "count": n,
+-            "min": d[0],
+-            "max": d[n - 1],
++            "count": len(numbers),
++            "min": numbers[0],
++            "max": numbers[-1],
+             "mean": mean,
+-            "median": median,
+-            "variance": spread / n,
++            "median": median_of(numbers),
++            "variance": variance,
+         }
+     )
+ 
+diff --git a/demo/smoke.py b/demo/smoke.py
+index 1763ce9..d08a7ad 100644
+--- a/demo/smoke.py
++++ b/demo/smoke.py
+@@ -13,15 +13,18 @@ def _exchange(process, message):
+     return json.loads(process.stdout.readline())
+ 
+ 
+-def _main():
+-    """Run initialize, tools/list, and one tools/call against a live server process."""
++def _start():
++    """Start the server as a subprocess wired to pipes on both standard streams."""
+     server = Path(__file__).with_name("mcp_server.py")
+     arguments = [sys.executable, str(server)]
+-    process = subprocess.Popen(arguments, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+-    handshake = _exchange(
+-        process,
+-        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}}},
+-    )
++    return subprocess.Popen(arguments, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
++
++
++def _main():
++    """Run initialize, tools/list, and one tools/call against a live server process."""
++    process = _start()
++    hello = {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}}}
++    handshake = _exchange(process, hello)
+     assert handshake["result"]["serverInfo"]["name"] == "overengineered-mcp", handshake
+     listing = _exchange(process, {"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+     names = sorted(tool["name"] for tool in listing["result"]["tools"])

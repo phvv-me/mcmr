@@ -14,6 +14,14 @@ pip install mcmr
 mcmr check .
 ```
 
+`demo/` is a working MCP server written badly on purpose, so a fresh checkout has something to
+point at. It reports 50 failures across 29 rules, and `demo/stages/` holds the three patches that
+take it to 4. See [demo/README.md](demo/README.md).
+
+```sh
+mcmr check demo/ --no-contextual
+```
+
 Preview fixes without changing files.
 
 ```sh
@@ -67,6 +75,10 @@ acme = "acme_mcmr.rules"
 acme = "acme_mcmr.provider:AcmeProvider"
 ```
 
+The DataHub integration itself ships as a plugin under `src/mcmr_datahub`, structured as `rules/`
+beside `services/`, and it registers through those same two entry points. It is the worked example
+to read before writing your own, because nothing in it is reachable by a private path.
+
 Provider settings stay in the checked repository configuration. Secrets stay in the provider's
 chosen secret source.
 
@@ -90,17 +102,20 @@ The target is one clear end-to-end workflow rather than a broad collection of sh
 
 Run the whole workflow from a clean checkout with no DataHub service at all. The demo copies a
 recorded catalog into a fresh workspace, reports what the catalog says about a pipeline change,
-previews the one repair the catalog proves, applies and verifies it, reruns the rule clean, and
-writes the result back for the next agent.
+previews the one repair the catalog proves, applies and verifies it, records every verdict as a
+DataHub assertion, and then reads that history back the way the next agent would.
 
 ```sh
 mcmr demo
 ```
 
 See [examples/datahub](examples/datahub) for the recordings and the story they tell.
+`sample-demo.txt` and `sample-report.json` there hold what one run produced, so the result is
+readable without running anything.
 
-The provider reads DataHub assets directly through GraphQL and resolves literal SQL references
-with SQLGlot. It does not require a local MCP server. Put the service URL in project configuration.
+The provider reads DataHub assets directly through GraphQL and resolves literal SQL references with
+SQLGlot. It does not require a local Model Context Protocol server. Put the service URL in project
+configuration.
 Set `DATAHUB_GMS_TOKEN` only when the service requires authentication.
 
 ```toml
@@ -127,12 +142,34 @@ recorded = "recordings"
 A completed run reaches the catalog only when somebody asks for it. No check ever writes.
 
 ```sh
-mcmr writeback . --select data_assets
+mcmr check . --external --writeback
 ```
 
-An agent can use DataHub MCP separately to inspect lineage, choose a verified change, and write the
-result back as durable metadata. MCMR remains the deterministic validation boundary and keeps no
-catalog cache.
+Each rule and asset pair the run judged becomes one DataHub custom assertion, and each run reports
+one result against it, so the catalog holds a queryable timeline rather than a document only MCMR
+can read. A scheduled job sets `publish_runs = true` under the provider instead of naming the flag.
+
+That history is what the next agent reads before it changes anything. It states which rule has
+been failing since when, which repairs already landed, and why the last failure fired, so a run
+converging a legacy repository does not rediscover what a previous one already recorded.
+
+```sh
+mcmr history .
+mcmr history . --assets "urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.raw.orders,PROD)"
+```
+
+An agent can use DataHub's Model Context Protocol server separately to inspect lineage, choose a
+verified change, and write the result back as durable metadata. MCMR remains the deterministic
+validation boundary and keeps no catalog cache.
+[docs/agent-read-back.md](docs/agent-read-back.md) walks through connecting `mcp-server-datahub`
+to the same instance and reading the assertion history MCMR wrote, with no MCMR in the reading
+path.
+
+That same workflow is written up as a DataHub Skill, `datahub-code-guardian`, which teaches any
+agent to check code against the catalog, repair only what the catalog proves, and record the
+verdict back where the next agent will find it. It lives in
+[docs/contrib/datahub-skills](docs/contrib/datahub-skills), ready to open against
+[datahub-project/datahub-skills](https://github.com/datahub-project/datahub-skills).
 
 ## Development
 

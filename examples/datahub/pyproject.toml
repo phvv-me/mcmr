@@ -3,6 +3,7 @@ external = true
 
 [tool.mcmr.providers.datahub]
 recorded = "recordings"
+query = "ecommerce.*"
 report_url = "https://github.com/phvv-me/mcmr"
 page_size = 10
 max_assets = 10

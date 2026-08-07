@@ -1,0 +1,58 @@
+[
+  {
+    "variables": {
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)"
+    },
+    "response": {
+      "data": {
+        "dataset": {
+          "institutionalMemory": {
+            "elements": []
+          }
+        }
+      },
+      "extensions": {}
+    }
+  },
+  {
+    "variables": {
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.raw.orders,PROD)"
+    },
+    "response": {
+      "data": {
+        "dataset": {
+          "institutionalMemory": {
+            "elements": []
+          }
+        }
+      },
+      "extensions": {}
+    }
+  },
+  {
+    "variables": {
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.analytics.orders,PROD)"
+    },
+    "response": {
+      "data": {
+        "dataset": {
+          "institutionalMemory": {
+            "elements": []
+          }
+        }
+      },
+      "extensions": {}
+    }
+  },
+  {
+    "variables": {},
+    "response": {
+      "data": {
+        "dataset": {
+          "institutionalMemory": null
+        }
+      },
+      "extensions": {}
+    }
+  }
+]

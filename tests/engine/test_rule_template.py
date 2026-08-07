@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
 _PACKAGE = Path(__file__).parents[2]
-_SOURCE = _PACKAGE / "src" / "rules"
+_SOURCE = _PACKAGE / "src"
 _SYSTEM = _PACKAGE / "SYSTEM.md"
 
 # The order a rule page reads in. A reader meets what is measured, what is recorded, where the rule

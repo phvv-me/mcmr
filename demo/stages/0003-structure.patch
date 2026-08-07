@@ -1,0 +1,1083 @@
+From 801b38441d9a9a12653c542bfef0b154e65e2ea8 Mon Sep 17 00:00:00 2001
+From: Pedro CVLAB <vaz.valois@hotmail.com>
+Date: Fri, 7 Aug 2026 21:56:43 +0900
+Subject: [PATCH 3/3] Batch 3: let the structure say what the two scripts were
+ hiding
+
+Fixes ALL-MODU0002, ALL-MODU0005, ALL-CLAS0001, ALL-CLAS0004, ALL-FUNC0001,
+ALL-FUNC0008, ALL-BRAN0001, ALL-CONT0001, ALL-CONT0003, ALL-REAC0002 and
+PY-CLAS0003. The two scripts become the mcp package with one class per module,
+the twelve-field configuration splits into an identity, a configuration and a
+run counter, the pass-through transport hierarchy and the factory-of-a-factory
+go, and the last two if-chains become one dispatch mapping.
+---
+ mcp/__init__.py        |  11 ++
+ mcp/catalogue.py       |  50 +++++++
+ mcp/configuration.py   |  21 +++
+ mcp/counters.py        |  22 ++++
+ mcp/identity.py        |  11 ++
+ mcp/router.py          | 138 ++++++++++++++++++++
+ mcp/tools/__init__.py  |   3 +
+ mcp/tools/arguments.py |  41 ++++++
+ mcp/tools/handlers.py  |  54 ++++++++
+ mcp/tools/registry.py  |  25 ++++
+ mcp/transport.py       |  39 ++++++
+ mcp_server.py          | 286 +++--------------------------------------
+ mcp_tools.py           | 173 -------------------------
+ smoke.py               |  41 ++++--
+ 14 files changed, 460 insertions(+), 455 deletions(-)
+ create mode 100644 mcp/__init__.py
+ create mode 100644 mcp/catalogue.py
+ create mode 100644 mcp/configuration.py
+ create mode 100644 mcp/counters.py
+ create mode 100644 mcp/identity.py
+ create mode 100644 mcp/router.py
+ create mode 100644 mcp/tools/__init__.py
+ create mode 100644 mcp/tools/arguments.py
+ create mode 100644 mcp/tools/handlers.py
+ create mode 100644 mcp/tools/registry.py
+ create mode 100644 mcp/transport.py
+ delete mode 100644 mcp_tools.py
+
+diff --git a/demo/mcp/__init__.py b/demo/mcp/__init__.py
+new file mode 100644
+index 0000000..ab5069e
+--- /dev/null
++++ b/demo/mcp/__init__.py
+@@ -0,0 +1,11 @@
++from .configuration import ServerConfiguration
++from .identity import ServerIdentity
++from .router import ProtocolServer
++from .transport import StandardStreamTransportLayer
++
++__all__ = [
++    "ProtocolServer",
++    "ServerConfiguration",
++    "ServerIdentity",
++    "StandardStreamTransportLayer",
++]
+diff --git a/demo/mcp/catalogue.py b/demo/mcp/catalogue.py
+new file mode 100644
+index 0000000..09ea1b4
+--- /dev/null
++++ b/demo/mcp/catalogue.py
+@@ -0,0 +1,50 @@
++"""What `tools/list` answers, built from one declaration per tool."""
++
++
++class ToolCatalogue:
++    """Hold what every tool is called, what it does, and what it takes."""
++
++    DECLARED = (
++        ("echo", "Return the text it was given.", "text"),
++        ("sum_numbers", "Add every number it was given.", "numbers"),
++        ("word_count", "Count the words in the text.", "text"),
++        ("slugify", "Turn the text into a slug.", "text"),
++        ("statistics", "Summarise the numbers.", "numbers"),
++    )
++
++    def __init__(self, config):
++        self.config = config
++
++    def describe_all(self):
++        """Return the `tools/list` payload for every tool this run enabled."""
++        return [
++            self.entry(name, description, argument)
++            for name, description, argument in self.DECLARED
++            if self.config.is_tool_enabled(name)
++        ]
++
++    def entry(self, name, description, argument):
++        """Describe one tool, choosing the schema its single argument needs."""
++        if argument == "numbers":
++            schema = self._number_schema(argument)
++        else:
++            schema = self._text_schema(argument)
++        return {"name": name, "description": description, "inputSchema": schema}
++
++    def _number_schema(self, property_name):
++        """Describe one required array-of-number property."""
++        items = {"type": "array", "items": {"type": "number"}, "description": "the numbers"}
++        return {
++            "type": "object",
++            "properties": {property_name: items},
++            "required": [property_name],
++        }
++
++    def _text_schema(self, property_name):
++        """Describe one required string property."""
++        described = {"type": "string", "description": "the text"}
++        return {
++            "type": "object",
++            "properties": {property_name: described},
++            "required": [property_name],
++        }
+diff --git a/demo/mcp/configuration.py b/demo/mcp/configuration.py
+new file mode 100644
+index 0000000..c728708
+--- /dev/null
++++ b/demo/mcp/configuration.py
+@@ -0,0 +1,21 @@
++"""What one running server was configured to do."""
++
++import uuid
++
++from .identity import ServerIdentity
++
++
++class ServerConfiguration:
++    """The choices a run makes, separate from the identity it announces."""
++
++    def __init__(self, identity=None, enabled_tools=None):
++        self.identity = identity if identity is not None else ServerIdentity()
++        self.enabled_tools = enabled_tools
++        self.verbose = False
++        self.strict = False
++        self.max_payload = 1048576
++        self.session_id = str(uuid.uuid4())
++
++    def is_tool_enabled(self, name):
++        """Whether this run answers calls to the named tool."""
++        return self.enabled_tools is None or name in self.enabled_tools
+diff --git a/demo/mcp/counters.py b/demo/mcp/counters.py
+new file mode 100644
+index 0000000..7181879
+--- /dev/null
++++ b/demo/mcp/counters.py
+@@ -0,0 +1,22 @@
++"""What one run has done so far."""
++
++
++class RunCounters:
++    """The three totals a run reports when it is asked how it went."""
++
++    def __init__(self):
++        self.calls = 0
++        self.errors = 0
++        self.requests = 0
++
++    def rendered(self, session_id):
++        """Render the totals as the plain lines a operator reads on the error stream."""
++        return "\n".join(
++            [
++                "metrics since start",
++                "requests " + str(self.requests),
++                "errors " + str(self.errors),
++                "calls " + str(self.calls),
++                "session " + str(session_id),
++            ]
++        )
+diff --git a/demo/mcp/identity.py b/demo/mcp/identity.py
+new file mode 100644
+index 0000000..d2ed63f
+--- /dev/null
++++ b/demo/mcp/identity.py
+@@ -0,0 +1,11 @@
++"""What this server calls itself when a client asks who it is."""
++
++
++class ServerIdentity:
++    """The name, the versions, and the one sentence a client reads on connecting."""
++
++    def __init__(self, name="overengineered-mcp"):
++        self.name = name
++        self.version = "0.1.0"
++        self.protocol_version = "2025-06-18"
++        self.instructions = "An MCP server that does five small things badly."
+diff --git a/demo/mcp/router.py b/demo/mcp/router.py
+new file mode 100644
+index 0000000..0e415a8
+--- /dev/null
++++ b/demo/mcp/router.py
+@@ -0,0 +1,138 @@
++"""Route one JSON-RPC message to the one method that answers it."""
++
++import sys
++import time
++
++from .catalogue import ToolCatalogue
++from .counters import RunCounters
++from .tools import run_tool_by_name
++
++# The one refusal every malformed or unroutable envelope gets, named once so all four agree.
++_REJECTED = "the request envelope could not be accepted"
++
++# The markers the transport layer puts on a message it read but could not accept.
++_MALFORMED = ("__unparseable__", "__oversized__")
++
++# TODO: resources/list and resources/read are still not implemented, so a client that
++# asks for a resource gets the method-not-found refusal below rather than a resource.
++
++
++class ProtocolServer:
++    """Answer MCP messages until the client stops sending them."""
++
++    def __init__(self, config, transport):
++        self.config = config
++        self.transport = transport
++        self.catalogue = ToolCatalogue(config)
++        self.counters = RunCounters()
++        self.initialized = False
++        self.shutdown_requested = False
++
++    def acknowledge(self, params, request_id):
++        """Record that the client finished initializing, which earns no reply."""
++        self._log("client finished initializing")
++        return None
++
++    def answer(self, message):
++        """Return the envelope one message earns, or nothing when it earns silence."""
++        request_id = message.get("id")
++        if message.get("method") in _MALFORMED:
++            return self._refuse(None, -32700)
++        if message.get("jsonrpc") != "2.0":
++            return self._refuse(request_id, -32600)
++        answered = self.routes().get(message.get("method"))
++        if answered is None:
++            if request_id is None:
++                return None
++            return self._refuse(request_id, -32601)
++        return answered(message.get("params") or {}, request_id)
++
++    def call_tool(self, params, request_id):
++        """Run the named tool and wrap whatever it produced as MCP text content."""
++        self.counters.calls = self.counters.calls + 1
++        name = params.get("name")
++        if self.config.is_tool_enabled(name) is False:
++            return self._refuse(request_id, -32602)
++        produced = self._produce(name, params.get("arguments") or {})
++        if produced is None:
++            return self._refuse(request_id, -32603)
++        body = {"content": [{"type": "text", "text": str(produced)}], "isError": False}
++        return self._result(request_id, body)
++
++    def greet(self, params, request_id):
++        """State the protocol version, the capabilities, and who this server is."""
++        self.initialized = True
++        identity = self.config.identity
++        greeting = {
++            "protocolVersion": identity.protocol_version,
++            "capabilities": {"tools": {"listChanged": False}},
++            "serverInfo": {"name": identity.name, "version": identity.version},
++            "instructions": identity.instructions,
++        }
++        return self._result(request_id, greeting)
++
++    def list_tools(self, params, request_id):
++        """List the enabled tools, unless a strict server was asked before it was ready."""
++        if self.initialized is False and self.config.strict:
++            return self._refuse(request_id, -32002)
++        return self._result(request_id, {"tools": self.catalogue.describe_all()})
++
++    def pong(self, params, request_id):
++        """Answer a liveness check with the empty result the protocol asks for."""
++        return self._result(request_id, {})
++
++    def routes(self):
++        """Map every JSON-RPC method this server answers to the method that answers it."""
++        return {
++            "initialize": self.greet,
++            "notifications/initialized": self.acknowledge,
++            "ping": self.pong,
++            "tools/list": self.list_tools,
++            "tools/call": self.call_tool,
++            "shutdown": self.stop,
++        }
++
++    def serve_forever(self):
++        """Answer one message at a time until the client stops sending them."""
++        while not self.shutdown_requested:
++            message = self.transport.read_one_message()
++            if message is None:
++                break
++            self.counters.requests = self.counters.requests + 1
++            answer = self.answer(message)
++            if answer is not None:
++                self.transport.write_one_message(answer)
++        return self.counters.requests
++
++    def stop(self, params, request_id):
++        """Let the loop finish after this reply reaches the client."""
++        self.shutdown_requested = True
++        return self._result(request_id, {})
++
++    def _error(self, request_id, code, message):
++        """State one failure in the envelope the JSON-RPC wire format asks for."""
++        return {"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}}
++
++    def _log(self, message):
++        """Say something on the error stream, which is the stream no client is reading."""
++        if self.config.verbose:
++            sys.stderr.write(message + "\n")
++
++    def _produce(self, name, arguments):
++        """Run one tool, timing it, and read a refused argument as nothing produced."""
++        started = time.monotonic()
++        try:
++            produced = run_tool_by_name(name, arguments, self.config, self.config.strict)
++        except ValueError:
++            return None
++        self._log("ran " + name + " in " + str(round((time.monotonic() - started) * 1000)) + "ms")
++        return produced
++
++    def _refuse(self, request_id, code):
++        """Count one refusal and state it in the shape a client expects."""
++        self.counters.errors = self.counters.errors + 1
++        return self._error(request_id, code, _REJECTED)
++
++    def _result(self, request_id, body):
++        """State one successful result, keyed to the request that asked for it."""
++        return {"jsonrpc": "2.0", "id": request_id, "result": body}
+diff --git a/demo/mcp/tools/__init__.py b/demo/mcp/tools/__init__.py
+new file mode 100644
+index 0000000..77a136d
+--- /dev/null
++++ b/demo/mcp/tools/__init__.py
+@@ -0,0 +1,3 @@
++from .registry import run_tool_by_name
++
++__all__ = ["run_tool_by_name"]
+diff --git a/demo/mcp/tools/arguments.py b/demo/mcp/tools/arguments.py
+new file mode 100644
+index 0000000..42a5cc8
+--- /dev/null
++++ b/demo/mcp/tools/arguments.py
+@@ -0,0 +1,41 @@
++"""Read the one argument each tool takes, and say so when it does not fit."""
++
++import sys
++
++_MAX_TEXT = 100000
++_MAX_NUMBERS = 10000
++
++# The one refusal both readers raise, named once so they cannot drift apart.
++_REFUSAL = "the argument is missing or the wrong shape for this tool"
++
++
++def _warn(message, verbose):
++    """Say something on the error stream, which is the only stream a client is not reading."""
++    if verbose:
++        sys.stderr.write(message + "\n")
++
++
++def _read_argument(arguments, name, expected, strict):
++    """Return the argument under `name`, refusing or reporting nothing when it does not fit."""
++    given = arguments.get(name)
++    if isinstance(given, expected):
++        return given
++    if strict:
++        raise ValueError(_REFUSAL)
++    return None
++
++
++def read_text_argument(arguments, config, strict):
++    """Read the `text` argument as a bounded string, however it arrived."""
++    given = _read_argument(arguments, "text", str, strict)
++    text = "" if given is None else given
++    _warn("a tool received " + str(len(text)) + " characters", config.verbose)
++    return text[0:_MAX_TEXT]
++
++
++def read_number_argument(arguments, config, strict):
++    """Read the `numbers` argument as a bounded list of real numbers."""
++    given = _read_argument(arguments, "numbers", list, strict)
++    numbers = [] if given is None else given[0:_MAX_NUMBERS]
++    _warn("a tool received " + str(len(numbers)) + " numbers", config.verbose)
++    return [one for one in numbers if isinstance(one, (int, float)) and one is not True]
+diff --git a/demo/mcp/tools/handlers.py b/demo/mcp/tools/handlers.py
+new file mode 100644
+index 0000000..eb1950d
+--- /dev/null
++++ b/demo/mcp/tools/handlers.py
+@@ -0,0 +1,54 @@
++"""The one line of work each of the five tools is actually for."""
++
++import json
++import re
++
++from .arguments import read_number_argument, read_text_argument
++
++
++def _median_of(sorted_numbers):
++    """Return the middle number, averaging the two middles of an even-length run."""
++    middle = len(sorted_numbers) // 2
++    if len(sorted_numbers) % 2 == 1:
++        return sorted_numbers[middle]
++    return (sorted_numbers[middle - 1] + sorted_numbers[middle]) / 2
++
++
++def run_echo_tool(arguments, config, strict):
++    """Return the text the caller sent."""
++    return read_text_argument(arguments, config, strict)
++
++
++def run_sum_tool(arguments, config, strict):
++    """Add every number the caller sent."""
++    return str(sum(read_number_argument(arguments, config, strict)))
++
++
++def run_word_count_tool(arguments, config, strict):
++    """Count the whitespace separated words in the text the caller sent."""
++    return str(len(read_text_argument(arguments, config, strict).split()))
++
++
++def run_slugify_tool(arguments, config, strict):
++    """Lower the text and join whatever is left with single hyphens."""
++    lowered = read_text_argument(arguments, config, strict).lower()
++    return re.sub(r"[^a-z0-9]+", "-", lowered).strip("-")
++
++
++def run_statistics_tool(arguments, config, strict):
++    """Summarise the numbers the caller sent with the five statistics this tool reports."""
++    numbers = sorted(read_number_argument(arguments, config, strict))
++    if not numbers:
++        return json.dumps({"count": 0})
++    mean = sum(numbers) / len(numbers)
++    variance = sum((one - mean) ** 2 for one in numbers) / len(numbers)
++    return json.dumps(
++        {
++            "count": len(numbers),
++            "min": numbers[0],
++            "max": numbers[-1],
++            "mean": mean,
++            "median": _median_of(numbers),
++            "variance": variance,
++        }
++    )
+diff --git a/demo/mcp/tools/registry.py b/demo/mcp/tools/registry.py
+new file mode 100644
+index 0000000..f47e3ca
+--- /dev/null
++++ b/demo/mcp/tools/registry.py
+@@ -0,0 +1,25 @@
++"""Which handler answers which tool name."""
++
++from .handlers import (
++    run_echo_tool,
++    run_slugify_tool,
++    run_statistics_tool,
++    run_sum_tool,
++    run_word_count_tool,
++)
++
++_HANDLERS = {
++    "echo": run_echo_tool,
++    "sum_numbers": run_sum_tool,
++    "word_count": run_word_count_tool,
++    "slugify": run_slugify_tool,
++    "statistics": run_statistics_tool,
++}
++
++
++def run_tool_by_name(name, arguments, config, strict):
++    """Run the handler this name refers to, or report nothing for a name nobody registered."""
++    handler = _HANDLERS.get(name)
++    if handler is None:
++        return None
++    return handler(arguments, config, strict)
+diff --git a/demo/mcp/transport.py b/demo/mcp/transport.py
+new file mode 100644
+index 0000000..27d1217
+--- /dev/null
++++ b/demo/mcp/transport.py
+@@ -0,0 +1,39 @@
++"""Newline delimited JSON over the standard streams."""
++
++import json
++import sys
++
++
++class StandardStreamTransportLayer:
++    """Read one JSON message per line and write one JSON message per line."""
++
++    def __init__(self, config, reader=None, writer=None):
++        self.config = config
++        self.reader = reader if reader is not None else sys.stdin
++        self.writer = writer if writer is not None else sys.stdout
++        self.messages_read = 0
++        self.messages_written = 0
++
++    def read_one_message(self):
++        """Return the next message, a marker for one this layer could not accept, or nothing."""
++        line = self.reader.readline()
++        if not line:
++            return None
++        stripped = line.strip()
++        if not stripped:
++            return self.read_one_message()
++        self.messages_read = self.messages_read + 1
++        if len(stripped) > self.config.max_payload:
++            return {"jsonrpc": "2.0", "id": None, "method": "__oversized__", "params": {}}
++        try:
++            return json.loads(stripped)
++        except json.JSONDecodeError:
++            return {"jsonrpc": "2.0", "id": None, "method": "__unparseable__", "params": {}}
++
++    def write_one_message(self, payload):
++        """Write one message and flush it, because a client is waiting on this line."""
++        encoded = json.dumps(payload)
++        self.writer.write(encoded + "\n")
++        self.writer.flush()
++        self.messages_written = self.messages_written + 1
++        return len(encoded)
+diff --git a/demo/mcp_server.py b/demo/mcp_server.py
+index 0fa6443..e30dc6e 100644
+--- a/demo/mcp_server.py
++++ b/demo/mcp_server.py
+@@ -1,290 +1,40 @@
+-"""A Model Context Protocol server, transport and routing and business logic, all here."""
++"""Start the MCP server this repository ships, reading its choices off the command line."""
+ 
+ import argparse
+-import json
+ import sys
+-import time
+-import uuid
+ 
+-from mcp_tools import ToolCatalogue, run_tool_by_name
++from mcp import ProtocolServer, ServerConfiguration, ServerIdentity, StandardStreamTransportLayer
+ 
+-_PROTOCOL_VERSION = "2025-06-18"
+-_SERVER_NAME = "overengineered-mcp"
+-_SERVER_VERSION = "0.1.0"
+-_DEFAULT_TIMEOUT = 30
+-_MAX_PAYLOAD = 1048576
+ 
+-# The one refusal every malformed envelope gets, named once so all four routes agree.
+-_REJECTED = "the request envelope could not be accepted"
+-
+-# The dispatch table the router walks. Moving it means an import cycle with `mcp_tools`.
+-_METHOD_TABLE = [
+-    ("initialize", "handle_initialize"),
+-    ("notifications/initialized", "handle_initialized"),
+-    ("ping", "handle_ping"),
+-    ("tools/list", "handle_tools_list"),
+-    ("tools/call", "handle_tools_call"),
+-    ("shutdown", "handle_shutdown"),
+-]
+-
+-
+-class ServerConfiguration:
+-    """Every knob the server has, in one place, because that seemed tidy at the time."""
+-
+-    def __init__(self):
+-        self.name = _SERVER_NAME
+-        self.version = _SERVER_VERSION
+-        self.protocol_version = _PROTOCOL_VERSION
+-        self.timeout = _DEFAULT_TIMEOUT
+-        self.max_payload = _MAX_PAYLOAD
+-        self.verbose = False
+-        self.strict = False
+-        self.enabled_tools = list(ToolCatalogue.EVERY_TOOL)
+-        self.instructions = "An MCP server that does five small things badly."
+-        self.session_id = str(uuid.uuid4())
+-        self.started_at = time.time()
+-        self.request_budget = 100000
+-
+-    def describe(self):
+-        return {
+-            "name": self.name,
+-            "version": self.version,
+-            "protocolVersion": self.protocol_version,
+-            "sessionId": self.session_id,
+-        }
+-
+-    def is_tool_enabled(self, name):
+-        return name in self.enabled_tools
+-
+-
+-class AbstractTransportLayer:
+-    """The abstract idea of moving bytes."""
+-
+-    def read_one_message(self):
+-        raise NotImplementedError
+-
+-    def write_one_message(self, payload):
+-        raise NotImplementedError
+-
+-
+-class BaseTransportLayer(AbstractTransportLayer):
+-    """The base idea of moving bytes, which adds nothing to the abstract idea."""
+-
+-    def read_one_message(self):
+-        return AbstractTransportLayer.read_one_message(self)
+-
+-    def write_one_message(self, payload):
+-        return AbstractTransportLayer.write_one_message(self, payload)
+-
+-
+-class StandardStreamTransportLayer(BaseTransportLayer):
+-    """Newline delimited JSON over the standard streams, at last."""
+-
+-    def __init__(self, config, reader=None, writer=None):
+-        self.config = config
+-        self.reader = reader if reader is not None else sys.stdin
+-        self.writer = writer if writer is not None else sys.stdout
+-        self.messages_read = 0
+-        self.messages_written = 0
+-
+-    def write_one_message(self, payload):
+-        encoded = json.dumps(payload)
+-        self.writer.write(encoded + "\n")
+-        self.writer.flush()
+-        self.messages_written = self.messages_written + 1
+-        return len(encoded)
+-
+-    def read_one_message(self):
+-        line = self.reader.readline()
+-        if not line:
+-            return None
+-        stripped = line.strip()
+-        if not stripped:
+-            return self.read_one_message()
+-        self.messages_read = self.messages_read + 1
+-        if len(stripped) > self.config.max_payload:
+-            return {"jsonrpc": "2.0", "id": None, "method": "__oversized__", "params": {}}
+-        try:
+-            return json.loads(stripped)
+-        except json.JSONDecodeError:
+-            return {"jsonrpc": "2.0", "id": None, "method": "__unparseable__", "params": {}}
+-
+-
+-class MessageEnvelopeFactory:
+-    """Makes envelopes."""
+-
+-    def __init__(self, config):
+-        self.config = config
+-
+-    def make_error(self, request_id, code, message):
+-        return {"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}}
+-
+-    def make_result(self, request_id, body):
+-        return {"jsonrpc": "2.0", "id": request_id, "result": body}
+-
+-
+-def now_in_milliseconds():
+-    return int(time.time() * 1000)
+-
+-
+-def log_to_stderr(message, verbose):
+-    if verbose:
+-        print(message, file=sys.stderr)
+-
+-
+-class ProtocolServer:
+-    """Transport, routing, session state, business logic, and metrics, together."""
+-
+-    def __init__(self, config, transport):
+-        self.config = config
+-        self.transport = transport
+-        self.factory = MessageEnvelopeFactory(config)
+-        self.catalogue = ToolCatalogue(config)
+-        self.initialized = False
+-        self.shutdown_requested = False
+-        self.request_count = 0
+-        self.error_count = 0
+-        self.call_count = 0
+-
+-    def serve_forever(self):
+-        """Answer one message at a time until the client stops sending them."""
+-        while not self.shutdown_requested:
+-            message = self.transport.read_one_message()
+-            if message is None:
+-                break
+-            self.request_count = self.request_count + 1
+-            answer = self.answer(message)
+-            if answer is not None:
+-                self.transport.write_one_message(answer)
+-        return self.request_count
+-
+-    def answer(self, message):
+-        """Return the envelope one message earns, or nothing when it earns silence."""
+-        request_id = message.get("id")
+-        if message.get("method") in ("__unparseable__", "__oversized__"):
+-            return self._refuse(None, -32700)
+-        if message.get("jsonrpc") != "2.0":
+-            return self._refuse(request_id, -32600)
+-        answered = self.routes().get(message.get("method"))
+-        if answered is None:
+-            if request_id is None:
+-                return None
+-            return self._refuse(request_id, -32601)
+-        return answered(message.get("params") or {}, request_id)
+-
+-    def routes(self):
+-        """Map every JSON-RPC method this server answers to the method that answers it."""
+-        return {
+-            "initialize": self.greet,
+-            "notifications/initialized": self.acknowledge,
+-            "ping": self.pong,
+-            "tools/list": self.list_tools,
+-            "tools/call": self.call_tool,
+-            "shutdown": self.stop,
+-        }
+-
+-    def greet(self, params, request_id):
+-        """State the protocol version, the capabilities, and who this server is."""
+-        self.initialized = True
+-        greeting = {
+-            "protocolVersion": self.config.protocol_version,
+-            "capabilities": {"tools": {"listChanged": False}},
+-            "serverInfo": {"name": self.config.name, "version": self.config.version},
+-            "instructions": self.config.instructions,
+-        }
+-        return self.factory.make_result(request_id, greeting)
+-
+-    def acknowledge(self, params, request_id):
+-        """Record that the client finished initializing, which earns no reply."""
+-        log_to_stderr("client finished initializing", self.config.verbose)
+-        return None
+-
+-    def pong(self, params, request_id):
+-        """Answer a liveness check with the empty result the protocol asks for."""
+-        return self.factory.make_result(request_id, {})
+-
+-    def list_tools(self, params, request_id):
+-        """List the enabled tools, unless a strict server was asked before it was ready."""
+-        if self.initialized is False and self.config.strict:
+-            return self._refuse(request_id, -32002)
+-        return self.factory.make_result(request_id, {"tools": self.catalogue.describe_all()})
+-
+-    def call_tool(self, params, request_id):
+-        """Run the named tool and wrap whatever it produced as MCP text content."""
+-        self.call_count = self.call_count + 1
+-        name = params.get("name")
+-        if self.config.is_tool_enabled(name) is False:
+-            return self._refuse(request_id, -32602)
+-        produced = self._produce(name, params.get("arguments") or {})
+-        if produced is None:
+-            return self._refuse(request_id, -32603)
+-        body = {"content": [{"type": "text", "text": str(produced)}], "isError": False}
+-        return self.factory.make_result(request_id, body)
+-
+-    def stop(self, params, request_id):
+-        """Let the loop finish after this reply reaches the client."""
+-        self.shutdown_requested = True
+-        return self.factory.make_result(request_id, {})
+-
+-    def _produce(self, name, arguments):
+-        """Run one tool, timing it, and read a refused argument as nothing produced."""
+-        started = now_in_milliseconds()
+-        try:
+-            produced = run_tool_by_name(name, arguments, self.config, self.config.strict)
+-        except ValueError:
+-            return None
+-        elapsed = now_in_milliseconds() - started
+-        log_to_stderr("ran " + name + " in " + str(elapsed) + "ms", self.config.verbose)
+-        return produced
+-
+-    def _refuse(self, request_id, code):
+-        """Count one refusal and state it in the shape a client expects."""
+-        self.error_count = self.error_count + 1
+-        return self.factory.make_error(request_id, code, _REJECTED)
+-
+-
+-def render_metrics_report(server):
+-    """Render the counters the server kept, reading them off the server itself."""
+-    lines = [
+-        "metrics since start",
+-        "requests " + str(server.request_count),
+-        "errors " + str(server.error_count),
+-        "calls " + str(server.call_count),
+-        "session " + str(server.config.session_id),
+-    ]
+-    return "\n".join(lines)
+-
+-
+-def apply_command_line_overrides(config, args):
+-    """Copy the argparse flags onto the configuration object, one at a time."""
+-    config.verbose = args.verbose
+-    config.strict = args.strict
+-    config.timeout = args.timeout or config.timeout
+-    config.name = args.name or config.name
+-    config.enabled_tools = [one for one in args.only.split(",") if one] or config.enabled_tools
+-    return config
+-
+-
+-def parse_command_line(argv):
++def _parse_command_line(argv):
+     """Declare every flag this server accepts and read the ones it was given."""
+-    parser = argparse.ArgumentParser(description="An overengineered MCP server in two scripts.")
++    parser = argparse.ArgumentParser(description="An overengineered MCP server, now a package.")
+     parser.add_argument("--verbose", action="store_true")
+     parser.add_argument("--strict", action="store_true")
+-    parser.add_argument("--timeout", type=int, default=0)
+     parser.add_argument("--name", type=str, default="")
+     parser.add_argument("--only", type=str, default="")
+     return parser.parse_args(argv)
+ 
+ 
+-def main(argv=None):
++def _configure(args):
++    """Turn the parsed command line into the configuration one run holds."""
++    identity = ServerIdentity(args.name) if args.name else ServerIdentity()
++    enabled = [one for one in args.only.split(",") if one] or None
++    config = ServerConfiguration(identity, enabled)
++    config.verbose = args.verbose
++    config.strict = args.strict
++    return config
++
++
++def _main(argv=None):
+     """Build the world from the command line and run the loop until the client leaves."""
+-    config = apply_command_line_overrides(ServerConfiguration(), parse_command_line(argv))
++    config = _configure(_parse_command_line(argv))
+     server = ProtocolServer(config, StandardStreamTransportLayer(config))
+     served = server.serve_forever()
+     if config.verbose:
+-        sys.stderr.write(render_metrics_report(server) + "\n")
++        sys.stderr.write(server.counters.rendered(config.session_id) + "\n")
+     return 0 if served >= 0 else 1
+ 
+ 
+ if __name__ == "__main__":
+-    sys.exit(main())
++    sys.exit(_main())
+diff --git a/demo/mcp_tools.py b/demo/mcp_tools.py
+deleted file mode 100644
+index 43a88f5..0000000
+--- a/demo/mcp_tools.py
++++ /dev/null
+@@ -1,173 +0,0 @@
+-"""The five tools this server exposes, plus the catalogue that describes them."""
+-
+-import json
+-import re
+-import sys
+-
+-_MAX_TEXT = 100000
+-_MAX_NUMBERS = 10000
+-
+-# The one refusal both argument readers raise, named once so they cannot drift apart.
+-_REFUSAL = "the argument is missing or the wrong shape for this tool"
+-
+-
+-class ToolSchemaBuilder:
+-    """Builds the schema."""
+-
+-    def __init__(self, config):
+-        self.config = config
+-
+-    def build_number_schema(self, property_name, description):
+-        return {
+-            "type": "object",
+-            "properties": {
+-                property_name: {
+-                    "type": "array",
+-                    "items": {"type": "number"},
+-                    "description": description,
+-                }
+-            },
+-            "required": [property_name],
+-        }
+-
+-    def build_text_schema(self, property_name, description):
+-        return {
+-            "type": "object",
+-            "properties": {property_name: {"type": "string", "description": description}},
+-            "required": [property_name],
+-        }
+-
+-
+-class ToolCatalogue:
+-    """Describes every tool, and knows which ones are switched off."""
+-
+-    EVERY_TOOL = ["echo", "sum_numbers", "word_count", "slugify", "statistics"]
+-
+-    def __init__(self, config):
+-        self.config = config
+-        self.builder = ToolSchemaBuilder(config)
+-
+-    def describe_all(self):
+-        """Return the tools/list payload, one hand-written entry per enabled tool."""
+-        out = []
+-        for n in self.EVERY_TOOL:
+-            if self.config.is_tool_enabled(n) is False:
+-                continue
+-            if n == "echo":
+-                out.append(self.text_entry("echo", "Return the text it was given."))
+-            elif n == "sum_numbers":
+-                out.append(self.number_entry("sum_numbers", "Add every number it was given."))
+-            elif n == "word_count":
+-                out.append(self.text_entry("word_count", "Count the words in the text."))
+-            elif n == "slugify":
+-                out.append(self.text_entry("slugify", "Turn the text into a slug."))
+-            elif n == "statistics":
+-                out.append(self.number_entry("statistics", "Summarise the numbers."))
+-        return out
+-
+-    def entry(self, name, description, schema):
+-        return {"name": name, "description": description, "inputSchema": schema}
+-
+-    def text_entry(self, name, description):
+-        return self.entry(name, description, self.builder.build_text_schema("text", "the text"))
+-
+-    def number_entry(self, name, description):
+-        schema = self.builder.build_number_schema("numbers", "the numbers")
+-        return self.entry(name, description, schema)
+-
+-
+-def warn(message, verbose):
+-    if verbose:
+-        print(message, file=sys.stderr)
+-
+-
+-def read_argument(arguments, name, expected, strict):
+-    """Return the argument under `name`, refusing or coercing what does not fit."""
+-    given = arguments.get(name)
+-    if isinstance(given, expected):
+-        return given
+-    if strict:
+-        raise ValueError(_REFUSAL)
+-    return None
+-
+-
+-def read_text_argument(arguments, config, strict):
+-    """Read the `text` argument as a bounded string, however it arrived."""
+-    given = read_argument(arguments, "text", str, strict)
+-    text = "" if given is None else given
+-    warn("a tool received " + str(len(text)) + " characters", config.verbose)
+-    return text[0:_MAX_TEXT]
+-
+-
+-def read_number_argument(arguments, config, strict):
+-    """Read the `numbers` argument as a bounded list of real numbers."""
+-    given = read_argument(arguments, "numbers", list, strict)
+-    numbers = [] if given is None else given[0:_MAX_NUMBERS]
+-    warn("a tool received " + str(len(numbers)) + " numbers", config.verbose)
+-    return [one for one in numbers if isinstance(one, (int, float)) and one is not True]
+-
+-
+-def run_echo_tool(arguments, config, strict):
+-    return read_text_argument(arguments, config, strict)
+-
+-
+-def run_sum_tool(arguments, config, strict):
+-    """Add every number the caller sent."""
+-    return str(sum(read_number_argument(arguments, config, strict)))
+-
+-
+-def run_word_count_tool(arguments, config, strict):
+-    return str(len(read_text_argument(arguments, config, strict).split()))
+-
+-
+-def run_slugify_tool(arguments, config, strict):
+-    """Lower the text and join whatever is left with single hyphens."""
+-    lowered = read_text_argument(arguments, config, strict).lower()
+-    return re.sub(r"[^a-z0-9]+", "-", lowered).strip("-")
+-
+-
+-def median_of(sorted_numbers):
+-    """Return the middle number, averaging the two middles of an even-length run."""
+-    middle = len(sorted_numbers) // 2
+-    if len(sorted_numbers) % 2 == 1:
+-        return sorted_numbers[middle]
+-    return (sorted_numbers[middle - 1] + sorted_numbers[middle]) / 2
+-
+-
+-def run_statistics_tool(arguments, config, strict):
+-    """Summarise the numbers the caller sent with the five statistics this tool reports."""
+-    numbers = sorted(read_number_argument(arguments, config, strict))
+-    if not numbers:
+-        return json.dumps({"count": 0})
+-    mean = sum(numbers) / len(numbers)
+-    variance = sum((one - mean) ** 2 for one in numbers) / len(numbers)
+-    return json.dumps(
+-        {
+-            "count": len(numbers),
+-            "min": numbers[0],
+-            "max": numbers[-1],
+-            "mean": mean,
+-            "median": median_of(numbers),
+-            "variance": variance,
+-        }
+-    )
+-
+-
+-def run_tool_by_name(name, arguments, config, strict):
+-    """Pick the one handler this name refers to, and refuse every other name."""
+-    if name == "echo":
+-        return run_echo_tool(arguments, config, strict)
+-    elif name == "sum_numbers":
+-        return run_sum_tool(arguments, config, strict)
+-    elif name == "word_count":
+-        return run_word_count_tool(arguments, config, strict)
+-    elif name == "slugify":
+-        return run_slugify_tool(arguments, config, strict)
+-    elif name == "statistics":
+-        return run_statistics_tool(arguments, config, strict)
+-    else:
+-        return None
+-
+-
+-# TODO: resources/list and resources/read are still not implemented here.
+-# FIXME: the JSON-RPC error codes in mcp_server.py were copied from the spec by hand.
+diff --git a/demo/smoke.py b/demo/smoke.py
+index d08a7ad..e569f91 100644
+--- a/demo/smoke.py
++++ b/demo/smoke.py
+@@ -6,13 +6,6 @@ import sys
+ from pathlib import Path
+ 
+ 
+-def _exchange(process, message):
+-    """Send one JSON-RPC message and read the next line the server writes back."""
+-    process.stdin.write(json.dumps(message) + "\n")
+-    process.stdin.flush()
+-    return json.loads(process.stdout.readline())
+-
+-
+ def _start():
+     """Start the server as a subprocess wired to pipes on both standard streams."""
+     server = Path(__file__).with_name("mcp_server.py")
+@@ -20,23 +13,43 @@ def _start():
+     return subprocess.Popen(arguments, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+ 
+ 
+-def _main():
+-    """Run initialize, tools/list, and one tools/call against a live server process."""
+-    process = _start()
++def _exchange(process, message):
++    """Send one JSON-RPC message and read the next line the server writes back."""
++    process.stdin.write(json.dumps(message) + "\n")
++    process.stdin.flush()
++    return json.loads(process.stdout.readline())
++
++
++def _listed(process):
++    """Complete the handshake and return the tool names the server advertises."""
+     hello = {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}}}
+     handshake = _exchange(process, hello)
+     assert handshake["result"]["serverInfo"]["name"] == "overengineered-mcp", handshake
+     listing = _exchange(process, {"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+-    names = sorted(tool["name"] for tool in listing["result"]["tools"])
+-    assert names == ["echo", "slugify", "statistics", "sum_numbers", "word_count"], names
++    return sorted(tool["name"] for tool in listing["result"]["tools"])
++
++
++def _summed(process):
++    """Call `sum_numbers` once and return the text content it produced."""
+     call = {"name": "sum_numbers", "arguments": {"numbers": [1, 2, 3.5]}}
+     called = _exchange(
+         process, {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": call}
+     )
+-    assert called["result"]["content"][0]["text"] == "6.5", called
++    return called["result"]["content"][0]["text"]
++
++
++def _main():
++    """Run initialize, tools/list, and one tools/call against a live server process."""
++    process = _start()
++    names = _listed(process)
++    assert names == ["echo", "slugify", "statistics", "sum_numbers", "word_count"], names
++    summed = _summed(process)
++    assert summed == "6.5", summed
+     process.stdin.close()
+     process.wait(timeout=10)
+-    sys.stdout.write(f"smoke ok: handshake, {len(names)} tools listed, sum_numbers returned 6.5\n")
++    sys.stdout.write(
++        f"smoke ok: handshake, {len(names)} tools listed, sum_numbers returned {summed}\n"
++    )
+     return 0
+ 
+ 

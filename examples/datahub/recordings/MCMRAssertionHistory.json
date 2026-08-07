@@ -1,0 +1,1797 @@
+[
+  {
+    "variables": {
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)",
+      "count": 50
+    },
+    "response": {
+      "data": {
+        "dataset": {
+          "assertions": {
+            "total": 9,
+            "assertions": [
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0003-0356c023c326",
+                "info": {
+                  "description": "ALL-DATA0003 Count explicit source type expectations that disagree with catalog schemas.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 3,
+                  "succeeded": 0,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145095,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0003"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "field `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD).amount` expects `TEXT` but the catalog declares `NUMBER`"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "1 (allowed <= 0)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080120749,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0003"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "field `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD).amount` expects `TEXT` but the catalog declares `NUMBER`"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "1 (allowed <= 0)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080045670,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0003"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "field `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD).amount` expects `TEXT` but the catalog declares `NUMBER`"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "1 (allowed <= 0)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0007-0356c023c326",
+                "info": {
+                  "description": "ALL-DATA0007 Count governed assets missing an owner or required domain.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 3,
+                  "succeeded": 0,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145121,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0007"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` has no owner"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "1 (allowed <= 0)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080120774,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0007"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` has no owner"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "1 (allowed <= 0)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080047482,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0007"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` has no owner"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "1 (allowed <= 0)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0009-0356c023c326",
+                "info": {
+                  "description": "ALL-DATA0009 Measure cataloged assets and fields lacking a business description.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 3,
+                  "succeeded": 0,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145146,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0009"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` has no description"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "5.88235294117647 (allowed <= 5)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080120804,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0009"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` has no description"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "5.88235294117647 (allowed <= 5)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080051283,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0009"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` has no description"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "5.88235294117647 (allowed <= 5)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0013-0356c023c326",
+                "info": {
+                  "description": "ALL-DATA0013 Count source references to catalog assets that name no owner or no description.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 3,
+                  "succeeded": 0,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145227,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0013"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` read here has no owner and no description"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "1 (allowed <= 0)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080120882,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0013"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` read here has no owner and no description"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "1 (allowed <= 0)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080060726,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0013"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.marts.invoices,PROD)` read here has no owner and no description"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "1 (allowed <= 0)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0001-0356c023c326",
+                "info": {
+                  "description": "ALL-DATA0001 Count source references to assets absent from the supplied catalog snapshot.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 0,
+                  "succeeded": 3,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145257,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0001"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080120911,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0001"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080066354,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0001"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0004-0356c023c326",
+                "info": {
+                  "description": "ALL-DATA0004 Count source references to assets explicitly deprecated or removed.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 0,
+                  "succeeded": 3,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145410,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0004"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080126646,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0004"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080075789,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0004"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0006-0356c023c326",
+                "info": {
+                  "description": "ALL-DATA0006 Count source references exposed to explicitly unhealthy data dependencies.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 0,
+                  "succeeded": 3,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145514,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0006"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080126735,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0006"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080083201,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0006"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0010-0356c023c326",
+                "info": {
+                  "description": "ALL-DATA0010 Count lineage edges whose endpoint is absent from the catalog snapshot.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 0,
+                  "succeeded": 3,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145593,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0010"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080126817,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0010"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080092637,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0010"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0002-0356c023c326",
+                "info": {
+                  "description": "ALL-DATA0002 Count referenced fields absent from an existing data asset schema.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 2,
+                  "failed": 0,
+                  "succeeded": 2,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145331,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0002"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080121001,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0002"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "applied"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
+      "extensions": {}
+    }
+  },
+  {
+    "variables": {
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.raw.orders,PROD)",
+      "count": 50
+    },
+    "response": {
+      "data": {
+        "dataset": {
+          "assertions": {
+            "total": 6,
+            "assertions": [
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0011-a937503f5482",
+                "info": {
+                  "description": "ALL-DATA0011 Count assets nobody owns that many downstream assets depend on.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 3,
+                  "succeeded": 0,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145176,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0011"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.raw.orders,PROD)` has no owner and 4 downstream assets depend on it"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "1 (allowed <= 0)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080120828,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0011"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.raw.orders,PROD)` has no owner and 4 downstream assets depend on it"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "1 (allowed <= 0)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080053095,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0011"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "data asset `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.raw.orders,PROD)` has no owner and 4 downstream assets depend on it"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "1 (allowed <= 0)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0001-a937503f5482",
+                "info": {
+                  "description": "ALL-DATA0001 Count source references to assets absent from the supplied catalog snapshot.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 0,
+                  "succeeded": 3,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145282,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0001"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080120940,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0001"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080068173,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0001"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0004-a937503f5482",
+                "info": {
+                  "description": "ALL-DATA0004 Count source references to assets explicitly deprecated or removed.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 0,
+                  "succeeded": 3,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145438,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0004"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080126678,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0004"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080077598,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0004"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0006-a937503f5482",
+                "info": {
+                  "description": "ALL-DATA0006 Count source references exposed to explicitly unhealthy data dependencies.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 0,
+                  "succeeded": 3,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145538,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0006"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080126761,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0006"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080087009,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0006"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0010-a937503f5482",
+                "info": {
+                  "description": "ALL-DATA0010 Count lineage edges whose endpoint is absent from the catalog snapshot.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 0,
+                  "succeeded": 3,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145620,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0010"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080126842,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0010"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080096458,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0010"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0002-a937503f5482",
+                "info": {
+                  "description": "ALL-DATA0002 Count referenced fields absent from an existing data asset schema.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 2,
+                  "failed": 0,
+                  "succeeded": 2,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145356,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0002"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080122804,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0002"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "applied"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
+      "extensions": {}
+    }
+  },
+  {
+    "variables": {
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.analytics.orders,PROD)",
+      "count": 50
+    },
+    "response": {
+      "data": {
+        "dataset": {
+          "assertions": {
+            "total": 6,
+            "assertions": [
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0002-cd1020f99f85",
+                "info": {
+                  "description": "ALL-DATA0002 Count referenced fields absent from an existing data asset schema.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 1,
+                  "succeeded": 2,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145381,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0002"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080126620,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0002"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "applied"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080041854,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0002"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "offered"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "field `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.analytics.orders,PROD).legacy_total` is absent from the catalog schema"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "1 (allowed <= 0)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0012-cd1020f99f85",
+                "info": {
+                  "description": "ALL-DATA0012 Count fields the catalog marks sensitive while leaving their governance incomplete.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 3,
+                  "succeeded": 0,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145201,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0012"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "field `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.analytics.orders,PROD).customer_email` tagged `PII` has no glossary term"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "1 (allowed <= 0)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080120853,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0012"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "field `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.analytics.orders,PROD).customer_email` tagged `PII` has no glossary term"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "1 (allowed <= 0)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080056909,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "FAILURE",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0012"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "reasons",
+                            "value": "field `urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.analytics.orders,PROD).customer_email` tagged `PII` has no glossary term"
+                          },
+                          {
+                            "key": "measurement",
+                            "value": "1 (allowed <= 0)"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "1"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0001-cd1020f99f85",
+                "info": {
+                  "description": "ALL-DATA0001 Count source references to assets absent from the supplied catalog snapshot.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 0,
+                  "succeeded": 3,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145306,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0001"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080120969,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0001"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080062536,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0001"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0004-cd1020f99f85",
+                "info": {
+                  "description": "ALL-DATA0004 Count source references to assets explicitly deprecated or removed.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 0,
+                  "succeeded": 3,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145475,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0004"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080126708,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0004"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080071987,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0004"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0006-cd1020f99f85",
+                "info": {
+                  "description": "ALL-DATA0006 Count source references exposed to explicitly unhealthy data dependencies.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 0,
+                  "succeeded": 3,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145568,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0006"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080126791,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0006"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080081405,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0006"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "urn": "urn:li:assertion:mcmr-all-data0010-cd1020f99f85",
+                "info": {
+                  "description": "ALL-DATA0010 Count lineage edges whose endpoint is absent from the catalog snapshot.",
+                  "externalUrl": "https://github.com/phvv-me/mcmr"
+                },
+                "runEvents": {
+                  "total": 3,
+                  "failed": 0,
+                  "succeeded": 3,
+                  "runEvents": [
+                    {
+                      "timestampMillis": 1786080145652,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0010"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080126868,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0010"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "timestampMillis": 1786080090827,
+                      "status": "COMPLETE",
+                      "result": {
+                        "type": "SUCCESS",
+                        "nativeResults": [
+                          {
+                            "key": "rule",
+                            "value": "ALL-DATA0010"
+                          },
+                          {
+                            "key": "repair",
+                            "value": "none"
+                          },
+                          {
+                            "key": "findings",
+                            "value": "0"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
+      "extensions": {}
+    }
+  },
+  {
+    "variables": {},
+    "response": {
+      "data": {
+        "dataset": {
+          "assertions": {
+            "total": 0,
+            "assertions": []
+          }
+        }
+      },
+      "extensions": {}
+    }
+  }
+]

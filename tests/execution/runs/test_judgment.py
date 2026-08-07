@@ -27,7 +27,7 @@ from mcmr.domain.contracts import (
 )
 from mcmr.facts import FunctionFact, ModuleSurfaceFact, SourceSpan
 from mcmr.kernel import KernelStats
-from mcmr.plugins import fact_table
+from mcmr.plugins import RunGraph, fact_table
 from mcmr.query.orchestration import TableExecution
 from mcmr.rulebook.scope import LanguageScope
 
@@ -148,6 +148,7 @@ def test_a_bounded_judgment_keeps_exact_totals() -> None:
         runnable={counted.callable, unstated.callable},
         scope=LanguageScope(),
         provider_read_count=2,
+        graph=RunGraph(),
     )
 
     assert (
@@ -279,6 +280,7 @@ def test_a_rule_for_an_absent_language_leaves_the_selected_scope() -> None:
         runnable={general.callable, python.callable},
         scope=LanguageScope(observed={"python"}),
         provider_read_count=0,
+        graph=RunGraph(),
     )
 
     assert [rule.definition.id for rule in judged.rules] == ["ALL-DEMO0001", "PY-DEMO0001"]
@@ -296,6 +298,7 @@ def test_a_present_language_keeps_its_rule_and_every_other_skip() -> None:
         runnable={general.callable},
         scope=LanguageScope(observed={"python", "rust"}),
         provider_read_count=0,
+        graph=RunGraph(),
     )
 
     assert (judged.engine.rule_count, judged.engine.skipped_rules) == (2, ["PY-DEMO0001"])
@@ -311,6 +314,7 @@ def test_a_run_that_observed_no_language_narrows_nothing() -> None:
         runnable=set(),
         scope=LanguageScope(),
         provider_read_count=0,
+        graph=RunGraph(),
     )
 
     assert (judged.engine.rule_count, judged.engine.skipped_rules) == (1, ["TS-DEMO0001"])

@@ -1,0 +1,39 @@
+[
+  {
+    "variables": {},
+    "response": [
+      {
+        "urn": "urn:li:dataFlow:(mcmr,ecommerce-pipeline,PROD)",
+        "browsePathsV2": {
+          "value": {
+            "path": [
+              {
+                "id": "Default"
+              }
+            ]
+          }
+        },
+        "dataPlatformInstance": {
+          "value": {
+            "platform": "urn:li:dataPlatform:mcmr"
+          }
+        },
+        "dataFlowKey": {
+          "value": {
+            "flowId": "ecommerce-pipeline",
+            "cluster": "PROD",
+            "orchestrator": "mcmr"
+          }
+        },
+        "dataFlowInfo": {
+          "value": {
+            "name": "ecommerce-pipeline",
+            "externalUrl": "https://github.com/phvv-me/mcmr",
+            "description": "MCMR policy run over ecommerce-pipeline.",
+            "env": "PROD"
+          }
+        }
+      }
+    ]
+  }
+]

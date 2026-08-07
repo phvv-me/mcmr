@@ -1,0 +1,18 @@
+[
+  {
+    "variables": {},
+    "response": [
+      {
+        "urn": "urn:li:dataPlatform:mcmr",
+        "dataPlatformInfo": {
+          "value": {
+            "name": "mcmr",
+            "datasetNameDelimiter": "/",
+            "type": "OTHERS",
+            "displayName": "MCMR"
+          }
+        }
+      }
+    ]
+  }
+]

@@ -5,9 +5,6 @@ from pathlib import Path
 import anyio
 import httpx
 import pytest
-from mcmr_datahub.provider import DataHubProvider
-from mcmr_datahub.settings import DataHubSettings
-from mcmr_datahub.transport.graphql import DataHubGraphQL
 
 from mcmr.facts import (
     DataAssetFact,
@@ -20,6 +17,7 @@ from mcmr.facts import (
     StringExpressionFact,
 )
 from mcmr.plugins import ProviderContext, RepositoryTables, fact_table
+from mcmr_datahub import DataHubGraphQL, DataHubProvider, DataHubSettings
 
 
 def test_datahub_graphql_projects_catalog_assets_without_mcp(
@@ -298,3 +296,132 @@ def test_the_catalog_is_read_in_pages_up_to_the_configured_bound() -> None:
     tables = anyio.run(DataHubProvider(httpx.MockTransport(respond)).tables, context)
 
     assert (pages, list(tables)) == ([0, 1], [DataAssetReferenceFact])
+
+
+def test_an_explicit_null_collection_is_read_as_an_empty_one() -> None:
+    """DataHub spells an unwritten aspect as `null`, not as an absent key or an empty list.
+
+    A live DataHub Core answers `fineGrainedLineages`, `owners`, `tags` and the rest with an
+    explicit `null` whenever the aspect behind the selection was never written, so every one of
+    these is a key that is present while its value is not a list.
+    """
+    urn = "urn:li:dataset:(snowflake,warehouse.analytics.orders,PROD)"
+    answers = {
+        "MCMRDataAssets": {
+            "searchAcrossEntities": {
+                "total": 1,
+                "searchResults": [
+                    {
+                        "entity": {
+                            "urn": urn,
+                            "properties": {"description": "Orders"},
+                            "ownership": {"owners": None},
+                            "schemaMetadata": {
+                                "fields": [
+                                    {
+                                        "fieldPath": "order_id",
+                                        "type": "NUMBER",
+                                        "description": "Order ID",
+                                        "globalTags": {"tags": None},
+                                        "glossaryTerms": {"terms": None},
+                                    }
+                                ]
+                            },
+                        }
+                    }
+                ],
+            }
+        },
+        "MCMRFieldLineage": {"dataset": {"urn": urn, "fineGrainedLineages": None}},
+    }
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        operation = json.loads(request.content)["operationName"]
+        return httpx.Response(200, json={"data": answers[operation]})
+
+    dependencies = RepositoryTables()
+    dependencies.add(fact_table(StringExpressionFact, []))
+    context = ProviderContext(
+        repository=Path("."),
+        settings={"server": "https://catalog.example"},
+        requested={DataAssetFact, DataFieldReferenceFact},
+        dependencies=dependencies,
+    )
+
+    tables = anyio.run(DataHubProvider(httpx.MockTransport(respond)).tables, context)
+    asset = tables[DataAssetFact].records("assets").collect().row(0, named=True)
+    field = tables[DataAssetFact].records("assets.fields").collect().row(0, named=True)
+
+    assert (asset["owners.length"], field["tags.length"], field["glossary_terms.length"]) == (
+        0,
+        0,
+        0,
+    )
+
+
+def test_a_fine_grained_lineage_missing_one_side_proves_no_rename() -> None:
+    """A lineage edge that names no upstream or no downstream cannot license a rewrite."""
+    urn = "urn:li:dataset:(snowflake,warehouse.analytics.orders,PROD)"
+    answers = {
+        "MCMRDataAssets": {
+            "searchAcrossEntities": {
+                "total": 1,
+                "searchResults": [
+                    {
+                        "entity": {
+                            "urn": urn,
+                            "schemaMetadata": {
+                                "fields": [{"fieldPath": "total", "type": "NUMBER"}]
+                            },
+                        }
+                    }
+                ],
+            }
+        },
+        "MCMRFieldLineage": {
+            "dataset": {
+                "urn": urn,
+                "fineGrainedLineages": [
+                    {"upstreams": [{"urn": urn, "path": "legacy_total"}], "downstreams": None}
+                ],
+            }
+        },
+    }
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        operation = json.loads(request.content)["operationName"]
+        return httpx.Response(200, json={"data": answers[operation]})
+
+    strings = fact_table(
+        StringExpressionFact,
+        [
+            StringExpressionFact(
+                key="query.py",
+                span=SourceSpan(path="query.py"),
+                language="python",
+                expressions=[
+                    LiteralStringExpression(
+                        node=NodeRef(id="query.py:1:string", span=SourceSpan(path="query.py")),
+                        runtime_value=("SELECT legacy_total FROM warehouse.analytics.orders"),
+                    )
+                ],
+            )
+        ],
+    )
+    dependencies = RepositoryTables()
+    dependencies.add(strings)
+    context = ProviderContext(
+        repository=Path("."),
+        settings={"server": "https://catalog.example"},
+        requested={DataFieldReferenceFact},
+        dependencies=dependencies,
+    )
+
+    tables = anyio.run(DataHubProvider(httpx.MockTransport(respond)).tables, context)
+    fields = tables[DataFieldReferenceFact].records("references").collect()
+
+    assert (
+        fields.get_column("field_name").to_list(),
+        fields.get_column("field_exists").to_list(),
+        fields.get_column("repair.replacement").to_list(),
+    ) == (["legacy_total"], [False], [""])

@@ -217,8 +217,8 @@ Most of the backlog needs no new fact family. The ones that do:
 ## Kernel defect found while building the DataHub integration
 
 A subpackage nested two levels inside an installed plugin package silently breaks reference
-resolution for every sibling module beside it. Splitting `mcmr_datahub/transport/settings.py` into
-`mcmr_datahub/transport/settings/` made `ALL-REAC0001` report `DataHubGraphQL`, `GraphQLResponse`,
+resolution for every sibling module beside it. Splitting `mcmr_datahub/services/transport/settings.py` into
+`mcmr_datahub/services/transport/settings/` made `ALL-REAC0001` report `DataHubGraphQL`, `GraphQLResponse`,
 and `DataHubSettings` as classes nothing reaches, and `ALL-REAC0002` report `RecordedTransport` as
 read only inside its own file, while `PY-MODU0005` reported three public routes as unused. Every
 one of those imports exists and executes. Collapsing the package back to a module cleared all six

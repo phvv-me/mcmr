@@ -57,6 +57,7 @@ jobs:
         with:
           maturin-version: v1.14.1
           manylinux: 2_28
+          before-script-linux: dnf install -y openssl-devel
           args: --release --locked --out .dist -i python3.14 -i python3.14t --compatibility pypi
       - if: steps.tag.outputs.new == 'true'
         name: Publish to PyPI

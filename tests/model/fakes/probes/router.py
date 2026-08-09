@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 
 class RouterProbe:
-    """Answer OpenRouter completions with controlled bodies and retain every request."""
+    """Answer OpenRouter responses with controlled bodies and retain every request."""
 
     def __init__(
         self,
@@ -45,18 +45,25 @@ class RouterProbe:
         model: str = "vendor/model-served",
         usage: JsonValue = None,
     ) -> dict[str, JsonValue]:
-        """Build one OpenAI-compatible completion around a structured answer."""
+        """Build one OpenAI-compatible response around a structured answer."""
         reported: JsonValue = {
-            "prompt_tokens": 12,
-            "prompt_tokens_details": {"cached_tokens": 3},
-            "completion_tokens": 4,
-            "completion_tokens_details": {"reasoning_tokens": 2},
+            "input_tokens": 12,
+            "input_tokens_details": {"cached_tokens": 3},
+            "output_tokens": 4,
+            "output_tokens_details": {"reasoning_tokens": 2},
         }
         content = answer if isinstance(answer, str) else json.dumps(answer, sort_keys=True)
         return {
             "id": "gen-controlled",
             "model": model,
-            "choices": [{"index": 0, "message": {"role": "assistant", "content": content}}],
+            "status": "completed",
+            "output": [
+                {
+                    "type": "message",
+                    "status": "completed",
+                    "content": [{"type": "output_text", "text": content}],
+                }
+            ],
             "usage": reported if usage is None else usage,
         }
 

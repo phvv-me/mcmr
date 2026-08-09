@@ -40,6 +40,8 @@ backend = "codex"
 binary = ""
 model = "gpt-5.6-terra"
 reasoning_effort = "medium"
+prompt_token_budget = 128000
+# max_output_tokens = 4096
 timeout_seconds = 180
 minimum_confidence = 0.6
 batch_size = 32
@@ -52,6 +54,8 @@ batch_size = 32
 | `model` | `gpt-5.6-terra` | The model the backend runs |
 | `model_path` | unset | A local directory, for a backend that loads weights directly |
 | `reasoning_effort` | `medium` | How hard the model should think |
+| `prompt_token_budget` | `128000` | Strict upper bound for one packed request, including its schema |
+| `max_output_tokens` | unset | Optional model output allowance reserved beside the packed prompt |
 | `timeout_seconds` | 180 | How long one batch may take before it is abandoned |
 | `minimum_confidence` | 0.6 | The floor a contextual answer must clear to count |
 | `batch_size` | 32 | How many candidates one classification turn batches together |

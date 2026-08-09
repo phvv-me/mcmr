@@ -141,7 +141,9 @@ exclude_lines = [
 [tool.mcmr.contextual]
 backend = "openrouter"
 model = "deepseek/deepseek-v4-flash-0731"
-reasoning_effort = "high"
+reasoning_effort = "max"
+prompt_token_budget = 640000
+max_output_tokens = 384000
 
 [tool.mcmr.providers.datahub]
 query = "mcmr"

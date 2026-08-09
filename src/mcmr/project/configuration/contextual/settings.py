@@ -12,6 +12,8 @@ class ContextualConfiguration(ContextualFields):
     timeout_seconds: PositiveInt = 180
     minimum_confidence: float = Field(default=0.6, ge=0.0, le=1.0)
     batch_size: PositiveInt = 32
+    prompt_token_budget: PositiveInt = 128_000
+    max_output_tokens: PositiveInt | None = None
 
 
 ContextualConfiguration.model_rebuild(

@@ -14,10 +14,17 @@ class RuleBatch(FrozenModel):
     rules: list[PreparedRule]
 
     @property
+    def contextual(self) -> bool:
+        """Whether this graph carries a rule that needs the shared repository model turn."""
+        return any(rule.rule.model_native for rule in self.rules)
+
+    @property
     def families(self) -> set[type[Fact]]:
         """Return every table needed anywhere in this connected graph."""
         return {family for rule in self.rules for family in rule.families}
 
     def connected(self, rule: PreparedRule) -> bool:
-        """Whether one rule shares a table with this graph."""
-        return not self.families.isdisjoint(rule.families)
+        """Whether one rule shares a table or the repository model turn with this graph."""
+        return (self.contextual and rule.rule.model_native) or not self.families.isdisjoint(
+            rule.families
+        )

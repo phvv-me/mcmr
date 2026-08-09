@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from httpx import AsyncBaseTransport, AsyncClient, HTTPError, Response
 from patos import FrozenModel
-from pydantic import Field, InstanceOf, JsonValue, TypeAdapter, ValidationError
+from pydantic import Field, InstanceOf, JsonValue, PositiveInt, TypeAdapter, ValidationError
 
 from ....domain.contracts import ModelProvenance
 from ....domain.primitives import NonEmptyStr
@@ -15,12 +15,13 @@ if TYPE_CHECKING:
 
 
 class OpenRouterClient(FrozenModel):
-    """Run one schema-constrained chat completion against an OpenRouter server."""
+    """Run one schema-constrained response against an OpenRouter server."""
 
     server: NonEmptyStr = "https://openrouter.ai/api/v1"
     model: NonEmptyStr = "anthropic/claude-sonnet-5"
     reasoning_effort: NonEmptyStr = "none"
     timeout_seconds: int = Field(default=180, ge=1)
+    max_output_tokens: PositiveInt | None = None
     transport: InstanceOf[AsyncBaseTransport] | None = Field(
         default=None,
         exclude=True,
@@ -28,14 +29,16 @@ class OpenRouterClient(FrozenModel):
     )
 
     def answer(self, completion: Mapping[str, JsonValue]) -> str:
-        """Read the single structured answer one completion carries."""
-        choices = completion.get("choices")
-        first = choices[0] if isinstance(choices, list) and choices else None
-        choice = JsonReport(document=first if isinstance(first, dict) else {})
-        answer = choice.group("message").text("content")
-        if not answer:
-            raise RuntimeError(f"OpenRouter returned no answer. {json.dumps(completion)[:500]}")
-        return answer
+        """Read the first structured output text one completed response carries."""
+        output = completion.get("output")
+        for item in output if isinstance(output, list) else []:
+            message = JsonReport(document=item if isinstance(item, dict) else {})
+            content = message.document.get("content")
+            for part in content if isinstance(content, list) else []:
+                text = JsonReport(document=part if isinstance(part, dict) else {})
+                if text.text("type") == "output_text" and (answer := text.text("text")):
+                    return answer
+        raise RuntimeError(f"OpenRouter returned no answer. {json.dumps(completion)[:500]}")
 
     def body(
         self,
@@ -44,17 +47,24 @@ class OpenRouterClient(FrozenModel):
         prompt: str,
         name: str,
     ) -> dict[str, JsonValue]:
-        """Build one OpenAI-compatible request that closes the answer schema."""
+        """Build one current OpenAI-compatible request that closes the answer schema."""
         body: dict[str, JsonValue] = {
             "model": self.model,
-            "messages": [{"role": "user", "content": prompt}],
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {"name": name, "strict": True, "schema": dict(schema_document)},
+            "input": [{"role": "user", "content": prompt}],
+            "plugins": [{"id": "response-healing"}],
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": name,
+                    "strict": True,
+                    "schema": dict(schema_document),
+                },
             },
         }
         if self.reasoning_effort != "none":
             body["reasoning"] = {"effort": self.reasoning_effort}
+        if self.max_output_tokens is not None:
+            body["max_output_tokens"] = self.max_output_tokens
         return body
 
     def completion(self, response: Response) -> dict[str, JsonValue]:
@@ -71,7 +81,7 @@ class OpenRouterClient(FrozenModel):
         headers: dict[str, str],
     ) -> dict[str, JsonValue]:
         """Post one authorized request and read the completion it answered with."""
-        response = await client.post("/chat/completions", headers=headers, json=request)
+        response = await client.post("/responses", headers=headers, json=request)
         return self.completion(response)
 
     def headers(self) -> dict[str, str]:
@@ -110,8 +120,8 @@ class OpenRouterClient(FrozenModel):
             backend="openrouter",
             model=report.text("model") or self.model,
             reasoning_effort=self.reasoning_effort,
-            input_tokens=usage.count("prompt_tokens"),
-            cached_input_tokens=usage.group("prompt_tokens_details").count("cached_tokens"),
-            output_tokens=usage.count("completion_tokens"),
-            reasoning_tokens=usage.group("completion_tokens_details").count("reasoning_tokens"),
+            input_tokens=usage.count("input_tokens"),
+            cached_input_tokens=usage.group("input_tokens_details").count("cached_tokens"),
+            output_tokens=usage.count("output_tokens"),
+            reasoning_tokens=usage.group("output_tokens_details").count("reasoning_tokens"),
         )

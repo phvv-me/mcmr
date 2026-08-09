@@ -12,7 +12,7 @@ Screen shows the repository and immediately runs the deterministic demo check.
 > policy engine the agent can run itself.
 
 ```sh
-chefe run check demo/ --no-contextual --format concise --report-only
+mcmr check demo/ --no-contextual --format concise --report-only
 ```
 
 Pause on exact file and line findings, then on the summary with 50 policy failures and 81 findings.
@@ -27,7 +27,7 @@ Screen shows the rule catalog, then briefly opens one deterministic rule.
 > this command sends no LLM requests.
 
 ```sh
-chefe run python -m mcmr.commands.cli catalog
+mcmr catalog
 ```
 
 ## DataHub memory from 50 to 100 seconds

@@ -18,6 +18,11 @@ def test_rule_planner_builds_connected_graphs_from_declared_tables() -> None:
         for index, left in enumerate(engine.batches)
         for right in engine.batches[index + 1 :]
     )
+    contextual = RuleEngine(
+        rules=catalog.rules,
+        dependencies={ClassificationBackend: CodexBackend(binary="unused")},
+    )
+    assert sum(batch.contextual for batch in contextual.batches) == 1
 
 
 def test_rule_planner_compiles_settings_exclusions_and_dependency_eligibility() -> None:

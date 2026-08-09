@@ -1,47 +1,50 @@
 ## Inspiration
 
-Agentic development is fast, but agents are often nearsighted. Local checks rarely show how one
-change affects the whole repository. We wanted a leash for LLM agents that keeps human engineering
-choices in control. The
-[Bun rewrite in Rust](https://bun.com/blog/bun-in-rust) showed how difficult it is to enforce a
-style guide across a large agent-written codebase. [Archy](https://github.com/hslee16/Archy) also
-inspired our parsing engine. We use MCMR in our own tools to tame agents and considerably reduce
-bugs by making them consider both the changed part and the whole software.
+Agentic development is fast, but agents are nearsighted. We wanted a leash that keeps human
+engineering choices in control. The
+[Bun rewrite in Rust](https://bun.com/blog/bun-in-rust) showed how hard it is to enforce a style
+guide across agent-written code, while [Archy](https://github.com/hslee16/Archy) inspired our
+parsing engine. We use MCMR in our own tools to tame agents and considerably reduce bugs by making
+them consider both the changed part and the whole software.
 
 ## What it does
 
 My Code, My Rules is a repository-wide policy engine. A Rust kernel reads Python, Rust,
-TypeScript, C, C++, and CUDA once, then turns the repository into linked, typed fact tables.
-Python rules query those tables and report exact locations with supporting measurements.
+TypeScript, C, C++, and CUDA into linked fact tables. Python rules query them and report exact
+locations with supporting measurements.
 
-Deterministic checks are local and enabled by default. Contextual judgment and external evidence
+Deterministic checks are local by default. Contextual judgment and external evidence
 are opt-ins. Contextual checks can use DeepSeek V4 Flash through OpenRouter or local agent
-harnesses, with batched repository context. Safe repairs are checked before MCMR keeps them.
+harnesses. When the repository fits the configured budget, every contextual rule shares one
+structured repository turn. MCMR recursively splits an oversized or unusable turn without losing
+a rule. Safe repairs are verified before use.
 
-With writeback enabled, MCMR publishes schemas, lineage, ownership, run history, costs, incidents,
-and verdicts to DataHub. Later runs read that history as evidence of how the codebase evolves.
+With writeback enabled, MCMR publishes schemas, lineage, ownership, history, costs, incidents, and
+verdicts to DataHub. Later runs read that evolution as evidence.
 
 ## How we built it
 
-We translated engineering guidance from books, articles, and established tools into configurable
-policies. The Rust kernel uses Oxc, tree-sitter, and Ruff's Python parser. PyO3 and Maturin expose
-facts to Python, where Polars executes rules as table queries. DataHub reads use GraphQL and
-writeback maps results into assertions, lineage, incidents, tags, and run records.
+We translated engineering guidance into configurable policies. The Rust kernel uses Oxc,
+tree-sitter, and Ruff's Python parser. PyO3 and Maturin expose facts to Polars queries. DataHub
+reads use GraphQL and writeback maps results into assertions, lineage, incidents, tags, and run
+records.
 
 ## Challenges we ran into
 
 Our first design repeatedly walked Python syntax trees inside rules and could not scale.
 One shared fact graph moved parsing into Rust and made every rule reuse the same evidence. A DataHub
 assertion indexing race also made writeback take minutes. Declaring assertions before reporting
-results reduced it to seconds. Verified repair remains limited because an unsafe edit is worse than
-a clear finding.
+results reduced it to seconds. Contextual batching still sent one request per rule family, which
+made a fast local scan wait on many model turns. Packing all contextual rules into one closed
+OpenAI style Responses schema removed that fan-out. Verified repair remains limited because an
+unsafe edit is worse than a clear finding.
 
 ## Accomplishments that we're proud of
 
-MCMR analyzes several languages through one shared model and a small rule authoring interface. The
-demo extracts 188 facts from three files and reports 81 findings in under a second. We use it in our
-own tools to keep LLM agents aware of architecture, cross-language interfaces, and repository-wide
-consequences while letting users configure or reject any policy.
+MCMR analyzes several languages through one shared model and a small rule interface. The demo
+extracts 188 facts from three files and reports 81 findings in under a second. We use it in our own
+tools to keep agents aware of architecture and repository-wide consequences while letting users
+configure or reject any policy.
 
 ## What we learned
 

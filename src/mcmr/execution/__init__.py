@@ -11,6 +11,7 @@ from .backends import (
     OpenRouterBackend,
 )
 from .contracts import CommandResult
+from .queries.runtime import answer_many
 
 __all__ = [
     "Assessment",
@@ -24,4 +25,5 @@ __all__ = [
     "Gliner2Backend",
     "ModelCandidate",
     "OpenRouterBackend",
+    "answer_many",
 ]

@@ -11,9 +11,9 @@ Stop Code Slop, put your agent on a leash and know where your code is going.
 
 ## Inspiration
 
-We tried to converge one of our own packages, chefe, a piece of internal infrastructure nobody had
-cleaned up in months. The first scan reported 338 findings. We fixed them with agents, in batches,
-and finished at zero, using MCMR itself.
+We tried to converge one of our own internal tools, a piece of infrastructure nobody had cleaned
+up in months. The first scan reported 338 findings. We fixed them with agents, in batches, and
+finished at zero using MCMR itself.
 
 What made that possible was not the agents. It was that every batch could see what the previous
 batch had already concluded. Without that, the next agent reopens the first agent's decisions,
@@ -34,8 +34,8 @@ either one. MCMR is the join, and DataHub is where the conclusion gets to outliv
 MCMR is a code policy engine. A Rust kernel does one pass over a repository and extracts it into
 63 typed fact families, exposed to Python as Polars tables. 285 rules then judge those tables
 across three lanes, deterministic rules that are pure table computations, contextual rules that
-are model-judged through a configured backend such as Claude Sonnet 5 running through the Claude
-Code CLI harness, and external rules that read a connected system. A finding can carry a verified
+are model-judged through a configured backend such as DeepSeek V4 Flash through OpenRouter, and
+external rules that read a connected system. A finding can carry a verified
 repair. MCMR previews the change, applies it, reparses the file, reruns the rule that reported it,
 and keeps the edit only because the finding is gone.
 
@@ -65,9 +65,9 @@ DataHub is the metadata backbone the rules read and write against, not a bolt-on
 - Fact datasets carry data contracts whose quality clauses are the rule assertions themselves.
 - Six typed structured properties, lane, rule family, codebase, findings, tokens spent, and flap
   score, make every one of those metrics filterable across the whole catalog.
-- Humans and agents both show up as `corpUser` owners. Pedro Valois is the business owner,
-  claude-fable-5 is the operating agent and run actor, and claude-sonnet-5 is derived automatically
-  from observed spend as the data steward of every contextual rule job.
+- Humans and agents both show up as `corpUser` owners. Pedro Valois is the business owner, the
+  running agent is the run actor, and DeepSeek V4 Flash is derived automatically from observed
+  spend as the data steward of every contextual rule job.
 - A glossary holds 54 rule families under an 11-term core vocabulary, each codebase is filed as a
   child domain under Codebases, and lane and category tags are colored and described rather than
   left as bare strings.
@@ -100,17 +100,17 @@ human-readable receipt. Nothing calls `updateDescription`, because a description
 sentence a person wrote and a tool has no business overwriting it.
 
 Contextual rules build typed candidates from the same tables and hand them to one configured
-backend, batched so one turn answers many criteria at once instead of paying for each answer
-separately. We ran Claude Sonnet 5 through the Claude Code CLI harness as that backend for this
-submission.
+backend. DeepSeek V4 Flash accepts every rule and candidate through one strict OpenAI style
+Responses schema when the complete serialized request fits the configured budget. MCMR
+recursively bisects an oversized or unusable request. OpenRouter enables response healing on each
+request while MCMR still validates the schema, rule keys, candidate keys, and evidence itself.
 
 Recording is never part of reading. A check produces evidence of its own only when `--writeback`
 asks for it, and what crosses that boundary is the run's own report, reused rather than
 re-analyzed, so nothing gets judged twice.
 
-We built the whole thing the way we are asking it to be used on other code, inside chefe's
-environment, gated by `chefe run test`, `chefe run lint`, and `chefe run contribute` on every
-change, with `mcmr check .` itself as one more required gate before a commit lands.
+We built the whole thing the way we ask it to be used on other code, with lint, type, test, native,
+documentation, package-build, and `mcmr check .` gates before a commit lands.
 
 ## Challenges we ran into
 
@@ -120,6 +120,12 @@ a result in the same breath as the upsert paid that settling window once per ass
 made writeback take thirteen minutes on a repository of any real size. Declaring every assertion
 for the run first, then reporting every result second, spends that wait once for the whole batch
 instead of once per rule, and the same run now finishes in nine seconds.
+
+**Contextual batching still caused request fan-out.** A batch could hold many candidates, but 44
+contextual rules across distinct table graphs still produced many OpenRouter requests. The local
+engine finished in under one second while provider turns took minutes. We joined contextual rules
+through one virtual repository graph and sent one closed Responses schema when it fit. A packed
+DeepSeek V4 Flash rehearsal completed with 10 failures, 13 findings, and 11 unassessed results.
 
 **We were billing the wrong model and did not notice for a while.** The Claude harness has a
 safe-mode classifier that runs alongside the real judging model, and our cost provenance was
@@ -154,8 +160,7 @@ positive we had to suppress.
 
 ## Accomplishments that we're proud of
 
-MCMR carries 1188 Python tests at 100.00 percent coverage, plus 400 Rust tests underneath the kernel. A
-sibling package, chefe, converged 338 findings to 0 using MCMR itself, in agent-driven batches,
+One of our internal tools converged 338 findings to 0 using MCMR itself, in agent-driven batches,
 with every repair reparsed and rerun before it counted. The whole thing runs as a single command,
 `mcmr check demo/`, with nothing else to set up.
 
@@ -183,7 +188,7 @@ purpose. Teaching the kernel's literal grouping to count a literal sitting inlin
 argument, the blind spot we found in ourselves during this hackathon. Richer
 `DataProcessInstance` records once DataHub accepts ownership, glossary, and structured-property
 aspects on that entity type. And publishing more codebases into the shared Rulebook, so
-cross-repository rule analytics keep compounding the way chefe and demo already do together.
+cross-repository rule analytics keep compounding across our own tools and the demo.
 
 ## Built with
 
@@ -273,7 +278,7 @@ Screenshots, in this order, each cropped near 3 to 2 and tight enough to read at
    the refactor stated by the profile.
 8. The same dataset's Schema tab, every column carrying a real description.
 9. The dataset's Quality tab, the data contract with rule assertions as its clauses.
-10. The Users page, pedro beside claude-fable-5 and claude-sonnet-5, then one entity's ownership
+10. The Users page, Pedro beside the running agent and DeepSeek V4 Flash, then one entity's ownership
     showing human owner, operating agent, and model steward together.
 11. The search page filtered by the `mcmr.lane` structured property, deterministic against
     contextual in one click.

@@ -1,23 +1,44 @@
-from typing import TYPE_CHECKING
-
+import polars as pl
 import pytest
 from httpx import ConnectError, MockTransport, Request, Response
+from pydantic import JsonValue, TypeAdapter
 
-from mcmr.execution import CriterionValue, OpenRouterBackend
+from mcmr.contextual.evaluation import ContextualSweep
+from mcmr.execution import CriterionValue, ModelCandidate, OpenRouterBackend, answer_many
 from mcmr.execution.backends import CandidateProtocol
+from mcmr.execution.queries import ModelMode, ModelQuery
 from mcmr.facts import Evidence
+from mcmr.plugins import Fact
 
 from ...backend_values import assessment_payload, candidate, cited, criteria, payload
 from ...fakes import Category, RouterProbe
-
-if TYPE_CHECKING:
-    from pydantic import JsonValue
 
 
 @pytest.fixture(autouse=True)
 def api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     """Give every request a controlled key that never leaves the environment."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+
+
+def request_format_name(probe: RouterProbe, index: int = 0) -> str:
+    """Read the strict output format name from one controlled request."""
+    text = TypeAdapter(dict[str, JsonValue]).validate_python(probe.sent(index)["text"])
+    format_document = TypeAdapter(dict[str, JsonValue]).validate_python(text["format"])
+    return TypeAdapter(str).validate_python(format_document["name"])
+
+
+def assessed(query: ModelQuery[Category]) -> ModelQuery[Category]:
+    """Turn one controlled classification relation into a predicate assessment relation."""
+    return ModelQuery(
+        candidates=query.candidates,
+        category=Category,
+        instructions="Assess the retained structure.",
+        mode=ModelMode.ASSESS,
+        criteria=list(criteria()),
+        decision_table=[],
+        default=Category.UNCERTAIN,
+        uncertain=Category.UNCERTAIN,
+    )
 
 
 @pytest.mark.anyio
@@ -55,25 +76,36 @@ async def test_one_authorized_request_carries_the_closed_schema() -> None:
         transport=probe.transport,
         model="vendor/model",
         reasoning_effort="high",
+        max_output_tokens=4096,
     )
 
     await backend.classify_candidate(
         cited(), category=Category, instructions="Judge only the retained structure."
     )
 
-    schema = CandidateProtocol(
+    protocol = CandidateProtocol(
         candidate=cited(),
         instructions="Judge only the retained structure.",
-    ).classification_schema(Category)
+    )
     sent = probe.sent()
-    assert (sent["model"], sent["reasoning"]) == ("vendor/model", {"effort": "high"})
-    assert sent["response_format"] == {
-        "type": "json_schema",
-        "json_schema": {"name": "classification", "strict": True, "schema": schema},
+    assert (sent["model"], sent["reasoning"], sent["max_output_tokens"]) == (
+        "vendor/model",
+        {"effort": "high"},
+        4096,
+    )
+    assert sent["plugins"] == [{"id": "response-healing"}]
+    assert sent["text"] == {
+        "format": {
+            "type": "json_schema",
+            "name": "classification",
+            "strict": True,
+            "schema": protocol.classification_schema(Category),
+        }
     }
+    assert sent["input"] == [{"role": "user", "content": protocol.classification_prompt(Category)}]
     assert (probe.authorization(), str(probe.requests[0].url)) == (
         "Bearer test-key",
-        "https://openrouter.ai/api/v1/chat/completions",
+        "https://openrouter.ai/api/v1/responses",
     )
 
 
@@ -110,6 +142,119 @@ async def test_batches_reach_the_server_once_and_split_their_reported_usage() ->
     ]
     assert sum(answer.provenance.input_tokens for answer in answers) == 12
     assert "reasoning" not in classified.sent()
+
+
+@pytest.mark.anyio
+async def test_repository_rules_share_one_current_response_request() -> None:
+    """Independent contextual rules share one closed repository exchange and its exact cost."""
+    query = ModelQuery.classify(
+        ContextualSweep.table(Fact, "ALL-DEMO2001"),
+        category=Category,
+        instructions="Judge the retained structure.",
+    )
+    identifier = next(
+        iter(ModelCandidate.from_row(query.candidates.collect().to_dicts()[0]).retained)
+    )
+    classified: JsonValue = {"answers": {"0": payload(evidence=(identifier,))}}
+    predicates: JsonValue = {"answers": {"0": assessment_payload(evidence=identifier)}}
+    probe = RouterProbe(RouterProbe.completion({"answers": {"0": classified, "1": predicates}}))
+
+    resolved = await answer_many(
+        OpenRouterBackend(transport=probe.transport),
+        [query, assessed(query)],
+    )
+
+    assert len(probe.requests) == 1
+    assert request_format_name(probe) == "repository_rules"
+    assert sum(spend.tokens for result in resolved for spend in result.spend.values()) == 19
+
+
+@pytest.mark.anyio
+async def test_repository_transport_failure_bisects_before_retrying_rules() -> None:
+    """A failed packed turn retries smaller groups through their isolated rule protocol."""
+    query = ModelQuery.classify(
+        ContextualSweep.table(Fact, "ALL-DEMO2001"),
+        category=Category,
+        instructions="Judge the retained structure.",
+    )
+    requests: list[Request] = []
+
+    def flaky_respond(request: Request) -> Response:
+        requests.append(request)
+        if len(requests) == 1:
+            raise ConnectError("refused")
+        return Response(200, json=RouterProbe.completion(payload()))
+
+    resolved = await OpenRouterBackend(
+        transport=MockTransport(flaky_respond),
+        batch_size=1,
+    ).answered_many([query, query])
+
+    assert len(resolved) == 2
+    assert len(requests) == 5
+
+
+@pytest.mark.anyio
+async def test_empty_repository_rules_never_reach_openrouter() -> None:
+    """Collected rules with no candidates resolve locally before packing."""
+    query = ModelQuery.classify(
+        ContextualSweep.table(Fact, "ALL-DEMO2001"),
+        category=Category,
+        instructions="Judge the retained structure.",
+    )
+    empty = query.model_copy(update={"candidates": query.candidates.filter(pl.lit(False))})
+    probe = RouterProbe(RouterProbe.completion(payload()))
+
+    resolved = await OpenRouterBackend(transport=probe.transport).answered_many([empty])
+
+    assert len(resolved) == 1
+    assert probe.requests == []
+
+
+@pytest.mark.anyio
+async def test_invalid_repository_keys_bisect_and_leave_each_rule_isolated() -> None:
+    """A malformed packed envelope retries only smaller groups through existing isolation."""
+    query = ModelQuery.classify(
+        ContextualSweep.table(Fact, "ALL-DEMO2001"),
+        category=Category,
+        instructions="Judge the retained structure.",
+    )
+    identifier = next(
+        iter(ModelCandidate.from_row(query.candidates.collect().to_dicts()[0]).retained)
+    )
+    probe = RouterProbe(
+        RouterProbe.completion({"answers": {"unexpected": payload(evidence=(identifier,))}})
+    )
+
+    resolved = await OpenRouterBackend(transport=probe.transport).answered_many([query, query])
+
+    assert len(resolved) == 2
+    assert len(probe.requests) == 5
+
+
+@pytest.mark.anyio
+async def test_an_oversized_repository_group_bisects_to_isolated_rule_batches() -> None:
+    """A conservative prompt budget splits rules without losing their existing fallback path."""
+    query = ModelQuery.classify(
+        ContextualSweep.table(Fact, "ALL-DEMO2001"),
+        category=Category,
+        instructions="Judge the retained structure.",
+    )
+    identifier = next(
+        iter(ModelCandidate.from_row(query.candidates.collect().to_dicts()[0]).retained)
+    )
+    probe = RouterProbe(
+        RouterProbe.completion({"answers": {"0": payload(evidence=(identifier,))}})
+    )
+
+    resolved = await OpenRouterBackend(
+        transport=probe.transport,
+        prompt_token_budget=1,
+    ).answered_many([query, query])
+
+    assert len(resolved) == 2
+    assert len(probe.requests) == 2
+    assert {request_format_name(probe, index) for index in range(2)} == {"classification"}
 
 
 @pytest.mark.anyio
@@ -203,8 +348,17 @@ async def test_an_assessment_call_where_every_batch_dies_raises_too() -> None:
         (RouterProbe({"error": {"message": "no credits"}}, status_code=402), "402"),
         (RouterProbe("<html>gateway</html>", status_code=503), "gateway"),
         (RouterProbe("not json at all"), "could not answer"),
-        (RouterProbe({"choices": []}), "no answer"),
-        (RouterProbe({"choices": [{"message": {"content": "  "}}]}), "no answer"),
+        (RouterProbe({"output": []}), "no answer"),
+        (
+            RouterProbe(
+                {
+                    "output": [
+                        {"type": "message", "content": [{"type": "output_text", "text": "  "}]}
+                    ]
+                }
+            ),
+            "no answer",
+        ),
         (
             RouterProbe(RouterProbe.completion(payload()), failure=ConnectError("refused")),
             "could not answer",
@@ -225,7 +379,7 @@ async def test_every_unusable_response_raises_one_bounded_diagnostic(
 @pytest.mark.anyio
 @pytest.mark.parametrize(
     "usage",
-    [None, {}, {"prompt_tokens": -3, "completion_tokens": "4"}],
+    [None, {}, {"input_tokens": -3, "output_tokens": "4"}],
     ids=["absent", "empty", "invalid"],
 )
 async def test_absent_or_invalid_telemetry_never_invents_counts(usage: JsonValue) -> None:

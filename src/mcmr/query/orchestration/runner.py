@@ -1,4 +1,3 @@
-import asyncio
 from functools import partial
 from typing import TYPE_CHECKING, cast
 
@@ -6,7 +5,7 @@ from anyio.to_thread import run_sync
 
 from ...execution import ClassificationBackend
 from ...execution.queries import ModelQuery, is_model_query
-from ...execution.queries.runtime import ResolvedQuery
+from ...execution.queries.runtime import ResolvedQuery, answer_many
 from ..contracts import RuleQuery
 from .planning import ResolvedRule
 from .query import QueryExecution
@@ -41,7 +40,7 @@ class TableRunner:
             self._judged(query, policies[prepared.path])
             for prepared, query in zip(rules, self._planned(tables, rules, accepted), strict=True)
         ]
-        answered = await asyncio.gather(*(self._resolve(query) for query in planned))
+        answered = await self._resolve_many(planned)
         resolved = self._resolved(
             rules=rules,
             queries=[answer.query for answer in answered],
@@ -149,8 +148,18 @@ class TableRunner:
             return query
         raise TypeError(f"{prepared.path} returned {type(query).__name__} instead of a query")
 
-    async def _resolve(self, query: RuleQuery | ModelQuery) -> ResolvedQuery:
-        if isinstance(query, RuleQuery):
-            return ResolvedQuery(query=query)
-        backend = cast("ClassificationBackend", self.dependencies[ClassificationBackend])
-        return await backend.answered(query)
+    async def _resolve_many(
+        self,
+        queries: Sequence[RuleQuery | ModelQuery],
+    ) -> list[ResolvedQuery]:
+        """Resolve deterministic queries locally and give model rules one backend opportunity."""
+        model_queries = [query for query in queries if is_model_query(query)]
+        if model_queries:
+            backend = cast("ClassificationBackend", self.dependencies[ClassificationBackend])
+            model_answers = iter(await answer_many(backend, model_queries))
+        else:
+            model_answers = iter([])
+        return [
+            next(model_answers) if is_model_query(query) else ResolvedQuery(query=query)
+            for query in queries
+        ]

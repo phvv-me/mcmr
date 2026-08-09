@@ -23,3 +23,16 @@ class RunEvent(FrozenModel):
         """Return how far the repair got in the run this event records."""
         stated = self.properties.get("repair", "")
         return RepairState(stated) if stated in set(RepairState) else RepairState.NONE
+
+    @property
+    def tokens(self) -> int:
+        """Return what the model turns behind this recorded verdict cost, in tokens.
+
+        A deterministic verdict states no token count at all, which reads as the nothing it spent
+        rather than as a missing measurement.
+        """
+        counted = (
+            self.properties.get(name, "")
+            for name in ("inputTokens", "cachedInputTokens", "outputTokens")
+        )
+        return sum(int(value) for value in counted if value.isdigit())

@@ -43,7 +43,7 @@ impl Calls<'_> {
         let closed = at.end();
         let range = self.source.range_location(opened..closed);
         let mut call = CallSite::new(named, self.source.node("call", range));
-        call.result_is_discarded = self.discarded.contains(&(opened.line, opened.column));
+        call.context.result_is_discarded = self.discarded.contains(&(opened.line, opened.column));
         self.calls.push(call);
     }
 }

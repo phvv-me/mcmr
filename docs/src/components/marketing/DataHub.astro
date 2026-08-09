@@ -1,0 +1,81 @@
+---
+const facets = [
+  {
+    title: 'Rules as entities',
+    body: 'Every rule is one DataJob under one shared mcmr/rulebook flow for the whole instance, so its page lists every codebase that runs it and what each one last got.',
+    href: '/mcmr/docs/concepts/rulebook/',
+  },
+  {
+    title: 'Verdict timelines',
+    body: 'Each rule and subject pair becomes one DataHub assertion. A later run lands on the same assertion, so history reads as a timeline instead of a pile of documents.',
+    href: '/mcmr/docs/datahub/what-gets-published/',
+  },
+  {
+    title: 'Run instances',
+    body: 'Each writeback mints one DataProcessInstance, stamped on every result it reports, so a reader pivots from a rule’s timeline to the run that wrote it and back.',
+    href: '/mcmr/docs/datahub/what-gets-published/',
+  },
+  {
+    title: 'Cost provenance',
+    body: 'A contextual verdict states its backend, model, and token counts. The rule job rolls that up per codebase, so a rulebook of hundreds sorts by what it costs for what it finds.',
+    href: '/mcmr/docs/datahub/cost-provenance/',
+  },
+  {
+    title: 'Incidents for intermittent findings',
+    body: 'A subject that flips failing, passing, failing again raises an incident titled by the rule and file, closed the moment it settles, so a table that will not stay fixed surfaces on its own.',
+    href: '/mcmr/docs/datahub/incidents-and-contracts/',
+  },
+  {
+    title: 'Contracts',
+    body: 'A data quality contract states the repository-wide promise every rule that judged a whole table makes, derived from the table’s own key rather than stacked as a second document.',
+    href: '/mcmr/docs/datahub/incidents-and-contracts/',
+  },
+  {
+    title: 'Structured properties',
+    body: 'Lane, rule family, codebase, findings, tokens spent, and flap score are typed DataHub properties, not a string in a table nobody can sort or filter.',
+    href: '/mcmr/docs/datahub/what-gets-published/',
+  },
+  {
+    title: 'Agents as users',
+    body: 'A human answers for the codebase, an agent operates the checks, and the model that judged the contextual lane is credited too, rather than everything sharing one account.',
+    href: '/mcmr/docs/datahub/why-metadata/',
+  },
+];
+---
+
+<section id="datahub" class="bg-primary text-primary-content border-b-2 border-base-300">
+  <div class="mx-auto max-w-6xl px-4 py-16 lg:py-20">
+    <div class="max-w-2xl space-y-3">
+      <p class="font-mono text-xs tracking-[0.2em] uppercase opacity-70">The metadata backbone</p>
+      <h2 class="font-display text-4xl sm:text-5xl">A rulebook the next agent can read</h2>
+      <p class="text-primary-content/85">
+        MCMR keeps no cache of its own. When you ask it to, it writes what a run learned into
+        DataHub, the catalog most data teams already run, so the conclusion lives beside the asset
+        it is about instead of in a report only MCMR can open.
+      </p>
+    </div>
+
+    <div class="mt-10 grid gap-px border-2 border-base-content bg-base-content sm:grid-cols-2 lg:grid-cols-4">
+      {
+        facets.map((facet) => (
+          <a
+            href={facet.href}
+            class="group bg-base-100 text-base-content hover:bg-base-200 flex flex-col gap-2 p-6 transition-colors"
+          >
+            <h3 class="text-base font-bold" style="font-family: var(--font-brand)">
+              {facet.title}
+            </h3>
+            <p class="text-base-content/70 text-sm leading-relaxed">{facet.body}</p>
+            <span class="mt-auto pt-2 text-xs font-semibold underline underline-offset-4">
+              Read more
+            </span>
+          </a>
+        ))
+      }
+    </div>
+
+    <a href="/mcmr/docs/datahub/why-metadata/" class="btn btn-outline btn-sm mt-10">
+      Why MCMR writes to DataHub at all
+    </a>
+  </div>
+</section>

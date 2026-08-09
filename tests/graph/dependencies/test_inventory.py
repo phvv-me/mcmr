@@ -89,6 +89,7 @@ requires = ['Build>=1']
 demo = '>=1,<3'
 extra = '*'
 local = { path = '../local', editable = true }
+project = { path = '.', editable = true }
 [dev.python.deps]
 tool = '>=4'
 """
@@ -131,6 +132,7 @@ source = { registry = 'pypi' }
 def test_inventory_merges_standard_and_chefe_declarations(
     inventory: DependencyInventory,
 ) -> None:
+    """A sibling checkout stays a dependency while the repository's own install does not."""
     by_name = {item.name: item for item in inventory.declarations()}
 
     assert list(by_name) == ["build", "demo", "dev", "extra", "local", "runtime", "tool"]

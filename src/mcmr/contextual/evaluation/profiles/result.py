@@ -1,9 +1,11 @@
+from functools import cached_property
 from typing import Annotated
 
 from patos import FrozenModel
 from pydantic import Field, NonNegativeFloat
 
 from ..cases import ContextualTrial
+from ..provenance import ProvenanceTotals
 from .backend import BackendProfile
 
 
@@ -22,18 +24,12 @@ class ProfileExperiment(FrozenModel):
     @property
     def cached_input_tokens(self) -> int:
         """Return all cached input tokens reported by candidate model turns."""
-        return sum(
-            trial.provenance.cached_input_tokens
-            for trial in self.trials
-            if trial.provenance is not None
-        )
+        return self._tokens.cached_input_tokens
 
     @property
     def input_tokens(self) -> int:
         """Return all input tokens reported by candidate model turns."""
-        return sum(
-            trial.provenance.input_tokens for trial in self.trials if trial.provenance is not None
-        )
+        return self._tokens.input_tokens
 
     @property
     def model_calls(self) -> int:
@@ -43,9 +39,7 @@ class ProfileExperiment(FrozenModel):
     @property
     def output_tokens(self) -> int:
         """Return all output tokens reported by candidate model turns."""
-        return sum(
-            trial.provenance.output_tokens for trial in self.trials if trial.provenance is not None
-        )
+        return self._tokens.output_tokens
 
     @property
     def passed(self) -> int:
@@ -60,8 +54,11 @@ class ProfileExperiment(FrozenModel):
     @property
     def reasoning_tokens(self) -> int:
         """Return all reasoning tokens reported by candidate model turns."""
-        return sum(
-            trial.provenance.reasoning_tokens
-            for trial in self.trials
-            if trial.provenance is not None
+        return self._tokens.reasoning_tokens
+
+    @cached_property
+    def _tokens(self) -> ProvenanceTotals:
+        """Total every token counter across trials that reported provenance."""
+        return ProvenanceTotals.of(
+            trial.provenance for trial in self.trials if trial.provenance is not None
         )

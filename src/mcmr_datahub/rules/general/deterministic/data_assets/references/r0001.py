@@ -32,7 +32,7 @@ def missing_data_asset_reference(subject: Table[DataAssetReferenceFact]) -> Coun
     Exceptions
     ----------
     A reference the catalog does hold is not reported here however unhealthy or deprecated that
-    asset is, because lifecycle and quality are what the neighbouring rules answer. An asset a
+    asset is, because lifecycle and quality are what the neighboring rules answer. An asset a
     query builds by interpolating a name at run time is never an exact identifier, so it is absent
     from the reference stream rather than reported as unresolved. With no catalog snapshot
     configured the rule has nothing to compare against and reports nothing, which is why an empty

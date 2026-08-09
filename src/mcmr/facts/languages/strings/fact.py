@@ -15,4 +15,6 @@ type StringExpressionValue = Annotated[
 class StringExpressionFact(Fact):
     """Describe every literal and fixed repetition producing a string."""
 
-    expressions: list[StringExpressionValue] = []
+    expressions: list[StringExpressionValue] = Field(
+        default=[], description="literal and fixed-repetition string expressions this file folds"
+    )

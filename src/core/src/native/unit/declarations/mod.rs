@@ -38,7 +38,8 @@ impl Unit {
                 let range = comments::at(node.start_byte()..node.end_byte());
                 let mut fact =
                     FunctionRecord::new(self.source.span(range), dialect(self.language), name);
-                fact.identity.scope = if held { "method" } else { "module" }.to_string();
+                fact.identity
+                    .state_scope(if held { "method" } else { "module" });
                 fact.presentation.visibility = visibility(self.reach(node)).to_string();
                 fact.semantics.roles.is_async = body.is_some_and(|body| {
                     walk(body).iter().any(|held| {
@@ -68,7 +69,7 @@ impl Unit {
     ///
     /// A position a caller may leave out is still a position, so the list holds it and says a
     /// caller need not fill it. Dropping it instead would close the gap between two parameters
-    /// that are not adjacent and make a rule about transposable neighbours compare a pair no
+    /// that are not adjacent and make a rule about transposable neighbors compare a pair no
     /// caller ever writes side by side.
     fn parameters(&self, declarator: Syntax) -> Vec<FunctionParameter> {
         let Some(list) = descendant(declarator, "parameter_list") else {

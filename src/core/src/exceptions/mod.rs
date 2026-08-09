@@ -1,8 +1,8 @@
 use crate::discovery::{Document, Packages};
 use crate::graph::{ImportingModule, absolute_module};
-use crate::walk::{docstring, qualified_name};
+use crate::walk::{is_reexport_only, qualified_name};
 use rayon::prelude::*;
-use ruff_python_ast::{Expr, ModModule, Stmt};
+use ruff_python_ast::{ModModule, Stmt};
 use ruff_python_parser::parse_module;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -123,25 +123,6 @@ fn imports(module: &ModModule, importer: ImportingModule<'_>) -> Vec<(String, St
                 .map(move |alias| (target.clone(), alias.name.to_string()))
         })
         .collect()
-}
-
-/// Whether one module hands names on rather than declaring anything of its own.
-///
-/// A module holding nothing but imports is a seam, so importing through it does not prove that a
-/// second place depends on the name. Its own consumers do, and they are counted where they are.
-fn is_reexport_only(module: &ModModule) -> bool {
-    let body = match module.body.split_first() {
-        Some((first, rest)) if docstring(std::slice::from_ref(first)).is_some() => rest,
-        _ => module.body.as_slice(),
-    };
-    body.iter().all(|statement| match statement {
-        Stmt::Import(_) | Stmt::ImportFrom(_) => true,
-        Stmt::Assign(item) => item
-            .targets
-            .iter()
-            .all(|target| matches!(target, Expr::Name(name) if name.id.as_str() == "__all__")),
-        _ => false,
-    })
 }
 
 /// Return the names of every class this repository derives from an exception.

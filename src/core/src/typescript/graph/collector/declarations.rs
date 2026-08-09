@@ -1,7 +1,9 @@
 use super::contracts::{CallableDeclaration, CallableSignature, DeclaredParameter, KeyedMember};
 use super::relations::WrittenReference;
 use super::{Collector, Owner, key_name, member_reach, stated_reach};
-use crate::graph::{DatatypeKind, EdgeKind, Language, Node, NodeKind, Visibility, parameter};
+use crate::graph::{
+    DatatypeKind, EdgeKind, Language, Node, NodeBinding, NodeKind, NodeShape, Visibility, node,
+};
 use crate::typescript::support::expression_name;
 use oxc_ast::ast::{
     ArrowFunctionExpression, Class, Expression, FormalParameter, FormalParameters, Function,
@@ -58,18 +60,23 @@ impl<'ts> Collector<'ts> {
         held: &DeclaredParameter<'_, '_>,
     ) -> Option<Node> {
         let named = held.name.as_deref()?;
-        let mut declared = parameter(
+        let declared = node(
             Language::TypeScript,
+            NodeKind::Parameter,
             &format!("{}.{named}", owner.qualname),
+        )
+        .binds(NodeBinding {
             ordinal,
-            held.kind,
-        );
-        declared.has_default = held.optional;
-        declared.path = Some(self.source.relative.clone());
-        declared.line = Some(self.line(held.span));
-        declared.annotation = held
-            .annotation
-            .map(|annotation| self.rendered(annotation.type_annotation.span()));
+            kind: held.kind,
+            has_default: held.optional,
+        })
+        .declared(self.written(held.span))
+        .shaped(NodeShape {
+            annotation: held
+                .annotation
+                .map(|annotation| self.rendered(annotation.type_annotation.span())),
+            ..NodeShape::default()
+        });
         Some(declared)
     }
 
@@ -85,22 +92,28 @@ impl<'ts> Collector<'ts> {
         visibility: Visibility,
         annotation: Option<&TSTypeAnnotation<'_>>,
     ) -> Owner {
-        let mut declared = self.place(kind, named, span, visibility);
-        declared.annotation = annotation.map(|held| self.rendered(held.type_annotation.span()));
+        let declared = self.place(kind, named, span, visibility).shaped(NodeShape {
+            annotation: annotation.map(|held| self.rendered(held.type_annotation.span())),
+            ..NodeShape::default()
+        });
         self.declare(declared, span)
     }
 
     pub(super) fn callable_owner(&mut self, callable: CallableDeclaration<'_, '_>) -> Owner {
-        let mut declared = self.place(
-            callable.kind,
-            callable.name,
-            callable.span,
-            callable.visibility,
-        );
-        declared.asynchronous = callable.asynchronous;
-        declared.return_annotation = callable
-            .returns
-            .map(|annotation| self.rendered(annotation.type_annotation.span()));
+        let declared = self
+            .place(
+                callable.kind,
+                callable.name,
+                callable.span,
+                callable.visibility,
+            )
+            .shaped(NodeShape {
+                return_annotation: callable
+                    .returns
+                    .map(|annotation| self.rendered(annotation.type_annotation.span())),
+                asynchronous: callable.asynchronous,
+                ..NodeShape::default()
+            });
         self.declare(declared, callable.span)
     }
 

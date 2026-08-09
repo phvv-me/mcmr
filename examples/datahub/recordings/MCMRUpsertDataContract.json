@@ -1,0 +1,13 @@
+[
+  {
+    "variables": {},
+    "response": {
+      "data": {
+        "upsertDataContract": {
+          "urn": "urn:li:dataContract:mcmr-demo-facts-syntax-fact"
+        }
+      },
+      "extensions": {}
+    }
+  }
+]

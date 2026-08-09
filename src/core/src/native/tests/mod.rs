@@ -112,7 +112,7 @@ fn a_position_a_caller_may_leave_out_is_still_a_position() {
         .collect();
 
     // Dropping the optional one closed the gap between two parameters that never sit side by
-    // side, so a rule about transposable neighbours compared a pair no caller can write.
+    // side, so a rule about transposable neighbors compared a pair no caller can write.
     assert_eq!(stated.len(), 2);
     assert_eq!(stated[1].0, "scale");
     assert_eq!(required, vec![true, false]);
@@ -238,13 +238,13 @@ fn an_external_symbol_keeps_the_name_the_source_qualified() {
         graph
             .nodes
             .iter()
-            .any(|node| node.qualname == "std::strcmp")
+            .any(|node| node.qualname() == "std::strcmp")
     );
     assert!(
         !graph
             .nodes
             .iter()
-            .any(|node| node.qualname == "std::std::strcmp")
+            .any(|node| node.qualname() == "std::std::strcmp")
     );
 }
 

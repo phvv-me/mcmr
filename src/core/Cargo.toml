@@ -4,6 +4,9 @@ version = "0.0.1"
 edition = "2024"
 description = "Native analysis and typed Python tables for My Code, My Rules"
 license = "Apache-2.0"
+homepage = "https://phvv.me/mcmr/"
+documentation = "https://phvv.me/mcmr/docs/"
+repository = "https://github.com/phvv-me/mcmr"
 
 [lib]
 name = "kernel_tables"

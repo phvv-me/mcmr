@@ -5,8 +5,10 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 from hypothesis import settings
-from pydantic import BaseModel
+from patos import Model
+from pydantic import BaseModel, NonNegativeInt
 
+from mcmr.checking.evaluations import Evaluation
 from mcmr.domain.contracts import fact_type
 from mcmr.plugins import Fact, fact_table
 from mcmr.project import locate
@@ -106,3 +108,19 @@ type FactValue = (
 type Declared = (
     bool | int | float | str | None | BaseModel | Sequence[Declared] | Mapping[str, Declared]
 )
+
+
+class CountedEvaluation(Model):
+    """Return one retained evaluation and count how often it was asked for.
+
+    A deferred evaluation is only supposed to be materialized when a rule really fails, and the
+    only way to check that is to count the requests, so both suites that check it share one spy.
+    """
+
+    evaluation: Evaluation
+    calls: NonNegativeInt = 0
+
+    def __call__(self) -> Evaluation:
+        """Return the retained evaluation and count this request."""
+        self.calls += 1
+        return self.evaluation

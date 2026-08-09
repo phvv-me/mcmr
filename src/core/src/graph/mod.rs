@@ -12,9 +12,9 @@ mod tests;
 pub use build::build;
 pub use construction::{identity, node, parameter};
 pub use contracts::{
-    DatatypeKind, Edge, EdgeKind, Export, ExportBypass, Graph, Language, Node, NodeKind,
-    ParameterKind, Reference, ReferenceLocation, ReferenceResolution, Relation, Resolution,
-    Stated, Visibility,
+    DatatypeKind, Edge, EdgeKind, Export, ExportBypass, Graph, Language, Node, NodeBinding,
+    NodeKind, NodePlacement, NodeShape, ParameterKind, Reference, ReferenceLocation,
+    ReferenceResolution, Relation, Resolution, Stated, Visibility,
 };
 pub use python::{ImportingModule, absolute_module};
 pub use reach::{Declaration, DeclarationCounts, Reach, reach};

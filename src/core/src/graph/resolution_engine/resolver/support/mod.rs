@@ -54,7 +54,7 @@ pub fn stray(
     edges: &mut Vec<Edge>,
 ) {
     let placeholder = node(reference.language, kind, qualname);
-    let target = placeholder.id.clone();
+    let target = placeholder.id().to_string();
     nodes.entry(target.clone()).or_insert(placeholder);
     edges.push(Edge {
         source: reference.source.clone(),

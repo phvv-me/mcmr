@@ -13,9 +13,16 @@ if TYPE_CHECKING:
 class CloneGroupFact(Fact):
     """Describe one group of structurally similar source fragments."""
 
-    fragments: Annotated[list[CloneFragment], Field(min_length=2)]
-    token_length: DetectableCloneTokenCount
-    repository_line_count: PositiveInt
+    fragments: Annotated[
+        list[CloneFragment],
+        Field(min_length=2, description="every copy of this repeated run across the repository"),
+    ]
+    token_length: DetectableCloneTokenCount = Field(
+        description="number of normalized tokens the repeated run spans"
+    )
+    repository_line_count: PositiveInt = Field(
+        description="total line count across every scanned source stream"
+    )
 
     @property
     def copy_count(self) -> int:

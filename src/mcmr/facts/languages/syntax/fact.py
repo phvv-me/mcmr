@@ -1,7 +1,7 @@
 from functools import cached_property
 from typing import TYPE_CHECKING, Self
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from ...foundation import Fact, SyntaxElement, SyntaxRecord
 from .packed import PackedNode
@@ -15,11 +15,23 @@ if TYPE_CHECKING:
 class SyntaxFact(Fact):
     """Describe one declaration as a tree and its retained source."""
 
-    qualname: str = ""
-    kind: str = ""
-    source: str = ""
-    tree: SyntaxNode | None = None
-    nodes: list[SyntaxRecord] = []
+    qualname: str = Field(
+        default="", description="dotted qualified name of the declaration this fact describes"
+    )
+    kind: str = Field(
+        default="", description="language-neutral kind of the declaration's root node"
+    )
+    source: str = Field(default="", description="exact source text the declaration spans")
+    tree: SyntaxNode | None = Field(
+        default=None,
+        description="expanded object tree of the declaration, when built as objects rather than "
+        "compact records",
+    )
+    nodes: list[SyntaxRecord] = Field(
+        default=[],
+        description="compact preorder records of the declaration tree, when built without an "
+        "object tree",
+    )
 
     @property
     def root(self) -> SyntaxElement | None:

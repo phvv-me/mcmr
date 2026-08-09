@@ -45,7 +45,7 @@ impl comments::Dialect for Notes {
 /// them all, so the only reader that sees an ordinary comment is a lexical one. What it has to get
 /// right is where a comment is not a comment, since `//` inside a URL and `/*` inside a pattern
 /// are text. Strings, raw strings, and characters are therefore stepped over rather than read, and
-/// a block comment nests, which is the one place this language differs from its neighbours.
+/// a block comment nests, which is the one place this language differs from its neighbors.
 ///
 /// The cursor walks characters rather than bytes. A source is a `str` and slicing one anywhere but
 /// a character boundary panics, so a scanner stepping a byte at a time takes the whole run down

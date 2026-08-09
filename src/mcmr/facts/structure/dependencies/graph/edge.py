@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+from pydantic import Field
+
 from ....foundation import Relation
 
 if TYPE_CHECKING:
@@ -9,7 +11,13 @@ if TYPE_CHECKING:
 class DependencyEdge(Relation):
     """Retain one resolved import between repository-owned modules."""
 
-    path: str = ""
-    line: PositiveInt = 1
-    source_component: NonNegativeInt = 0
-    target_component: NonNegativeInt = 0
+    path: str = Field(default="", description="repository relative path of the importing module")
+    line: PositiveInt = Field(default=1, description="line number the import statement occupies")
+    source_component: NonNegativeInt = Field(
+        default=0,
+        description="identifier of the strongly connected component holding the importing module",
+    )
+    target_component: NonNegativeInt = Field(
+        default=0,
+        description="identifier of the strongly connected component holding the imported module",
+    )

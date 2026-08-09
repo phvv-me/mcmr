@@ -190,13 +190,12 @@ impl Collector<'_> {
         field: &StaticMemberExpression<'_>,
         span: Span,
     ) {
-        let mut declared = node(
+        let declared = node(
             Language::TypeScript,
             NodeKind::Attribute,
             &format!("{holder}.{}", field.property.name),
-        );
-        declared.path = Some(self.source.relative.clone());
-        declared.line = Some(self.line(span));
+        )
+        .declared(self.written(span));
         let owner = Owner {
             id: identity(Language::TypeScript, NodeKind::Class, &holder),
             kind: NodeKind::Class,

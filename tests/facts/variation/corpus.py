@@ -426,6 +426,27 @@ def test_range_case(value: int) -> None:
     assert value >= 0
 '''
     ),
+    "web/index.ts": "export * from './cart';\nexport { total } from './deep/pricing';\n",
+    "web/cart.ts": (
+        """import type { Money } from '../shared/money';
+export enum Currency {
+  Yen,
+}
+export namespace Cart {
+  export const empty: Money[] = [];
+}
+"""
+    ),
+    "web/deep/pricing.ts": (
+        """import { Currency } from '../cart';
+export function total(lines: number[]): number {
+  // @ts-ignore
+  const loose = lines as any;
+  return loose!.length * Currency.Yen;
+}
+"""
+    ),
+    "shared/money.ts": "export interface Money {\n  amountMinor: number;\n}\n",
     "src/lifetimes.rs": (
         """pub fn describe(name: &'static str) -> usize {
     name.len()

@@ -1,4 +1,5 @@
 use super::super::collections::owned;
+use super::super::targets::declared_targets;
 use crate::walk::{children, expressions};
 use ruff_python_ast::{Expr, Parameters, Stmt};
 use std::collections::BTreeSet;
@@ -98,19 +99,12 @@ pub(in crate::families) fn complete_statement_expressions(statement: &Stmt) -> V
     found
 }
 
+/// Return every expression one statement holds, reading its targets beside what it evaluates.
 pub(super) fn complete_stated_expressions(statement: &Stmt) -> Vec<&Expr> {
     let mut found = complete_statement_expressions(statement);
-    match statement {
-        Stmt::Assign(item) => found.extend(item.targets.iter()),
-        Stmt::AnnAssign(item) => found.push(item.target.as_ref()),
-        Stmt::AugAssign(item) => found.push(item.target.as_ref()),
-        Stmt::With(item) => found.extend(
-            item.items
-                .iter()
-                .filter_map(|entry| entry.optional_vars.as_deref()),
-        ),
-        Stmt::TypeAlias(item) => found.push(item.name.as_ref()),
-        _ => {}
+    found.extend(declared_targets(statement));
+    if let Stmt::TypeAlias(item) = statement {
+        found.push(item.name.as_ref());
     }
     found
 }

@@ -106,7 +106,7 @@ async def test_a_batch_answer_reaches_the_candidate_its_key_names() -> None:
         str(index): payload(evidence=(f"signal{index}",)) for index in range(12)
     }
     # A batch object arrives in whatever order the model wrote it, which for numeric keys is
-    # never the numeric order, so an answer that travelled by position would land elsewhere.
+    # never the numeric order, so an answer that traveled by position would land elsewhere.
     scrambled = {key: keyed[key] for key in sorted(keyed, reverse=True)}
     answers = await CodexBackend(
         runner=StubRunner(

@@ -23,7 +23,7 @@ class RecordedTransport(httpx.AsyncBaseTransport):
 
     A GraphQL request names its operation in its own body. An ingestion request names it in its
     URL instead, so `POST /openapi/v3/entity/dataset` is recorded as `post-openapi-v3-entity-
-    dataset.json` and is keyed by nothing, because MCMR reads no field out of the acknowledgement.
+    dataset.json` and is keyed by nothing, because MCMR reads no field out of the acknowledgment.
     """
 
     def __init__(self, root: Path) -> None:

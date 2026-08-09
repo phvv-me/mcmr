@@ -30,7 +30,9 @@ def diagnostic_context(
     Definition
     ----------
     Compare operational questions, event identity, outcome, correlation, dimensions, errors,
-    cardinality, privacy, volume, and downstream search or aggregation needs.
+    cardinality, privacy, volume, and downstream search or aggregation needs. A call reaches this
+    pass when it names a log level, a metric emitter, or a tracing operation, which is what a
+    signal is spelled as in every language this reads.
 
     Evidence
     --------
@@ -38,7 +40,10 @@ def diagnostic_context(
 
     Exceptions
     ----------
-    Hot paths may emit compact signals when correlation links to richer context elsewhere.
+    Hot paths may emit compact signals when correlation links to richer context elsewhere. A bare
+    `span` is not a signal, because every parser, AST, and macro library answers `span` with the
+    source range of a node, so a tracing span is recognized by the operation that starts or
+    annotates one rather than by the word alone.
 
     Examples
     --------
@@ -53,7 +58,8 @@ def diagnostic_context(
     """
     telemetry = (
         r"(?i)(?:^|\.)(?:debug|info|warn|warning|error|exception|critical|log|metric|"
-        r"counter|histogram|gauge|trace|span|emit|observe|increment|set_attribute)$"
+        r"counter|histogram|gauge|trace|emit|observe|increment|add_event|record_exception|"
+        r"set_attribute|set_attributes|start_span|start_active_span|start_as_current_span)$"
     )
     return backend.classification(
         subject,

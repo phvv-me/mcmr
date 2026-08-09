@@ -20,6 +20,7 @@ from mcmr.facts import (
 )
 
 from .catalog import DataHubCatalog
+from .names import AssetName
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -205,8 +206,17 @@ class SQLReferenceExtractor(FrozenModel):
         *,
         location: str,
     ) -> tuple[list[DataAssetReference], list[DataFieldReference]]:
-        """Read one direct URN or parse every SQL statement in one literal."""
-        if text.startswith("urn:li:dataset:("):
+        """Read one direct URN or parse every SQL statement in one literal.
+
+        A literal that opens a dataset URN is answered as a URN and never handed to the SQL
+        parser, because the string constant a URN builder holds and the message template a report
+        formats both open one without ever finishing one, and reading either as SQL invents an
+        asset out of whatever the parser makes of the rest of the sentence.
+        """
+        spelling = AssetName(text=text)
+        if spelling.opens_dataset_urn:
+            if not spelling.is_dataset_urn:
+                return [], []
             return [self._asset_reference(text, self.catalog.resolve(text), location)], []
         try:
             statements = parse(text, read=self.dialect or None)
@@ -239,7 +249,15 @@ class SQLReferenceExtractor(FrozenModel):
         statement: exp.Expression,
         location: str,
     ) -> tuple[list[DataAssetReference], list[DataFieldReference]]:
-        """Resolve the tables and unambiguous columns in one parsed SQL statement."""
+        """Resolve the tables and unambiguous columns in one parsed SQL statement.
+
+        A table the catalog resolves is always a reference, since the catalog itself proved the
+        spelling names an asset. An unresolved table is a reference only when it is qualified,
+        because the parser reads any sentence it is handed and a lone word is what `delete the
+        annotation` and `from . import writer` leave behind. A qualified name states its own
+        container, which is evidence a bare word never carries, so reporting one as absent is a
+        claim about the catalog rather than a guess about the sentence.
+        """
         tables = [
             (table, self.catalog.resolve(".".join(part.name for part in table.parts)))
             for table in statement.find_all(exp.Table)
@@ -248,12 +266,10 @@ class SQLReferenceExtractor(FrozenModel):
         resolved = [asset for _table, asset in tables if asset is not None]
         casts = self._casts(statement)
         assets = [
-            self._asset_reference(
-                ".".join(part.name for part in table.parts),
-                asset,
-                location,
-            )
+            self._asset_reference(spelling, asset, location)
             for table, asset in tables
+            if (spelling := ".".join(part.name for part in table.parts))
+            if asset is not None or AssetName(text=spelling).is_qualified
         ]
         fields = [
             reference

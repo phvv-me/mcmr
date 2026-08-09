@@ -2,7 +2,7 @@ from collections.abc import Iterable
 
 from patos import FrozenModel, Runtime
 
-from ....domain.contracts import EngineStats
+from ....domain.contracts import EngineStats, ModelSpend
 from ..answer import Evaluation
 from ..deferred import DeferredEvaluation
 from .summary import TableRuleSummary
@@ -14,3 +14,4 @@ class TableEvaluationReport(FrozenModel):
     summaries: list[TableRuleSummary]
     failures: Runtime[Iterable[Evaluation | DeferredEvaluation]]
     stats: EngineStats
+    spend: dict[str, dict[str, ModelSpend]] = {}

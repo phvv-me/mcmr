@@ -72,19 +72,19 @@ fn import_binding_text_columns(records: &[ImportBindingRecord]) -> PolarsResult<
         "name" => records.iter().map(|record| record.identity.name.as_str()).collect::<Vec<_>>(),
         "module" => records.iter().map(|record| record.identity.module.as_str()).collect::<Vec<_>>(),
         "imported_name" => records.iter().map(|record| record.identity.imported_name.as_str()).collect::<Vec<_>>(),
-        "importer_module" => records.iter().map(|record| record.context.importer_module.as_str()).collect::<Vec<_>>(),
-        "declaration_id" => records.iter().map(|record| record.context.declaration.as_ref().map(|node| node.id.as_str()).unwrap_or("")).collect::<Vec<_>>(),
-        "declaration_text" => records.iter().map(|record| record.context.declaration.as_ref().map(|node| node.text.as_str()).unwrap_or("")).collect::<Vec<_>>(),
-        "binding_id" => records.iter().map(|record| record.context.binding.as_ref().map(|node| node.id.as_str()).unwrap_or("")).collect::<Vec<_>>(),
-        "module_node_id" => records.iter().map(|record| record.context.module_node.as_ref().map(|node| node.id.as_str()).unwrap_or("")).collect::<Vec<_>>(),
+        "importer_module" => records.iter().map(|record| record.context.importer_module()).collect::<Vec<_>>(),
+        "declaration_id" => records.iter().map(|record| record.context.declaration().map(|node| node.id.as_str()).unwrap_or("")).collect::<Vec<_>>(),
+        "declaration_text" => records.iter().map(|record| record.context.declaration().map(|node| node.text.as_str()).unwrap_or("")).collect::<Vec<_>>(),
+        "binding_id" => records.iter().map(|record| record.context.binding().map(|node| node.id.as_str()).unwrap_or("")).collect::<Vec<_>>(),
+        "module_node_id" => records.iter().map(|record| record.context.module_node().map(|node| node.id.as_str()).unwrap_or("")).collect::<Vec<_>>(),
     ]
 }
 
 fn import_binding_measure_columns(records: &[ImportBindingRecord]) -> PolarsResult<DataFrame> {
     df![
-        "reference_count" => records.iter().map(|record| record.context.reference_count as u64).collect::<Vec<_>>(),
-        "relative_level" => records.iter().map(|record| record.context.relative_level as u64).collect::<Vec<_>>(),
-        "has_qualifying_use" => records.iter().map(|record| record.context.has_qualifying_use).collect::<Vec<_>>(),
+        "reference_count" => records.iter().map(|record| record.context.reference_count() as u64).collect::<Vec<_>>(),
+        "relative_level" => records.iter().map(|record| record.context.relative_level() as u64).collect::<Vec<_>>(),
+        "has_qualifying_use" => records.iter().map(|record| record.context.has_qualifying_use()).collect::<Vec<_>>(),
         "is_external" => records.iter().map(|record| record.ownership.is_external).collect::<Vec<_>>(),
         "is_reexported" => records.iter().map(|record| record.ownership.is_reexported).collect::<Vec<_>>(),
         "is_type_only" => records.iter().map(|record| record.ownership.is_type_only).collect::<Vec<_>>(),

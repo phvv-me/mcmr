@@ -10,23 +10,40 @@ use std::collections::BTreeMap;
 mod rows;
 
 /// Facts and typed rows extracted from one source document.
+///
+/// Extraction fills the three parts in a fixed order, and the frontend leaves values behind that
+/// the legacy conversion still has to move into typed rows. Nothing is readable until `of` has run
+/// both passes, so the half-filled document in between never reaches a caller.
 pub(super) struct ExtractedDocument {
-    pub(super) facts: BTreeMap<String, Vec<Value>>,
-    pub(super) rows: ExtractedRows,
-    pub(super) stats: Stats,
+    facts: BTreeMap<String, Vec<Value>>,
+    rows: ExtractedRows,
+    stats: Stats,
 }
 
 impl ExtractedDocument {
+    /// Read one document through its language frontend and convert what the typed rules want.
     pub(super) fn of(
         document: &discovery::Document,
         packages: &discovery::Packages,
         families: &[String],
         selected: ExtractionSelection,
     ) -> Result<Self, String> {
-        let mut extracted = Self::empty(families);
+        let mut extracted = Self {
+            facts: families
+                .iter()
+                .map(|family| (family.clone(), Vec::new()))
+                .collect(),
+            rows: ExtractedRows::default(),
+            stats: Stats::default(),
+        };
         extracted.run_frontend(document, packages, selected);
         extracted.convert_legacy(selected)?;
         Ok(extracted)
+    }
+
+    /// Hand over everything this document extracted, which spends the document.
+    pub(super) fn into_parts(self) -> (BTreeMap<String, Vec<Value>>, ExtractedRows, Stats) {
+        (self.facts, self.rows, self.stats)
     }
 
     fn converted<Record>(
@@ -34,17 +51,6 @@ impl ExtractedDocument {
         convert: impl FnMut(Value) -> Result<Record, String>,
     ) -> Result<Vec<Record>, String> {
         values.into_iter().map(convert).collect()
-    }
-
-    fn empty(families: &[String]) -> Self {
-        Self {
-            facts: families
-                .iter()
-                .map(|family| (family.clone(), Vec::new()))
-                .collect(),
-            rows: ExtractedRows::default(),
-            stats: Stats::default(),
-        }
     }
 
     fn convert_legacy(&mut self, selected: ExtractionSelection) -> Result<(), String> {

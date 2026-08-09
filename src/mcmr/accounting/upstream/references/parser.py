@@ -6,9 +6,9 @@ from pydantic import Field
 
 from ..profiles.relation import Relation
 from ..profiles.tools import ToolRegistry
-from ..profiles.tools.rule import UpstreamRule
 from ..profiles.works import WorkRegistry
 from .entry import Reference
+from .models import UpstreamRule
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

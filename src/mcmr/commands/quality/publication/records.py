@@ -2,8 +2,16 @@ import re
 from typing import TYPE_CHECKING
 
 from patos import FrozenModel
+from pydantic import NonNegativeFloat
 
-from ....domain.contracts import RepairState, RunGraph, RunRecord, RunState
+from ....domain.contracts import (
+    RepairState,
+    RuleCounts,
+    RunGraph,
+    RunRecord,
+    RunState,
+    RunSummary,
+)
 from ....presentation.reports import CheckReport
 from ...interface import RepairMode
 
@@ -43,6 +51,7 @@ class RunPublication(FrozenModel):
     applied: list[str] = []
     refused: list[str] = []
     repair: RepairMode = RepairMode.NONE
+    elapsed_milliseconds: NonNegativeFloat = 0.0
 
     @property
     def records(self) -> list[RunRecord]:
@@ -80,6 +89,24 @@ class RunPublication(FrozenModel):
     def subjects(self) -> list[str]:
         """Return every subject this run recorded a verdict against, in first-reported order."""
         return list(dict.fromkeys(record.subject for record in self.records))
+
+    @property
+    def summary(self) -> RunSummary:
+        """Return how much this whole invocation reached, beside what its model turns cost."""
+        report = self.report
+        return RunSummary(
+            files=report.file_count,
+            facts=report.fact_count,
+            failures=report.failure_count,
+            findings=report.finding_count,
+            rules=RuleCounts(
+                executed=report.rule_execution_count,
+                failing=len({failure.rule for failure in report.failures}),
+                by_lane=self.graph.lane_counts,
+            ),
+            duration_milliseconds=self.elapsed_milliseconds,
+            spend=self.graph.spent,
+        )
 
     @staticmethod
     def _confidence(failure: RuleFailure) -> float | None:
@@ -144,12 +171,14 @@ class RunPublication(FrozenModel):
             path=path,
             summary=failure.summary,
             state=RunState.FAILURE,
+            lane=self.graph.lane(failure.rule),
             measurement=f"{failure.value} (allowed {failure.allowed})",
             finding_count=len(reasons),
             reasons=list(reasons[:_REASONS]),
             repair=self.repairs.get(failure.rule, RepairState.NONE),
             reasoning=self._reasoning(failure),
             confidence=self._confidence(failure),
+            spend=self.graph.spend(failure.rule, path=path),
         )
 
     def _failures(self, failure: RuleFailure) -> list[RunRecord]:
@@ -195,7 +224,9 @@ class RunPublication(FrozenModel):
                 subject=subject,
                 summary=rule.summary,
                 state=RunState.SUCCESS,
+                lane=self.graph.lane(rule.rule),
                 repair=repairs.get(rule.rule, RepairState.NONE),
+                spend=self.graph.spend(rule.rule),
             )
             for rule in self.report.passes
             for subject in [*assets, *filter(None, [self.graph.anchor(rule.rule)])]

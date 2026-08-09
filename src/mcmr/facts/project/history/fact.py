@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from pydantic import NonNegativeInt, model_validator
+from pydantic import Field, NonNegativeInt, model_validator
 
 from ...foundation import Fact
 
@@ -14,9 +14,15 @@ if TYPE_CHECKING:
 class RepositoryHistoryFact(Fact):
     """Describe repository history for its files and commits."""
 
-    unscoped_commit_count: NonNegativeInt = 0
-    files: list[FileHistory] = []
-    changes: list[HistoryChange] = []
+    unscoped_commit_count: NonNegativeInt = Field(
+        default=0, description="commits that touched no path in this request's scope"
+    )
+    files: list[FileHistory] = Field(
+        default=[], description="per file churn, authorship, and recency this history retains"
+    )
+    changes: list[HistoryChange] = Field(
+        default=[], description="one record per commit naming the in scope paths it touched"
+    )
 
     @property
     def commit_count(self) -> int:

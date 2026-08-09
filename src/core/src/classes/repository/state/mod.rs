@@ -1,3 +1,4 @@
+use super::analysis::ModelPlacement;
 use super::{ClassAddress, Repository, SubclassReference};
 use crate::classes::model::Identity;
 use crate::classes::records::{ClassAnalysisRecord, ClassRecord};
@@ -129,8 +130,14 @@ impl<'repository> Repository<'repository> {
             });
             class.model.is_declarative_model &= !foundation;
             class.model.directly_inherits_pydantic_base_model &= !foundation;
-            class.model.proposed_model_destination =
-                self.proposed_destination(&held, &importing_refs);
+            class.model.proposed_model_destination = self.proposed_destination(
+                &held,
+                ModelPlacement {
+                    importing: &importing_refs,
+                    is_declarative_model: class.model.is_declarative_model,
+                    has_ordinary_behavior: class.model.has_ordinary_behavior,
+                },
+            );
             class.model.importing_modules = importing;
         }
     }
@@ -154,8 +161,8 @@ impl<'repository> Repository<'repository> {
     /// Write repository dispatch evidence directly onto one typed callable row.
     pub(in crate::classes) fn state_function(&self, function: &mut FunctionRecord) {
         if self.relations.dispatched.contains(&(
-            function.identity.span.path.as_str(),
-            function.identity.name.as_str(),
+            function.identity.span().path.as_str(),
+            function.identity.name(),
         )) {
             function.semantics.outcomes.is_polymorphic = true;
         }
@@ -179,6 +186,14 @@ impl<'repository> Repository<'repository> {
                 .unwrap_or_default(),
             has_subclasses: !subclasses.is_empty(),
         });
+        let is_declarative_model = (class["is_declarative_model"].as_bool().unwrap_or_default()
+            || self.inherits_declarative_model(held))
+            && !foundation;
+        let placement = ModelPlacement {
+            importing: &importing,
+            is_declarative_model,
+            has_ordinary_behavior: class["has_ordinary_behavior"].as_bool().unwrap_or_default(),
+        };
         vec![
             (
                 "direct_subclasses".to_string(),
@@ -216,11 +231,7 @@ impl<'repository> Repository<'repository> {
             ),
             (
                 "is_declarative_model".to_string(),
-                json!(
-                    (class["is_declarative_model"].as_bool().unwrap_or_default()
-                        || self.inherits_declarative_model(held))
-                        && !foundation
-                ),
+                json!(is_declarative_model),
             ),
             (
                 "directly_inherits_pydantic_base_model".to_string(),
@@ -234,7 +245,7 @@ impl<'repository> Repository<'repository> {
             ("has_inherited_fields".to_string(), json!(inherits_fields)),
             (
                 "proposed_model_destination".to_string(),
-                json!(self.proposed_destination(held, &importing)),
+                json!(self.proposed_destination(held, placement)),
             ),
         ]
     }

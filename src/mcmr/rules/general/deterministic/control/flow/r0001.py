@@ -18,6 +18,110 @@ _ALTERNATIVE = re.compile(r"\}?\s*(?:else|elif|elsif)\b")
 _LEADING_WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_]*!?")
 
 
+def _branch_lines(relations: SyntaxTable[SyntaxFact], nodes: pl.LazyFrame) -> pl.LazyFrame:
+    """Return one row per source line of every branch, beside its indentation and located span."""
+    branches = relations.with_text(nodes.filter(pl.col("kind") == "branch")).select(
+        "fact_id",
+        pl.col("ordinal").alias("branch_ordinal"),
+        "path",
+        "start_line",
+        "start_column",
+        "end_line",
+        "end_column",
+        pl.col("start_line").alias("branch_start_line"),
+        pl.col("start_column").alias("branch_column"),
+        pl.col("text").str.split("\n").alias("lines"),
+    )
+    return (
+        branches.with_columns(pl.int_ranges(0, pl.col("lines").list.len()).alias("offset"))
+        .explode("lines", "offset", empty_as_null=True)
+        .with_columns(
+            (
+                pl.col("lines").str.len_chars()
+                - pl.col("lines").str.strip_chars_start().str.len_chars()
+            ).alias("indent"),
+            pl.col("lines").str.strip_chars().alias("stripped"),
+        )
+    )
+
+
+def _alternatives(lines: pl.LazyFrame) -> pl.LazyFrame:
+    """Return the line each branch opens its alternative on, read at the branch's own indent."""
+    return (
+        lines.filter(
+            (pl.col("offset") > 0)
+            & (pl.col("indent") == pl.col("branch_column"))
+            & pl.col("stripped").str.contains(_ALTERNATIVE.pattern)
+        )
+        .group_by("fact_id", "branch_ordinal", maintain_order=True)
+        .agg(
+            pl.col("offset").first().alias("alternative_offset"),
+            pl.col("branch_start_line").first(),
+            pl.col("path").first(),
+            pl.col("start_line").first(),
+            pl.col("start_column").first(),
+            pl.col("end_line").first(),
+            pl.col("end_column").first(),
+        )
+        .with_columns(
+            (pl.col("branch_start_line") + pl.col("alternative_offset")).alias("alternative_line")
+        )
+    )
+
+
+def _closing_statement(
+    relations: SyntaxTable[SyntaxFact], *, nodes: pl.LazyFrame, alternatives: pl.LazyFrame
+) -> pl.LazyFrame:
+    """Return the text of the last statement a branch states before its alternative opens."""
+    candidates = (
+        relations.children.select(
+            "fact_id",
+            pl.col("parent_ordinal").alias("branch_ordinal"),
+            "child_order",
+            "child_ordinal",
+        )
+        .join(alternatives, on=["fact_id", "branch_ordinal"], how="inner")
+        .join(
+            nodes.select(
+                "fact_order",
+                "fact_id",
+                pl.col("ordinal").alias("child_ordinal"),
+                "end_line",
+                "byte_start",
+                "byte_length",
+            ),
+            on=["fact_id", "child_ordinal"],
+            how="inner",
+        )
+        .filter(pl.col("end_line") < pl.col("alternative_line"))
+    )
+    return (
+        relations.with_text(candidates)
+        .sort("fact_id", "branch_ordinal", "end_line", "child_order")
+        .group_by("fact_id", "branch_ordinal", maintain_order=True)
+        .agg(pl.col("text").last().str.strip_chars_start().alias("direct_closing"))
+    )
+
+
+def _closing_line(lines: pl.LazyFrame, *, alternatives: pl.LazyFrame) -> pl.LazyFrame:
+    """Return the last line a branch writes at its opening indent, for a frontend stating none."""
+    return (
+        lines.join(alternatives, on=["fact_id", "branch_ordinal"], how="inner")
+        .filter((pl.col("offset") >= 1) & (pl.col("offset") < pl.col("alternative_offset")))
+        .with_columns(
+            pl.col("indent")
+            .filter(pl.col("offset") == 1)
+            .first()
+            .over("fact_id", "branch_ordinal")
+            .alias("opened")
+        )
+        .filter(pl.col("indent") == pl.col("opened"))
+        .sort("fact_id", "branch_ordinal", "offset")
+        .group_by("fact_id", "branch_ordinal", maintain_order=True)
+        .agg(pl.col("lines").last().str.strip_chars_start().alias("fallback_closing"))
+    )
+
+
 @rule("ALL-CONT0001")
 def superfluous_else_after_jump(
     subject: Table[SyntaxFact],
@@ -92,95 +196,19 @@ def superfluous_else_after_jump(
     relations = SyntaxTable(table=subject)
     facts = subject.lazy(SyntaxRelation.FACTS)
     nodes = relations.nodes
-    branches = relations.with_text(nodes.filter(pl.col("kind") == "branch")).select(
-        "fact_id",
-        pl.col("ordinal").alias("branch_ordinal"),
-        "path",
-        "start_line",
-        "start_column",
-        "end_line",
-        "end_column",
-        pl.col("start_line").alias("branch_start_line"),
-        pl.col("start_column").alias("branch_column"),
-        pl.col("text").str.split("\n").alias("lines"),
-    )
-    lines = (
-        branches.with_columns(pl.int_ranges(0, pl.col("lines").list.len()).alias("offset"))
-        .explode("lines", "offset", empty_as_null=True)
-        .with_columns(
-            (
-                pl.col("lines").str.len_chars()
-                - pl.col("lines").str.strip_chars_start().str.len_chars()
-            ).alias("indent"),
-            pl.col("lines").str.strip_chars().alias("stripped"),
-        )
-    )
-    alternatives = (
-        lines.filter(
-            (pl.col("offset") > 0)
-            & (pl.col("indent") == pl.col("branch_column"))
-            & pl.col("stripped").str.contains(_ALTERNATIVE.pattern)
-        )
-        .group_by("fact_id", "branch_ordinal", maintain_order=True)
-        .agg(
-            pl.col("offset").first().alias("alternative_offset"),
-            pl.col("branch_start_line").first(),
-            pl.col("path").first(),
-            pl.col("start_line").first(),
-            pl.col("start_column").first(),
-            pl.col("end_line").first(),
-            pl.col("end_column").first(),
-        )
-        .with_columns(
-            (pl.col("branch_start_line") + pl.col("alternative_offset")).alias("alternative_line")
-        )
-    )
-    direct_candidates = (
-        relations.children.select(
-            "fact_id",
-            pl.col("parent_ordinal").alias("branch_ordinal"),
-            "child_order",
-            "child_ordinal",
-        )
-        .join(alternatives, on=["fact_id", "branch_ordinal"], how="inner")
-        .join(
-            nodes.select(
-                "fact_order",
-                "fact_id",
-                pl.col("ordinal").alias("child_ordinal"),
-                "end_line",
-                "byte_start",
-                "byte_length",
-            ),
-            on=["fact_id", "child_ordinal"],
-            how="inner",
-        )
-        .filter(pl.col("end_line") < pl.col("alternative_line"))
-    )
-    direct = (
-        relations.with_text(direct_candidates)
-        .sort("fact_id", "branch_ordinal", "end_line", "child_order")
-        .group_by("fact_id", "branch_ordinal", maintain_order=True)
-        .agg(pl.col("text").last().str.strip_chars_start().alias("direct_closing"))
-    )
-    fallback = (
-        lines.join(alternatives, on=["fact_id", "branch_ordinal"], how="inner")
-        .filter((pl.col("offset") >= 1) & (pl.col("offset") < pl.col("alternative_offset")))
-        .with_columns(
-            pl.col("indent")
-            .filter(pl.col("offset") == 1)
-            .first()
-            .over("fact_id", "branch_ordinal")
-            .alias("opened")
-        )
-        .filter(pl.col("indent") == pl.col("opened"))
-        .sort("fact_id", "branch_ordinal", "offset")
-        .group_by("fact_id", "branch_ordinal", maintain_order=True)
-        .agg(pl.col("lines").last().str.strip_chars_start().alias("fallback_closing"))
-    )
+    lines = _branch_lines(relations, nodes)
+    alternatives = _alternatives(lines)
     reported = (
-        alternatives.join(direct, on=["fact_id", "branch_ordinal"], how="left")
-        .join(fallback, on=["fact_id", "branch_ordinal"], how="left")
+        alternatives.join(
+            _closing_statement(relations, nodes=nodes, alternatives=alternatives),
+            on=["fact_id", "branch_ordinal"],
+            how="left",
+        )
+        .join(
+            _closing_line(lines, alternatives=alternatives),
+            on=["fact_id", "branch_ordinal"],
+            how="left",
+        )
         .with_columns(
             pl.coalesce("direct_closing", "fallback_closing")
             .str.extract(_LEADING_WORD.pattern, 0)

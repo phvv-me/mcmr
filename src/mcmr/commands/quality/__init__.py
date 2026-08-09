@@ -1,7 +1,7 @@
 from .analysis import Judgment, judgment, listed
 from .checking import allowance, check, history
 from .contextual import backends, contextual_experiment, model_sweep
-from .publication import RunPublication
+from .publication import RunPublication, identity
 from .showcase import demo
 
 __all__ = [
@@ -11,6 +11,7 @@ __all__ = [
     "contextual_experiment",
     "demo",
     "history",
+    "identity",
     "judgment",
     "listed",
     "model_sweep",

@@ -2,22 +2,44 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from urllib.parse import quote
 
-from mcmr.plugins import ColumnType
-
 from ..transport.openapi import DataHubOpenAPI
 from .announcement import DataHubAnnouncement
-from .identities import (
+from .directory import DataHubDirectory
+from .labels import (
+    categories,
+    category_entity,
+    codebase_urn,
     dataset_urn,
-    domain_entity,
+    definitions,
     domain_urn,
+    families,
+    families_node,
+    family_term,
+    flow_terms,
     flow_urn,
     job_urn,
+    labelled,
+    lane_entity,
+    lanes,
     owner_urn,
     platform_entity,
     platform_urn,
+    rule_label,
+    rule_tags,
+    rule_terms,
     rule_urn,
+    rulebook_terms,
     rulebook_urn,
+    schema_field,
+    scope_entity,
+    scopes,
+    table_tags,
+    table_terms,
+    valued,
+    vocabulary_node,
+    vocabulary_terms,
 )
+from .verdicts import RuleVerdicts
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -25,9 +47,9 @@ if TYPE_CHECKING:
     import httpx
     from pydantic import JsonValue
 
-    from mcmr.plugins import FactColumn, FactDataset, RuleJob, RuleTimeline, RunGraph
+    from mcmr.plugins import FactDataset, RuleJob, RuleTimeline, RunGraph
 
-    from ..settings import DataHubSettings
+    from ..configuration import DataHubSettings
 
 # What the run itself is called inside the flow, which is the one job that writes the fact tables
 # every rule job then reads.
@@ -35,10 +57,6 @@ _EXTRACTION = "extract"
 
 # What DataHub calls a job somebody else's tool owns, which is what every rule here is.
 _JOB_TYPE = "MCMR"
-
-# What the UI calls each thing MCMR publishes, so a reader scanning results sees a rule and a fact
-# table rather than the generic task and dataset every platform contributes.
-_SUBTYPES = {"dataset": "Fact table", "extraction": "Extraction", "rule": "Rule"}
 
 # What separates a rule's own state from the repository it reached that state in.
 _QUALIFIER = "."
@@ -54,13 +72,6 @@ _FAILING = "FAILURE"
 
 # What the link from one rule job to its recorded verdicts is called on the job page.
 _MEMORY = "Verdict history"
-
-# The DataHub schema field types each published column domain is stated as.
-_FIELD_TYPES = {
-    ColumnType.STRING: "StringType",
-    ColumnType.NUMBER: "NumberType",
-    ColumnType.BOOLEAN: "BooleanType",
-}
 
 
 class DataHubCodeGraph:
@@ -82,21 +93,25 @@ class DataHubCodeGraph:
         self.transport = transport
 
     async def publish(self, graph: RunGraph) -> list[str]:
-        """Write the platform, the domain, the fact datasets, the run flow, and every rule job."""
+        """Write what the graph refers to, then the fact datasets and the flows above them."""
         if not graph.datasets:
             return []
         moment = int(datetime.now(UTC).timestamp() * 1000)
+        directory = DataHubDirectory(
+            self.settings.writeback.people,
+            self.settings.writeback.owner,
+            graph.spent,
+        )
         async with DataHubOpenAPI(self.settings, self.transport) as openapi:
-            written = await openapi.ingest("dataplatform", [platform_entity()])
-            written += await openapi.ingest(
-                "domain",
-                [domain_entity(self.settings.writeback.domain)],
-            )
+            written = await self._foundations(openapi, graph, directory)
             written += await openapi.ingest(
                 "dataset",
-                [self._dataset(dataset, moment) for dataset in graph.datasets],
+                [self._dataset(dataset, directory, graph, moment) for dataset in graph.datasets],
             )
-            written += await openapi.ingest("dataflow", [self._flow(graph), self._rulebook()])
+            written += await openapi.ingest(
+                "dataflow",
+                [self._flow(graph, directory), self._rulebook(directory)],
+            )
         stated = [
             f"{graph.repository} published {len(graph.datasets)} fact datasets as {written} "
             f"entities owned by {self.settings.writeback.owner} "
@@ -114,17 +129,23 @@ class DataHubCodeGraph:
         """
         if not graph.datasets:
             return []
-        verdicts = self._verdicts(timelines)
+        verdicts = RuleVerdicts(timelines)
+        directory = DataHubDirectory(
+            self.settings.writeback.people,
+            self.settings.writeback.owner,
+            graph.spent,
+        )
         async with DataHubOpenAPI(self.settings, self.transport) as openapi:
             held = await openapi.read("datajob", [rule_urn(job.rule) for job in graph.jobs])
             rules = [
-                self._rule(graph, job, verdicts.get(job.rule, {}), held) for job in graph.jobs
+                self._rule(graph, job, verdicts.of(job.rule), held, directory)
+                for job in graph.jobs
             ]
             written = await openapi.ingest("datajob", [self._extraction(graph), *rules])
-        failing = sum(state["lastResult"] == _FAILING for state in verdicts.values())
+        failing = sum(state["lastResult"] == _FAILING for state in verdicts.stated.values())
         return [
             f"{graph.repository} merged into {written - 1} rules of the MCMR Rulebook, "
-            f"{len(verdicts) - failing} passing and {failing} failing here"
+            f"{len(verdicts.stated) - failing} passing and {failing} failing here"
         ]
 
     @staticmethod
@@ -137,24 +158,22 @@ class DataHubCodeGraph:
         return value if isinstance(value, dict) else {}
 
     @staticmethod
-    def _field(column: FactColumn) -> dict[str, JsonValue]:
-        """State one flattened fact column as the nested schema path DataHub already models."""
-        return {
-            "fieldPath": column.path,
-            "nativeDataType": column.native,
-            "description": column.description,
-            "type": {"type": {f"com.linkedin.schema.{_FIELD_TYPES[column.data_type]}": {}}},
-        }
+    def _domain_entity(
+        urn: str,
+        *,
+        name: str,
+        described: str,
+        parent: str = "",
+    ) -> dict[str, JsonValue]:
+        """State one domain, which is a name, the sentence it is browsed by, and where it sits."""
+        stated: dict[str, JsonValue] = {"name": name, "description": described}
+        held = stated | ({"parentDomain": parent} if parent else {})
+        return {"urn": urn, "domainProperties": {"value": held}}
 
     @staticmethod
     def _kind() -> dict[str, JsonValue]:
         """State that a job belongs to a tool DataHub does not orchestrate itself."""
         return {"type": {"string": _JOB_TYPE}}
-
-    @staticmethod
-    def _labelled(kind: str) -> dict[str, JsonValue]:
-        """State what the UI calls one published entity instead of its generic entity type."""
-        return {"subTypes": {"value": {"typeNames": [_SUBTYPES[kind]]}}}
 
     @staticmethod
     def _lineage(*, inputs: list[JsonValue], outputs: list[JsonValue]) -> dict[str, JsonValue]:
@@ -179,48 +198,53 @@ class DataHubCodeGraph:
         return f"{frontend}/dataset/{quote(dataset_urn(anchor), safe='')}/Validation"
 
     @staticmethod
-    def _rollups(properties: Mapping[str, str]) -> dict[str, str]:
-        """Return what one rule reports across every repository that publishes it."""
+    def _summed(properties: Mapping[str, str], name: str) -> int:
+        """Return one per-repository counter added up across every repository that states it."""
+        prefix = f"{name}{_QUALIFIER}"
+        return sum(
+            int(value)
+            for key, value in properties.items()
+            if key.startswith(prefix) and value.isdigit()
+        )
+
+    @staticmethod
+    def _typed(job: RuleJob, properties: Mapping[str, str]) -> dict[str, str]:
+        """Return the few things about one rule a reader sorts and filters the whole catalog by."""
+        return {
+            "lane": job.lane,
+            "ruleFamily": job.family,
+            "findings": properties.get("totalFindings", ""),
+            "tokensSpent": properties.get("totalTokens", ""),
+        }
+
+    @classmethod
+    def _rollups(cls, properties: Mapping[str, str]) -> dict[str, str]:
+        """Return what one rule reports across every repository that publishes it.
+
+        The token total is what sorts a rulebook by cost, so it is summed here for the same
+        reason the finding total is, and a rule no model ever answered states none of it.
+        """
         results = [
             value
             for name, value in properties.items()
             if name.startswith(f"lastResult{_QUALIFIER}")
         ]
-        counted = [
-            int(value)
-            for name, value in properties.items()
-            if name.startswith(f"findings{_QUALIFIER}") and value.isdigit()
-        ]
         failing = sum(value == _FAILING for value in results)
-        return {
+        stated = {
             "reposFailing": str(failing),
             "reposPassing": str(len(results) - failing),
-            "totalFindings": str(sum(counted)),
+            "totalFindings": str(cls._summed(properties, "findings")),
         }
+        spent = cls._summed(properties, "tokens")
+        return stated | ({"totalTokens": str(spent)} if spent else {})
 
-    @staticmethod
-    def _verdicts(timelines: Sequence[RuleTimeline]) -> dict[str, dict[str, str]]:
-        """Return what each rule's recorded timeline currently states, by rule identity.
-
-        One rule keeps a repository-wide timeline beside one per file it reported, and the
-        repository-wide one is the state of the rule itself, so a rule naming files is still
-        summarized by the timeline that closes when the whole rule stops failing.
-        """
-        summarized: dict[str, dict[str, str]] = {}
-        for timeline in sorted(timelines, key=lambda item: bool(item.where)):
-            recorded = timeline.events[-1] if timeline.events else None
-            if timeline.rule in summarized or recorded is None:
-                continue
-            began = timeline.since or recorded.at
-            summarized[timeline.rule] = {
-                "lastResult": str(timeline.state).upper(),
-                "lastRun": recorded.at.isoformat(timespec="seconds"),
-                "since": began.isoformat(timespec="seconds"),
-                "findings": recorded.properties.get("findings", "0"),
-            }
-        return summarized
-
-    def _dataset(self, dataset: FactDataset, moment: int) -> dict[str, JsonValue]:
+    def _dataset(
+        self,
+        dataset: FactDataset,
+        directory: DataHubDirectory,
+        graph: RunGraph,
+        moment: int,
+    ) -> dict[str, JsonValue]:
         """State one fact family as a dataset with its columns and the rows this run read."""
         return {
             "urn": dataset_urn(dataset.name),
@@ -228,7 +252,7 @@ class DataHubCodeGraph:
                 "value": self._stated(
                     dataset.name,
                     described=dataset.description,
-                    properties={"family": dataset.family},
+                    properties={"family": dataset.family, "category": dataset.category},
                 )
             },
             "schemaMetadata": {
@@ -238,7 +262,7 @@ class DataHubCodeGraph:
                     "version": 0,
                     "hash": "",
                     "platformSchema": {"com.linkedin.schema.OtherSchema": {"rawSchema": ""}},
-                    "fields": [self._field(column) for column in dataset.columns],
+                    "fields": [schema_field(column) for column in dataset.columns],
                 }
             },
             "datasetProfile": {
@@ -248,9 +272,35 @@ class DataHubCodeGraph:
                     "columnCount": len(dataset.columns),
                 }
             },
-            **self._labelled("dataset"),
-            **self._governance(),
+            **labelled("dataset"),
+            **table_tags(dataset),
+            **table_terms(),
+            **valued({"codebase": graph.repository}),
+            **directory.table(),
+            **self._filed(graph),
         }
+
+    def _domains(self, graph: RunGraph, directory: DataHubDirectory) -> list[dict[str, JsonValue]]:
+        """State the domain every repository is filed under and the room this one browses in.
+
+        Every codebase landing in one flat domain makes that domain a search result rather than a
+        place, so each repository gets its own room under the domain the project configured.
+        """
+        stated = self.settings.writeback.domain
+        return [
+            self._domain_entity(
+                domain_urn(stated),
+                name=stated,
+                described="Repositories MCMR publishes as fact tables and rule jobs.",
+            ),
+            self._domain_entity(
+                codebase_urn(graph.repository),
+                name=graph.repository,
+                described=f"Fact tables and policy runs MCMR publishes for {graph.repository}.",
+                parent=domain_urn(stated),
+            )
+            | directory.domain(),
+        ]
 
     def _extraction(self, graph: RunGraph) -> dict[str, JsonValue]:
         """State the one job that reads the repository and writes every fact table."""
@@ -266,10 +316,15 @@ class DataHubCodeGraph:
                 inputs=[],
                 outputs=[dataset_urn(dataset.name) for dataset in graph.datasets],
             ),
-            **self._labelled("extraction"),
+            **labelled("extraction"),
+            **valued({"codebase": graph.repository}),
         }
 
-    def _flow(self, graph: RunGraph) -> dict[str, JsonValue]:
+    def _filed(self, graph: RunGraph) -> dict[str, JsonValue]:
+        """Return the domain a reader browses one repository's own graph under."""
+        return {"domains": {"value": {"domains": [codebase_urn(graph.repository)]}}}
+
+    def _flow(self, graph: RunGraph, directory: DataHubDirectory) -> dict[str, JsonValue]:
         """State one repository's policy run as the flow every job below it belongs to."""
         return {
             "urn": flow_urn(graph.repository),
@@ -280,37 +335,41 @@ class DataHubCodeGraph:
                     properties={},
                 )
             },
-            **self._governance(),
+            **flow_terms(),
+            **valued({"codebase": graph.repository}),
+            **directory.repository(),
+            **self._filed(graph),
         }
 
-    def _governance(self) -> dict[str, JsonValue]:
-        """Return the owner and domain a reader browses the published graph by.
+    async def _foundations(
+        self,
+        openapi: DataHubOpenAPI,
+        graph: RunGraph,
+        directory: DataHubDirectory,
+    ) -> int:
+        """Write everything the published graph points at but does not itself contain.
 
-        A catalog entity nobody owns and nothing files reaches no home page section, so every
-        dataset and the flow above them carry both rather than only being searchable.
+        The platform, the people, the typed properties, the domains, the tags and the glossary are
+        shared by every codebase, so they are written before anything that refers to them and a
+        run only ever writes the ones it actually reached.
         """
-        owner = owner_urn(self.settings.writeback.owner)
-        return {
-            "ownership": {
-                "value": {
-                    "owners": [{"owner": owner, "type": "TECHNICAL_OWNER"}],
-                    "lastModified": {"time": 0, "actor": owner},
-                }
-            },
-            "domains": {"value": {"domains": [domain_urn(self.settings.writeback.domain)]}},
-        }
-
-    def _owned(self) -> dict[str, JsonValue]:
-        """Return the owner of something MCMR publishes that is not itself a codebase."""
-        owner = owner_urn(self.settings.writeback.owner)
-        return {
-            "ownership": {
-                "value": {
-                    "owners": [{"owner": owner, "type": "TECHNICAL_OWNER"}],
-                    "lastModified": {"time": 0, "actor": owner},
-                }
-            }
-        }
+        written = await openapi.ingest("dataplatform", [platform_entity()])
+        written += await openapi.ingest("corpuser", directory.entities())
+        written += await openapi.ingest("structuredproperty", definitions())
+        written += await openapi.ingest("domain", self._domains(graph, directory))
+        written += await openapi.ingest(
+            "tag",
+            [
+                *(lane_entity(lane) for lane in lanes(graph)),
+                *(scope_entity(scope) for scope in scopes(graph)),
+                *(category_entity(category) for category in categories(graph)),
+            ],
+        )
+        written += await openapi.ingest("glossarynode", [families_node(), vocabulary_node()])
+        return written + await openapi.ingest(
+            "glossaryterm",
+            [*(family_term(family) for family in families(graph)), *vocabulary_terms()],
+        )
 
     def _properties(
         self,
@@ -325,7 +384,8 @@ class DataHubCodeGraph:
             for name, value in (held if isinstance(held, dict) else {}).items()
             if isinstance(value, str)
         }
-        stated = {f"anchor{_QUALIFIER}{repository}": job.primary} if job.primary else {}
+        anchor = job.tables.primary
+        stated = {f"anchor{_QUALIFIER}{repository}": anchor} if anchor else {}
         stated |= {
             f"{name}{_QUALIFIER}{repository}": value for name, value in verdict.items() if value
         }
@@ -370,12 +430,13 @@ class DataHubCodeGraph:
         job: RuleJob,
         verdict: Mapping[str, str],
         held: Mapping[str, Mapping[str, JsonValue]],
+        directory: DataHubDirectory,
     ) -> dict[str, JsonValue]:
         """State one rule as the single job every repository running it feeds."""
         existing = held.get(rule_urn(job.rule), {})
         inputs = self._merged(
             self._aspect(existing, "dataJobInputOutput").get("inputDatasets"),
-            [dataset_urn(name) for name in job.inputs],
+            [dataset_urn(name) for name in job.tables.inputs],
         )
         stated = self._aspect(existing, "dataJobInfo").get("customProperties")
         properties = self._properties(graph.repository, job, verdict, stated)
@@ -388,11 +449,15 @@ class DataHubCodeGraph:
             "urn": rule_urn(job.rule),
             "dataJobInfo": {"value": described | self._kind()},
             "dataJobInputOutput": self._lineage(inputs=list(inputs), outputs=[]),
-            **self._labelled("rule"),
+            **rule_label(job.lane),
+            **rule_tags(job),
+            **rule_terms(job),
+            **valued(self._typed(job, properties)),
+            **directory.stewardship(job, self._aspect(existing, "ownership")),
             **self._remembered(properties),
         }
 
-    def _rulebook(self) -> dict[str, JsonValue]:
+    def _rulebook(self, directory: DataHubDirectory) -> dict[str, JsonValue]:
         """State the one flow every rule belongs to, whichever repository ran it."""
         return {
             "urn": rulebook_urn(),
@@ -403,7 +468,8 @@ class DataHubCodeGraph:
                     properties={},
                 )
             },
-            **self._owned(),
+            **rulebook_terms(),
+            **directory.catalog(),
         }
 
     def _stated(

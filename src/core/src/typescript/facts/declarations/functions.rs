@@ -91,7 +91,7 @@ impl<'a, 'ast> FunctionFact<'a, 'ast> {
         let span = range(self.function.span());
         let mut record =
             FunctionRecord::new(self.source.span(span), "typescript", self.name.clone());
-        record.identity.scope.clone_from(&self.scope);
+        record.identity.state_scope(&self.scope);
         record.presentation.visibility = self.visibility.as_str().to_string();
         record.presentation.nodes.definition = Some(self.source.node("function", span));
         record

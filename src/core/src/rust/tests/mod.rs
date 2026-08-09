@@ -52,8 +52,8 @@ fn external_binding_attributes_mark_declarations_as_framework_reached() {
     let decorated: Vec<&str> = graph
         .nodes
         .iter()
-        .filter(|node| !node.decorators.is_empty())
-        .map(|node| node.qualname.rsplit("::").next().unwrap_or_default())
+        .filter(|node| !node.decorators().is_empty())
+        .map(|node| node.qualname().rsplit("::").next().unwrap_or_default())
         .collect();
 
     assert_eq!(decorated, ["Classifier", "classify"]);
@@ -177,7 +177,7 @@ fn a_crate_names_its_modules_from_the_directory_that_holds_its_root() {
         graph
             .nodes
             .iter()
-            .any(|node| node.id == "rust:class:kernel::engine::Engine")
+            .any(|node| node.id() == "rust:class:kernel::engine::Engine")
     );
 }
 
@@ -204,14 +204,8 @@ fn every_parameter_this_language_takes_binds_by_position_and_carries_no_default(
     let stated: Vec<(&str, Option<ParameterKind>, bool)> = graph
         .nodes
         .iter()
-        .filter(|node| node.kind == NodeKind::Parameter)
-        .map(|node| {
-            (
-                node.qualname.as_str(),
-                node.parameter_kind,
-                node.has_default,
-            )
-        })
+        .filter(|node| node.kind() == NodeKind::Parameter)
+        .map(|node| (node.qualname(), node.parameter_kind(), node.has_default()))
         .collect();
 
     assert_eq!(

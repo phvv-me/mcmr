@@ -4,6 +4,7 @@ from annotated_types import Ge, Le
 from patos import FrozenModel
 
 from ....primitives import NonEmptyStr
+from ..graph import ModelSpend
 from .repair import RepairState
 from .run import RunState
 
@@ -29,6 +30,7 @@ class RunRecordFields:
         path: str = ""
         summary: str = ""
         state: RunState = RunState.SUCCESS
+        lane: str = ""
 
         @property
         def anchor(self) -> str:
@@ -44,7 +46,8 @@ class RunRecordFields:
         repair: RepairState = RepairState.NONE
 
     class Estimate(Evidence):
-        """Retain what a contextual backend said, which only an estimated rule carries."""
+        """Retain what a contextual backend said and what asking it cost."""
 
         reasoning: str = ""
         confidence: Confidence | None = None
+        spend: ModelSpend = ModelSpend()

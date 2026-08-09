@@ -34,9 +34,9 @@ fn import_node_rows(records: &[ImportBindingRecord]) -> Vec<ImportNodeRow<'_>> {
 
 fn import_record_node_rows(record: &ImportBindingRecord) -> Vec<ImportNodeRow<'_>> {
     let mut rows = [
-        ("declaration", record.context.declaration.as_ref()),
-        ("binding", record.context.binding.as_ref()),
-        ("module", record.context.module_node.as_ref()),
+        ("declaration", record.context.declaration()),
+        ("binding", record.context.binding()),
+        ("module", record.context.module_node()),
     ]
     .into_iter()
     .filter_map(|(role, node)| {
@@ -51,7 +51,7 @@ fn import_record_node_rows(record: &ImportBindingRecord) -> Vec<ImportNodeRow<'_
     rows.extend(
         record
             .context
-            .references
+            .references()
             .iter()
             .enumerate()
             .map(|(ordinal, node)| ImportNodeRow {

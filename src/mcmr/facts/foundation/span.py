@@ -2,7 +2,7 @@ from pathlib import PurePosixPath, PureWindowsPath
 from typing import Annotated, Self
 
 from patos import FrozenModel
-from pydantic import AfterValidator, NonNegativeInt, PositiveInt, model_validator
+from pydantic import AfterValidator, Field, NonNegativeInt, PositiveInt, model_validator
 
 
 def _repository_relative(path: str) -> str:
@@ -21,11 +21,19 @@ def _repository_relative(path: str) -> str:
 class SourceSpan(FrozenModel):
     """Locate one fact in source or retained engineering evidence."""
 
-    path: Annotated[str, AfterValidator(_repository_relative)]
-    start_line: PositiveInt = 1
-    start_column: NonNegativeInt = 0
-    end_line: PositiveInt = 1
-    end_column: NonNegativeInt = 0
+    path: Annotated[str, AfterValidator(_repository_relative)] = Field(
+        description="repository relative path the span locates"
+    )
+    start_line: PositiveInt = Field(
+        default=1, description="one indexed line where the span starts"
+    )
+    start_column: NonNegativeInt = Field(
+        default=0, description="zero indexed column where the span starts"
+    )
+    end_line: PositiveInt = Field(default=1, description="one indexed line where the span ends")
+    end_column: NonNegativeInt = Field(
+        default=0, description="zero indexed column where the span ends"
+    )
 
     @property
     def location(self) -> str:

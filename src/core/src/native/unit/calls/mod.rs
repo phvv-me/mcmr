@@ -18,7 +18,7 @@ impl Unit {
                     self.source
                         .node("call", comments::at(node.start_byte()..node.end_byte())),
                 );
-                call.result_is_discarded = node
+                call.context.result_is_discarded = node
                     .parent()
                     .is_some_and(|parent| parent.kind() == "expression_statement");
                 Some(call)

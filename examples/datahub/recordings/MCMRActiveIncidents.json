@@ -1,0 +1,24 @@
+[
+  {
+    "variables": {},
+    "response": {
+      "data": {
+        "dataset": {
+          "incidents": {
+            "total": 1,
+            "incidents": [
+              {
+                "urn": "urn:li:incident:9af47206-8eab-4026-b0cb-6b7a734d1709",
+                "title": "ALL-CONT0003 is intermittent at mcp_server.py",
+                "status": {
+                  "state": "ACTIVE"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "extensions": {}
+    }
+  }
+]

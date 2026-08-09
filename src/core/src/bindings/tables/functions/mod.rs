@@ -16,31 +16,31 @@ mod relations;
 
 impl LocatedFact for FunctionRecord {
     fn key(&self) -> &str {
-        &self.identity.key
+        self.identity.key()
     }
 
     fn path(&self) -> &str {
-        &self.identity.span.path
+        &self.identity.span().path
     }
 
     fn start_line(&self) -> u64 {
-        self.identity.span.start_line as u64
+        self.identity.span().start_line as u64
     }
 
     fn start_column(&self) -> u64 {
-        self.identity.span.start_column as u64
+        self.identity.span().start_column as u64
     }
 
     fn end_line(&self) -> u64 {
-        self.identity.span.end_line as u64
+        self.identity.span().end_line as u64
     }
 
     fn end_column(&self) -> u64 {
-        self.identity.span.end_column as u64
+        self.identity.span().end_column as u64
     }
 
     fn language(&self) -> &str {
-        &self.identity.language
+        self.identity.language()
     }
 }
 

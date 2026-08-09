@@ -1,0 +1,23 @@
+[
+  {
+    "variables": {},
+    "response": [
+      {
+        "urn": "urn:li:glossaryTerm:mcmr-family-data-assets",
+        "glossaryTermInfo": {
+          "value": {
+            "name": "data_assets",
+            "definition": "Rules MCMR groups under the data_assets family.",
+            "parentNode": "urn:li:glossaryNode:mcmr-rule-families",
+            "termSource": "INTERNAL"
+          }
+        },
+        "glossaryTermKey": {
+          "value": {
+            "name": "mcmr-family-data-assets"
+          }
+        }
+      }
+    ]
+  }
+]

@@ -3,11 +3,13 @@ use ruff_text_size::{TextRange, TextSize};
 use serde_json::{Value, json};
 use std::ops::Range;
 
+mod comment;
 mod dialect;
 mod group;
 mod kind;
 mod text;
 
+use comment::Comment;
 pub use dialect::Dialect;
 use group::Group;
 use kind::CommentKind;
@@ -44,14 +46,15 @@ pub fn fact(
     let mut groups: Vec<Value> = Vec::new();
     let mut current: Option<Group> = None;
     for range in found {
-        let text = source.slice(range);
-        let kind = if dialect.is_directive(&body(text)) {
-            CommentKind::directive(text)
-        } else {
-            CommentKind::ordinary(text)
-        };
-        if let Some(group) = absorb_group(source, range, kind, &mut current) {
-            groups.push(group.value(source, dialect));
+        let comment = located(source, range, dialect);
+        if current
+            .as_mut()
+            .is_some_and(|group| group.absorbed(source, comment))
+        {
+            continue;
+        }
+        if let Some(closed) = current.replace(Group::opened(source, comment)) {
+            groups.push(closed.value(source, dialect));
         }
     }
     if let Some(group) = current {
@@ -65,23 +68,15 @@ pub fn fact(
     })
 }
 
-fn absorb_group(
-    source: &Source,
-    range: TextRange,
-    kind: CommentKind,
-    current: &mut Option<Group>,
-) -> Option<Group> {
-    let opened = source.line_of(range.start());
+/// Read one located comment the way the language's own dialect classifies it.
+fn located<'a>(source: &'a Source, range: TextRange, dialect: &mut impl Dialect) -> Comment<'a> {
     let text = source.slice(range);
-    if let Some(group) = current.as_mut()
-        && group.follows(opened, kind)
-    {
-        group.absorb(source, range, text);
-        return None;
-    }
-    let mut started = Group::new(kind);
-    started.absorb(source, range, text);
-    current.replace(started)
+    let kind = if dialect.is_directive(&body(text)) {
+        CommentKind::directive(text)
+    } else {
+        CommentKind::ordinary(text)
+    };
+    Comment { range, text, kind }
 }
 
 /// Locate one comment from the byte offsets its reader found it at.

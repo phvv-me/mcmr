@@ -16,13 +16,13 @@ impl Reachable {
         Self {
             symbols: nodes
                 .values()
-                .filter(|node| !node.kind.is_path_entity() && node.kind != NodeKind::Parameter)
-                .map(|node| node.qualname.clone())
+                .filter(|node| !node.kind().is_path_entity() && node.kind() != NodeKind::Parameter)
+                .map(|node| node.qualname().to_string())
                 .collect(),
             modules: nodes
                 .values()
-                .filter(|node| node.kind == NodeKind::Module)
-                .map(|node| node.qualname.clone())
+                .filter(|node| node.kind() == NodeKind::Module)
+                .map(|node| node.qualname().to_string())
                 .collect(),
         }
     }

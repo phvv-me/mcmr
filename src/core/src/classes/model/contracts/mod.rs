@@ -1,7 +1,7 @@
 mod declared;
 mod stated;
 
-pub(in crate::classes) use declared::{ClassShape, Declared, Member};
+pub(in crate::classes) use declared::{ClassScope, ClassShape, Declared, Member};
 pub(in crate::classes) use stated::{ModuleShape, ModuleUsage, Stated};
 
 /// One class, named the way the whole repository names it.

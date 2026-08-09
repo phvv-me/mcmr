@@ -1,0 +1,23 @@
+[
+  {
+    "variables": {},
+    "response": [
+      {
+        "urn": "urn:li:corpuser:pedro",
+        "corpUserKey": {
+          "value": {
+            "username": "pedro"
+          }
+        },
+        "corpUserInfo": {
+          "value": {
+            "active": true,
+            "title": "Author of MCMR and owner of this demo codebase",
+            "displayName": "Pedro Valois",
+            "email": "contact@phvv.me"
+          }
+        }
+      }
+    ]
+  }
+]

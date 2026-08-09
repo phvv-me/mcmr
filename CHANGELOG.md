@@ -1,5 +1,15 @@
 # Changelog
 
+All notable changes to My Code, My Rules are documented here.
+
+The format follows Keep a Changelog, and releases are cut from the version in `pyproject.toml`.
+
+## Unreleased
+
+## 0.0.1 - 2026-08-09
+
+### Changed
+
 - External fact packages can now register typed providers through `mcmr.providers`. Provider
   ownership is exact, settings are namespaced, and only requested families are collected in
   memory.
@@ -7,14 +17,12 @@
   import relations receive typed empty defaults.
 - `PY-EXCE0004` detects the exact one-return exception boundary that can become
   `contextlib.suppress` and offers a safe import-aware replacement.
-- README, system architecture, and roadmap now center the version 0.0.1 contract and the DataHub
-  hackathon delivery path.
-
-All notable changes to My Code, My Rules are documented here.
-
-The format follows Keep a Changelog, and releases are cut from the version in `pyproject.toml`.
-
-## Unreleased
+- Completed DataHub run instances now report operational success even when the policy found code
+  failures. The failure counts remain in run properties and assertion histories.
+- The DataHub platform card now uses the public MCMR icon over HTTPS instead of a data URI that the
+  web interface did not render reliably.
+- README, system architecture, and roadmap now center the version 0.0.1 product contract and the
+  DataHub integration.
 
 ### Added
 
@@ -43,11 +51,23 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 - What a run publishes is reachable rather than only searchable. An owner and a `Codebases` domain
   travel with every fact dataset and flow, both configurable and both defaulting to something a
   fresh DataHub already knows about, so the home page fills on the first run. The platform card
-  carries its own mark as a data URI, every published entity states what the UI should call it
+  carries its own public mark, every published entity states what the UI should call it
   (`Fact table`, `Rule`, `Extraction`) instead of the generic type, each rule links the codebases
   it is failing, and a project can ask for one home page card per repository keyed by that
   repository. A placeholder or unset `report_url` now writes no institutional memory and no
   assertion `externalUrl` at all, because a link nobody can follow is worse than no link.
+
+- Every rule states the lane it answers in and the family it belongs to. The lane is the type
+  label the UI shows (`Deterministic rule`, `Contextual rule`, `External rule`), a coloured tag a
+  search filters on, and a `lane` property on every recorded verdict. A rule needing both a model
+  and a network carries both tags rather than losing one to the single type label. Families become
+  glossary terms under one `MCMR Rule Families` group, applied to the rules that belong to them,
+  which gives the rulebook a browsable taxonomy. Only the lanes and families a run reached are
+  published.
+
+- Published fact schemas now carry descriptions. A column keeps whatever its own field states, and
+  a column with nothing of its own is described by the record it belongs to, so `span.start_line`
+  reads as what a source span is for. Nothing is invented where the model says nothing.
 
 - A file-scoped verdict is now closed when the run stops reporting that file. One was written the
   moment a rule failed there and nothing ever wrote it again, so a repaired, renamed, or deleted
@@ -373,7 +393,7 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 
 - `examples/datahub/recordings` now holds exchanges captured from a running DataHub Core 1.6.0
   rather than authored ones, the example scopes its catalog read with `query`, and
-  `docs/upstream-contribution.md` records the six live checklist verdicts.
+  `contrib/datahub-upstream.md` records the six live checklist verdicts.
 
 - A contextual classification prompt now states what selecting each category reports. A category
   name says what the model observed and never what the engine will do with it, so a rule offering

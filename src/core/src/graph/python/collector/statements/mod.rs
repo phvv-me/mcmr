@@ -76,17 +76,28 @@ impl Collector {
         }
     }
 
-    fn relative_import(&mut self, statement: &Stmt, item: &ruff_python_ast::StmtImportFrom) {
+    /// Resolve which module one `from` import reaches, beside the node its origin names.
+    ///
+    /// A relative import counts leading dots against the importing module, and a package counts
+    /// them from itself rather than from the package holding it.
+    fn relative_import_origin(
+        &self,
+        item: &ruff_python_ast::StmtImportFrom,
+    ) -> (String, Option<crate::protocol::Node>) {
         let importer = if self.is_package {
             ImportingModule::Package(&self.module)
         } else {
             ImportingModule::File(&self.module)
         };
-        let target = importer.resolve(item);
         let module_node = item
             .module
             .as_ref()
             .map(|module| self.source.node_of("module", module));
+        (importer.resolve(item), module_node)
+    }
+
+    fn relative_import(&mut self, statement: &Stmt, item: &ruff_python_ast::StmtImportFrom) {
+        let (target, module_node) = self.relative_import_origin(item);
         for alias in &item.names {
             self.relative_import_alias(
                 statement,
@@ -167,16 +178,7 @@ impl Collector {
         statement: &Stmt,
         item: &ruff_python_ast::StmtImportFrom,
     ) {
-        let importer = if self.is_package {
-            ImportingModule::Package(&self.module)
-        } else {
-            ImportingModule::File(&self.module)
-        };
-        let target = importer.resolve(item);
-        let module_node = item
-            .module
-            .as_ref()
-            .map(|module| self.source.node_of("module", module));
+        let (target, module_node) = self.relative_import_origin(item);
         for alias in &item.names {
             let imported = format!("{target}.{}", alias.name);
             let reference =

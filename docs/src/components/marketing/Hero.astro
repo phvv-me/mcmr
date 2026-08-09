@@ -1,0 +1,81 @@
+---
+const spec = [
+  ['kernel', 'Rust, through PyO3'],
+  ['fact tables', '63 typed families'],
+  ['rules', '285 across 3 lanes'],
+  ['repairs', 'verified only, atomic'],
+  ['license', 'Apache-2.0'],
+];
+
+// The brand pack's own poster banner, the real sunburst and corner wedge rather than a CSS
+// approximation. `import.meta.glob` never throws on a zero match, so the fallback rays below
+// still carry the poster energy the moment before the file lands.
+const bannerFiles = import.meta.glob('../../assets/banner.svg', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+});
+const banner = Object.values(bannerFiles)[0] as string | undefined;
+---
+
+<section class="relative overflow-hidden border-b-2 border-base-300">
+  {
+    !banner && (
+      <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+        <div
+          class="absolute inset-0 opacity-40"
+          style="background-image: repeating-linear-gradient(115deg, var(--color-secondary) 0 3px, transparent 3px 64px);"
+        />
+        <div
+          class="bg-primary absolute -top-24 -left-24 h-72 w-72 opacity-90"
+          style="clip-path: polygon(0 0, 100% 0, 0 100%);"
+        />
+      </div>
+    )
+  }
+
+  <div class="relative mx-auto max-w-6xl px-4 py-16 lg:py-24">
+    <div class="grid gap-10 lg:grid-cols-[3fr_2fr] lg:items-center">
+      <div>
+        <p class="font-mono text-xs tracking-[0.2em] text-base-content/60 uppercase">
+          A Rust-fast policy engine for whole repositories
+        </p>
+        <h1 class="font-display mt-4 text-6xl leading-[0.95] text-primary sm:text-7xl lg:text-8xl">
+          My code,<br />my rules
+        </h1>
+        <p class="mt-6 max-w-xl text-2xl leading-snug font-bold text-balance text-base-content sm:text-3xl">
+          Stop Code Slop, put your agent on a leash and know where your code is going.
+        </p>
+        <p class="mt-5 max-w-xl text-lg text-pretty text-base-content/70">
+          A Rust kernel reads your repository once into 63 typed fact tables. 285 Python rules
+          query those shared tables across three lanes, deterministic, contextual, and external,
+          and report exact findings with citations. The rules that can offer a fix only keep it
+          after MCMR reparses the result and reruns the rule that found it.
+        </p>
+        <div class="mt-8 flex flex-wrap gap-3">
+          <a href="/mcmr/docs/" class="btn btn-primary">Read the docs</a>
+          <a href="#demo" class="btn btn-outline">See the one-command demo</a>
+        </div>
+      </div>
+
+      {
+        banner && (
+          <div class="border-2 border-base-content">
+            <img src={banner} alt="MCMR, define and enforce the engineering rules that make your code yours" width="1200" height="400" class="block w-full" />
+          </div>
+        )
+      }
+    </div>
+
+    <dl class="mt-12 grid max-w-2xl grid-cols-1 divide-y-2 divide-base-300 border-2 border-base-content bg-base-100 font-mono text-sm sm:grid-cols-2 sm:divide-x-2 sm:divide-y-0">
+      {
+        spec.map(([term, value]) => (
+          <div class="flex items-baseline justify-between gap-4 px-5 py-3 sm:justify-start">
+            <dt class="text-base-content/55">{term}</dt>
+            <dd class="font-semibold text-base-content sm:ml-auto">{value}</dd>
+          </div>
+        ))
+      }
+    </dl>
+  </div>
+</section>

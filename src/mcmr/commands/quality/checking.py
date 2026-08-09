@@ -1,4 +1,5 @@
 from pathlib import Path
+from time import perf_counter
 from typing import TYPE_CHECKING, Never
 
 import anyio
@@ -83,6 +84,7 @@ def check(
         or suppress recording a project already asked for.
     label: the label each recorded verdict and institutional memory link carries.
     """
+    started = perf_counter()
     analysis = judgment(
         root,
         select=select,
@@ -100,21 +102,7 @@ def check(
             _fail_provider(error)
         report = CheckReport.of(root, result)
     fixed = _apply_repairs(root, analysis, report, repair, maximum_fixes)
-    report = fixed.report
-    if output is not None:
-        output.write_text(
-            report.model_dump_json(indent=2) + "\n",
-            encoding="utf-8",
-        )
-    if format is CheckFormat.RICH:
-        console.print(RichCheck(limit=limit).render(report))
-    else:
-        console.print(
-            format.check(limit).render(report),
-            markup=False,
-            highlight=False,
-            soft_wrap=True,
-        )
+    _present_report(fixed.report, format=format, limit=limit, output=output)
     _present_repairs(root, fixed, repair, maximum_fixes)
     _record_run(
         root,
@@ -124,13 +112,14 @@ def check(
             applied=[fix.rule for fix in fixed.applied],
             refused=[refusal.rule for refusal in fixed.refused],
             repair=repair,
+            elapsed_milliseconds=(perf_counter() - started) * 1000,
         ),
         analysis.configuration.providers,
         stated=_STATED[writeback],
         label=label,
     )
-    incomplete = rule_coverage is RuleCoverage.ALL and report.skipped_rule_count
-    if (report.failure_count or incomplete) and not report_only:
+    incomplete = rule_coverage is RuleCoverage.ALL and fixed.report.skipped_rule_count
+    if (fixed.report.failure_count or incomplete) and not report_only:
         raise SystemExit(1)
 
 
@@ -211,7 +200,7 @@ def _record_run(
         console.print("No subject was named by this run, so nothing was recorded.")
         return
     with console.status("Recording this run", spinner="dots"):
-        receipts = anyio.run(publish, root, settings, records, label, publication.graph)
+        receipts = anyio.run(publish, root, settings, publication, label)
     for receipt in receipts:
         console.print(receipt)
     subjects = len({record.subject for record in records})
@@ -242,6 +231,27 @@ def _apply_repairs(
             safety=safety,
             maximum_fixes=maximum_fixes,
         ).run(report)
+
+
+def _present_report(
+    report: CheckReport,
+    *,
+    format: CheckFormat,
+    limit: int,
+    output: Path | None,
+) -> None:
+    """Write the complete report where a caller asked for it, then show it the way they chose."""
+    if output is not None:
+        output.write_text(report.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    if format is CheckFormat.RICH:
+        console.print(RichCheck(limit=limit).render(report))
+        return
+    console.print(
+        format.check(limit).render(report),
+        markup=False,
+        highlight=False,
+        soft_wrap=True,
+    )
 
 
 def _present_repairs(

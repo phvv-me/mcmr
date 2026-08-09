@@ -1,0 +1,32 @@
+[
+  {
+    "variables": {},
+    "response": [
+      {
+        "urn": "urn:li:dataProcessInstance:mcmr-ecommerce-pipeline-1786096800000",
+        "dataProcessInstanceKey": {
+          "value": {
+            "id": "mcmr-ecommerce-pipeline-1786096800000"
+          }
+        },
+        "dataProcessInstanceProperties": {
+          "value": {
+            "name": "mcmr-ecommerce-pipeline-1786096800000",
+            "type": "BATCH_AD_HOC",
+            "externalUrl": "https://github.com/phvv-me/mcmr",
+            "created": {
+              "time": 1786096800000,
+              "actor": "urn:li:corpuser:datahub"
+            }
+          }
+        },
+        "dataProcessInstanceRelationships": {
+          "value": {
+            "parentTemplate": "urn:li:dataFlow:(mcmr,ecommerce-pipeline,PROD)",
+            "upstreamInstances": []
+          }
+        }
+      }
+    ]
+  }
+]

@@ -1,4 +1,5 @@
 from patos import FrozenModel
+from pydantic import Field
 
 from ..span import SourceSpan
 
@@ -10,7 +11,11 @@ class NodeRef(FrozenModel):
     a typed request instead of accepting a byte range computed inside a rule.
     """
 
-    id: str
-    span: SourceSpan
-    kind: str = ""
-    text: str = ""
+    id: str = Field(description="identifier of the resolved graph node this handle addresses")
+    span: SourceSpan = Field(description="source range the node occupies")
+    kind: str = Field(
+        default="", description="syntax kind label of the node, empty when unresolved"
+    )
+    text: str = Field(
+        default="", description="verbatim source text the node spans, empty when unresolved"
+    )

@@ -2,6 +2,7 @@ use super::runtime::FACT_BATCH_SIZE;
 use std::collections::BTreeMap;
 
 mod mode;
+mod spool;
 mod spools;
 
 pub(super) use mode::DeferredMode;
@@ -55,7 +56,7 @@ impl DeferredFacts {
                 }
                 Ok(())
             }
-            Self::Spools(spools) => spools.drain(family, visit),
+            Self::Spools(spools) => spools.take(family)?.drain(visit),
         }
     }
 
@@ -71,7 +72,7 @@ impl DeferredFacts {
             Self::Memory(held) => held
                 .remove(family)
                 .ok_or_else(|| format!("no deferred fact family was opened for {family}")),
-            Self::Spools(spools) => spools.read(family),
+            Self::Spools(spools) => spools.take(family)?.read(),
         }
     }
 

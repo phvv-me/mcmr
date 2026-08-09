@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+from pydantic import Field
+
 from ...foundation import Fact
 
 if TYPE_CHECKING:
@@ -9,4 +11,4 @@ if TYPE_CHECKING:
 class FeatureFlagFact(Fact):
     """Describe one feature flag and its lifecycle evidence."""
 
-    flags: list[FeatureFlag] = []
+    flags: list[FeatureFlag] = Field(default=[], description="feature flags this fact retains")

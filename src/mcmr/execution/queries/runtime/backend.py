@@ -4,9 +4,9 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, cast
 
 from patos import Component
-from pydantic import JsonValue, PositiveInt
+from pydantic import JsonValue, PositiveInt, TypeAdapter
 
-from ....domain.contracts import Criterion, ModelProvenance
+from ....domain.contracts import Criterion, ModelProvenance, ModelSpend
 from ....domain.primitives import NonEmptyStr
 from ....facts import Fact
 from ..contracts import (
@@ -19,9 +19,10 @@ from ..contracts import (
     ModelMode,
 )
 from ..model import ModelQuery, answer_frame
+from .resolved import ResolvedQuery
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
     from ....domain.contracts import RuleValue
     from ....query import RuleQuery
@@ -34,6 +35,26 @@ class ClassificationBackend(Component, ABC):
     workers: PositiveInt = 8
     model: NonEmptyStr = "unknown"
     reasoning_effort: NonEmptyStr = "none"
+
+    async def answered[Category: StrEnum](self, query: ModelQuery[Category]) -> ResolvedQuery:
+        """Execute one batched backend request and retain its answers beside what they cost."""
+        candidate_frame = query.candidates.collect()
+        rows = cast("list[dict[str, JsonValue]]", candidate_frame.to_dicts())
+        candidates = [ModelCandidate.from_row(row) for row in rows]
+        outcomes: Sequence[Classification[StrEnum] | Assessment]
+        if query.mode is ModelMode.CLASSIFY:
+            outcomes = await self.classify_many(
+                candidates, category=query.category, instructions=query.stated_instructions
+            )
+        else:
+            outcomes = await self.assess_many(
+                candidates, criteria=query.criteria, instructions=query.instructions
+            )
+        answers = answer_frame(query, rows=rows, outcomes=outcomes)
+        return ResolvedQuery(
+            query=query.resolved(candidate_frame, answers=answers),
+            spend=self.spend(rows, outcomes),
+        )
 
     async def assess_candidate(
         self,
@@ -110,7 +131,13 @@ class ClassificationBackend(Component, ABC):
         category: type[Category],
         instructions: str,
     ) -> Classification[Category]:
-        """Classify one normalized candidate inside a batch backend implementation."""
+        """Classify one normalized candidate inside a batch backend implementation.
+
+        An implementation is allowed to raise `OSError`, `RuntimeError`, or `ValueError` when a
+        turn comes back unusable, and that is part of this contract rather than a refusal of it,
+        because `classify_many` isolates the candidate and records it as uncertain instead of
+        losing the whole batch. Any other exception ends the run.
+        """
         raise NotImplementedError
 
     async def classify_many[Category: StrEnum](
@@ -139,20 +166,19 @@ class ClassificationBackend(Component, ABC):
         query: ModelQuery[Category],
     ) -> RuleQuery[RuleValue]:
         """Execute one batched backend request and return normalized relational answers."""
-        candidate_frame = query.candidates.collect()
-        rows = cast("list[dict[str, JsonValue]]", candidate_frame.to_dicts())
-        candidates = [ModelCandidate.from_row(row) for row in rows]
-        outcomes: Sequence[Classification[StrEnum] | Assessment]
-        if query.mode is ModelMode.CLASSIFY:
-            outcomes = await self.classify_many(
-                candidates, category=query.category, instructions=query.stated_instructions
-            )
-        else:
-            outcomes = await self.assess_many(
-                candidates, criteria=query.criteria, instructions=query.instructions
-            )
-        answers = answer_frame(query, rows=rows, outcomes=outcomes)
-        return query.resolved(candidate_frame, answers=answers)
+        return (await self.answered(query)).query
+
+    def spend(
+        self,
+        rows: Sequence[Mapping[str, JsonValue]],
+        outcomes: Sequence[Classification[StrEnum] | Assessment],
+    ) -> dict[str, ModelSpend]:
+        """Return what the turns behind each source file this query read cost."""
+        counted: dict[str, list[ModelSpend]] = {}
+        for row, outcome in zip(rows, outcomes, strict=True):
+            path = TypeAdapter(str).validate_python(row["path"])
+            counted.setdefault(path, []).append(ModelSpend.of(self._turns(outcome)))
+        return {path: ModelSpend.of(paid) for path, paid in counted.items()}
 
     def unreported_provenance(self) -> ModelProvenance:
         """Describe this backend when a failed turn supplied no usable telemetry."""
@@ -167,6 +193,19 @@ class ClassificationBackend(Component, ABC):
         """Describe one isolated backend failure within the model reasoning bound."""
         reason = f"Backend response was unusable because {type(error).__name__} reported {error}"
         return reason[:500]
+
+    @staticmethod
+    def _turns(outcome: Classification[StrEnum] | Assessment) -> list[ModelProvenance]:
+        """Return one provenance per model turn behind one candidate.
+
+        A batched assessment answers every criterion in a single turn and stamps that one turn on
+        each answer, so counting the answers would bill the same turn once per criterion. Reading
+        the distinct turns instead bills it once, and a backend that really did run a turn per
+        criterion still reports each of them.
+        """
+        if isinstance(outcome, Classification):
+            return [outcome.provenance]
+        return list(dict.fromkeys(answer.provenance for answer in outcome.answers))
 
     def _failed_assessment(
         self,

@@ -131,6 +131,6 @@ pub(super) fn tensor_role_frame(records: &[FunctionRecord]) -> PolarsResult<Data
 
 pub(super) fn function_evidence_frame(records: &[FunctionRecord]) -> PolarsResult<DataFrame> {
     evidence_relation(records, "function_id", entity_id, |record| {
-        &record.identity.evidence
+        record.identity.evidence()
     })
 }

@@ -1,5 +1,5 @@
 use crate::graph::contracts::{
-    Edge, EdgeKind, Language, Node, NodeKind, ParameterKind, Resolution, Visibility,
+    Edge, EdgeKind, Language, Node, NodeBinding, NodeKind, ParameterKind, Resolution, Visibility,
 };
 
 /// Identify one symbol by the namespace of the language that declared it.
@@ -27,10 +27,11 @@ pub fn node(language: Language, kind: NodeKind, qualname: &str) -> Node {
 /// A parameter cannot be minted without saying how it binds, because a rule comparing two
 /// signatures has no way to guess and every frontend here knows the answer from its own grammar.
 pub fn parameter(language: Language, qualname: &str, ordinal: usize, kind: ParameterKind) -> Node {
-    let mut declared = node(language, NodeKind::Parameter, qualname);
-    declared.ordinal = Some(ordinal);
-    declared.parameter_kind = Some(kind);
-    declared
+    node(language, NodeKind::Parameter, qualname).binds(NodeBinding {
+        ordinal,
+        kind,
+        has_default: false,
+    })
 }
 
 pub(crate) struct ExactEdge<'a> {

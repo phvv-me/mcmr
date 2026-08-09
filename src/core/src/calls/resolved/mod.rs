@@ -18,16 +18,13 @@ pub(crate) fn resolutions(
     graph: &graph::Graph,
     standard_library: &BTreeSet<&str>,
 ) -> BTreeMap<(String, usize), Vec<ResolvedCall>> {
-    let nodes: BTreeMap<&str, &graph::Node> = graph
-        .nodes
-        .iter()
-        .map(|node| (node.id.as_str(), node))
-        .collect();
+    let nodes: BTreeMap<&str, &graph::Node> =
+        graph.nodes.iter().map(|node| (node.id(), node)).collect();
     let project_modules = graph
         .nodes
         .iter()
-        .filter(|node| node.kind == graph::NodeKind::Module && node.path.is_some())
-        .map(|node| node.qualname.as_str())
+        .filter(|node| node.kind() == graph::NodeKind::Module && node.path().is_some())
+        .map(|node| node.qualname())
         .collect::<BTreeSet<_>>();
     let mut resolved: BTreeMap<(String, usize), Vec<ResolvedCall>> = BTreeMap::new();
     for edge in graph.edges.iter().filter(|edge| {
@@ -39,16 +36,16 @@ pub(crate) fn resolutions(
         let Some(target) = nodes.get(edge.target.as_str()) else {
             continue;
         };
-        let root = target.qualname.split('.').next().unwrap_or_default();
+        let root = target.qualname().split('.').next().unwrap_or_default();
         let first_party = edge.resolution == graph::Resolution::Exact
-            || belongs_to_project(&target.qualname, &project_modules);
+            || belongs_to_project(target.qualname(), &project_modules);
         let external = edge.resolution == graph::Resolution::External && !first_party;
         resolved
             .entry((edge.path.clone(), edge.line))
             .or_default()
             .push(ResolvedCall {
-                target_id: target.id.clone(),
-                qualified_name: target.qualname.clone(),
+                target_id: target.id().to_string(),
+                qualified_name: target.qualname().to_string(),
                 resolution: edge.resolution,
                 is_external: external,
                 is_first_party: first_party,

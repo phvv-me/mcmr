@@ -54,6 +54,9 @@ _TABLE = (
             (_EXISTING_MODEL_OWNS_RULES, CriterionValue.YES),
         ),
     ),
+    # A required generic form settles this before any row about a wrapper does, since a value
+    # something outside forces to stay generic says nothing about modeling too much.
+    (PrimitiveObsession.APPROPRIATE, ((_GENERIC_FORM_REQUIRED, CriterionValue.YES),)),
     (
         PrimitiveObsession.OVERMODELED,
         (
@@ -61,7 +64,6 @@ _TABLE = (
             (_EXISTING_MODEL_OWNS_RULES, CriterionValue.YES),
         ),
     ),
-    (PrimitiveObsession.APPROPRIATE, ((_GENERIC_FORM_REQUIRED, CriterionValue.YES),)),
     (
         PrimitiveObsession.APPROPRIATE,
         (
@@ -125,7 +127,9 @@ def primitive_obsession(
     Exceptions
     ----------
     Local counters, transient parsing values, stable wire formats, and framework-required scalar
-    fields can remain generic when their domain rules are not duplicated.
+    fields can remain generic when their domain rules are not duplicated. A required generic form
+    is read before any existing wrapper is weighed, so building a domain type out of the raw values
+    a boundary hands over is `appropriate` rather than one model too many.
 
     Examples
     --------

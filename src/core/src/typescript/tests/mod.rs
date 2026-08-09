@@ -421,8 +421,8 @@ fn symbols(graph: &crate::graph::Graph) -> Vec<String> {
     let mut found: Vec<String> = graph
         .nodes
         .iter()
-        .filter(|node| !node.id.starts_with("path:"))
-        .map(|node| node.id.clone())
+        .filter(|node| !node.id().starts_with("path:"))
+        .map(|node| node.id().to_string())
         .collect();
     found.sort();
     found
@@ -457,7 +457,7 @@ fn node_of<'a>(graph: &'a crate::graph::Graph, id: &str) -> &'a Node {
     graph
         .nodes
         .iter()
-        .find(|node| node.id == id)
+        .find(|node| node.id() == id)
         .unwrap_or_else(|| panic!("the graph holds {id}"))
 }
 

@@ -36,14 +36,11 @@ type Signatures<'a> = BTreeMap<&'a str, Vec<&'a Node>>;
 impl<'a> Inheritance<'a> {
     /// Index one built graph into the four questions an override pair asks of it.
     fn of(graph: &'a Graph) -> Self {
-        let nodes: BTreeMap<&str, &Node> = graph
-            .nodes
-            .iter()
-            .map(|node| (node.id.as_str(), node))
-            .collect();
+        let nodes: BTreeMap<&str, &Node> =
+            graph.nodes.iter().map(|node| (node.id(), node)).collect();
         let classes: BTreeMap<&str, &Node> = nodes
             .iter()
-            .filter(|(_, node)| node.kind == NodeKind::Class)
+            .filter(|(_, node)| node.kind() == NodeKind::Class)
             .map(|(id, node)| (*id, *node))
             .collect();
         let mut signatures: Signatures = BTreeMap::new();
@@ -56,17 +53,17 @@ impl<'a> Inheritance<'a> {
                 continue;
             };
             match edge.kind {
-                EdgeKind::Define if target.kind == NodeKind::Parameter => {
+                EdgeKind::Define if target.kind() == NodeKind::Parameter => {
                     signatures.entry(source).or_default().push(target);
                 }
-                EdgeKind::Define if is_member(target.kind) && classes.contains_key(source) => {
+                EdgeKind::Define if is_member(target.kind()) && classes.contains_key(source) => {
                     held.entry(source).or_default().push(target);
                 }
                 EdgeKind::Inherit if classes.contains_key(source) => {
                     bases.entry(source).or_default().push(target);
                 }
                 EdgeKind::Call | EdgeKind::Instantiate => {
-                    called.entry(source).or_default().push(&target.qualname);
+                    called.entry(source).or_default().push(target.qualname());
                 }
                 _ => {}
             }
@@ -95,7 +92,7 @@ impl<'a> Inheritance<'a> {
     fn ancestor_names(&self, class: &str) -> Vec<&str> {
         let mut named: BTreeSet<&str> = self.base_names(class).into_iter().collect();
         for (ancestor, _) in self.ancestry(class) {
-            named.extend(self.base_names(&ancestor.id));
+            named.extend(self.base_names(ancestor.id()));
         }
         named.into_iter().collect()
     }
@@ -115,11 +112,11 @@ impl<'a> Inheritance<'a> {
             .map(|base| (base, 1))
             .collect();
         while let Some((current, depth)) = pending.pop() {
-            if !seen.insert(current.id.as_str()) {
+            if !seen.insert(current.id()) {
                 continue;
             }
             order.push((current, depth));
-            for base in self.inherited_classes(&current.id).into_iter().rev() {
+            for base in self.inherited_classes(current.id()).into_iter().rev() {
                 pending.push((base, depth + 1));
             }
         }
@@ -130,7 +127,7 @@ impl<'a> Inheritance<'a> {
     fn base_names(&self, class: &str) -> Vec<&str> {
         self.named_bases(class)
             .iter()
-            .map(|base| tail(&base.qualname))
+            .map(|base| tail(base.qualname()))
             .collect()
     }
 
@@ -155,32 +152,31 @@ impl<'a> Inheritance<'a> {
             .count();
         let path = link
             .derived
-            .path
-            .as_deref()
+            .path()
             .expect("a resolved derived class must state its source path");
         let line = link
             .derived
-            .line
+            .line()
             .expect("a resolved derived class must state its source line");
         json!({
-            "key": format!("override:{}:{}", link.derived.qualname, link.base.qualname),
+            "key": format!("override:{}:{}", link.derived.qualname(), link.base.qualname()),
             "span": {
                 "path": path,
                 "start_line": line,
                 "end_line": line,
             },
-            "language": link.derived.language,
-            "derived": link.derived.qualname,
-            "base": link.base.qualname,
+            "language": link.derived.language(),
+            "derived": link.derived.qualname(),
+            "base": link.base.qualname(),
             "depth": link.depth,
             "overridden_member_count": overridden_member_count,
-            "derived_decorators": link.derived.decorators,
-            "base_decorators": link.base.decorators,
-            "base_names": self.base_names(&link.derived.id),
-            "ancestor_names": self.ancestor_names(&link.derived.id),
+            "derived_decorators": link.derived.decorators(),
+            "base_decorators": link.base.decorators(),
+            "base_names": self.base_names(link.derived.id()),
+            "ancestor_names": self.ancestor_names(link.derived.id()),
             "declared": link.declared,
             "inherited": link.inherited,
-            "initializer_calls": self.initializers.get(link.derived.id.as_str()),
+            "initializer_calls": self.initializers.get(link.derived.id()),
         })
     }
 
@@ -192,7 +188,7 @@ impl<'a> Inheritance<'a> {
             let mut claimed: BTreeSet<&str> = BTreeSet::new();
             for (base, depth) in self.ancestry(id) {
                 let inherited: Vec<Declaration> = self
-                    .declarations_of(&base.id)
+                    .declarations_of(base.id())
                     .iter()
                     .filter(|item| claimed.insert(item.name.as_str()))
                     .cloned()
@@ -214,7 +210,7 @@ impl<'a> Inheritance<'a> {
         self.named_bases(class)
             .iter()
             .copied()
-            .filter(|base| base.kind == NodeKind::Class)
+            .filter(|base| base.kind() == NodeKind::Class)
             .collect()
     }
 
@@ -249,35 +245,32 @@ fn declarations(held: &[&Node], signatures: &Signatures) -> Vec<Declaration> {
 /// both its ordinal and binding kind. Missing metadata is therefore a provider defect rather than
 /// an ordinary parameter this pass can safely invent.
 fn declaration(node: &Node, signatures: &Signatures) -> Declaration {
-    let parameters = (node.kind != NodeKind::Attribute).then(|| {
-        let mut stated = signatures
-            .get(node.id.as_str())
-            .cloned()
-            .unwrap_or_default();
+    let parameters = (node.kind() != NodeKind::Attribute).then(|| {
+        let mut stated = signatures.get(node.id()).cloned().unwrap_or_default();
         stated.sort_by_key(|held| {
-            held.ordinal
+            held.ordinal()
                 .expect("a declared parameter must state its ordinal")
         });
         stated
             .into_iter()
             .map(|held| ParameterDeclaration {
-                name: tail(&held.qualname).to_string(),
+                name: tail(held.qualname()).to_string(),
                 kind: held
-                    .parameter_kind
+                    .parameter_kind()
                     .expect("a declared parameter must state its binding kind"),
-                has_default: held.has_default,
+                has_default: held.has_default(),
             })
             .collect()
     });
     Declaration {
-        name: tail(&node.qualname).to_string(),
+        name: tail(node.qualname()).to_string(),
         parameters,
-        decorators: node.decorators.clone(),
-        asynchronous: node.asynchronous,
+        decorators: node.decorators().to_vec(),
+        asynchronous: node.asynchronous(),
         line: node
-            .line
+            .line()
             .expect("a declared class member must state its source line"),
-        source: node.source.clone().unwrap_or_default(),
+        source: node.source().unwrap_or_default().to_string(),
     }
 }
 
@@ -293,13 +286,8 @@ fn initializer_calls(
     held.map(Vec::as_slice)
         .unwrap_or_default()
         .iter()
-        .filter(|node| tail(&node.qualname) == "__init__")
-        .flat_map(|node| {
-            called
-                .get(node.id.as_str())
-                .map(Vec::as_slice)
-                .unwrap_or_default()
-        })
+        .filter(|node| tail(node.qualname()) == "__init__")
+        .flat_map(|node| called.get(node.id()).map(Vec::as_slice).unwrap_or_default())
         .filter_map(|qualname| receiver(qualname))
         .collect()
 }

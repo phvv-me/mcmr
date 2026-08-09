@@ -1,5 +1,4 @@
 import json
-from functools import partial
 from pathlib import Path
 
 import anyio
@@ -225,13 +224,9 @@ def test_datahub_provider_resolves_literal_sql_against_catalog_schema() -> None:
 def test_datahub_graphql_reports_protocol_and_configuration_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Configuration, lifecycle, and GraphQL errors fail before rules receive evidence."""
+    """Configuration and GraphQL errors fail before rules receive evidence."""
     monkeypatch.delenv("DATAHUB_GMS_TOKEN", raising=False)
     settings = DataHubSettings(server="https://catalog.example")
-    gateway = DataHubGraphQL(settings)
-
-    with pytest.raises(RuntimeError, match="must be opened"):
-        anyio.run(partial(gateway.execute, "query Q { me { urn } }", {}, "Q"))
 
     async def respond(request: httpx.Request) -> httpx.Response:
         assert "Authorization" not in request.headers

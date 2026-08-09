@@ -23,7 +23,7 @@ def boolean_parameter_count(subject: Table[FunctionFact]) -> CountQuery:
     suite, and the ones nobody exercises are the ones that break.
 
     This counts a keyword-only flag as well as a positional one. Naming a flag at the call site
-    fixes readability, which is what the neighbouring positional-flag rule is about, and it does
+    fixes readability, which is what the neighboring positional-flag rule is about, and it does
     nothing about the state space, which is what this rule measures. The repair here is to split
     the callable or to replace the flags with one closed set of named behaviors.
 

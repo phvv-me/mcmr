@@ -10,6 +10,7 @@ class FactDataset(FrozenModel):
 
     family: NonEmptyStr
     name: NonEmptyStr
+    category: str = ""
     description: str = ""
     columns: list[FactColumn] = []
     row_count: NonNegativeInt = 0

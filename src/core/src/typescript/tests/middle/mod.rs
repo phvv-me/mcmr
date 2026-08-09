@@ -76,8 +76,8 @@ fn a_contract_is_an_interface_an_abstract_class_or_an_alias_and_never_an_enum() 
     let stated: Vec<(&str, bool)> = graph
         .nodes
         .iter()
-        .filter(|node| node.kind == NodeKind::Class)
-        .map(|node| (node.qualname.as_str(), node.is_abstract))
+        .filter(|node| node.kind() == NodeKind::Class)
+        .map(|node| (node.qualname(), node.is_abstract()))
         .collect();
 
     assert_eq!(
@@ -101,13 +101,13 @@ fn a_parameter_carries_how_it_binds_and_whether_a_caller_may_leave_it_out() {
     let mut stated: Vec<(&str, Option<ParameterKind>, bool, Option<usize>)> = graph
         .nodes
         .iter()
-        .filter(|node| node.kind == NodeKind::Parameter)
+        .filter(|node| node.kind() == NodeKind::Parameter)
         .map(|node| {
             (
-                node.qualname.as_str(),
-                node.parameter_kind,
-                node.has_default,
-                node.ordinal,
+                node.qualname(),
+                node.parameter_kind(),
+                node.has_default(),
+                node.ordinal(),
             )
         })
         .collect();
@@ -153,8 +153,8 @@ fn a_destructured_position_declares_no_name_and_still_holds_its_place() {
     let stated: Vec<(&str, Option<usize>)> = graph
         .nodes
         .iter()
-        .filter(|node| node.kind == NodeKind::Parameter)
-        .map(|node| (node.qualname.as_str(), node.ordinal))
+        .filter(|node| node.kind() == NodeKind::Parameter)
+        .map(|node| (node.qualname(), node.ordinal()))
         .collect();
 
     assert_eq!(stated, [("src/run.run.total", Some(1))]);
@@ -169,8 +169,8 @@ fn visibility_reads_the_export_keyword_and_every_member_modifier() {
     let mut stated: Vec<(&str, Visibility)> = graph
         .nodes
         .iter()
-        .filter(|node| !node.id.starts_with("path:") && node.kind != NodeKind::Module)
-        .map(|node| (node.qualname.as_str(), node.visibility))
+        .filter(|node| !node.id().starts_with("path:") && node.kind() != NodeKind::Module)
+        .map(|node| (node.qualname(), node.visibility()))
         .collect();
     stated.sort_by_key(|held| held.0);
 
@@ -196,7 +196,7 @@ fn a_name_published_by_a_later_export_statement_still_reads_as_public() {
     )]);
 
     assert_eq!(
-        node_of(&graph, "typescript:function:src/engine.helper").visibility,
+        node_of(&graph, "typescript:function:src/engine.helper").visibility(),
         Visibility::Public
     );
 }
@@ -293,11 +293,11 @@ fn a_binding_whose_value_is_a_callable_is_declared_as_one() {
     )]);
     let declared = node_of(&graph, "typescript:function:src/load.load");
 
-    assert!(declared.asynchronous);
-    assert_eq!(declared.visibility, Visibility::Public);
+    assert!(declared.asynchronous());
+    assert_eq!(declared.visibility(), Visibility::Public);
     assert_eq!(
-        node_of(&graph, "typescript:parameter:src/load.load.event").annotation,
-        Some("string".to_string())
+        node_of(&graph, "typescript:parameter:src/load.load.event").annotation(),
+        Some("string")
     );
 }
 

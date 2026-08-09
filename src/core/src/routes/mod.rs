@@ -306,7 +306,7 @@ fn language_of(path: &str) -> &'static str {
 
 /// Return every route as the one fact a rule reads, since every route question is repository-wide.
 ///
-/// A duplicate, a route nothing reaches, and a path that disagrees with its neighbours are all
+/// A duplicate, a route nothing reaches, and a path that disagrees with its neighbors are all
 /// statements about the set rather than about any single route, so the set is what arrives and the
 /// rule decides what it means.
 pub fn facts(routes: &[Route]) -> Vec<Value> {

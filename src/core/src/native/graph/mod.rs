@@ -4,8 +4,8 @@ use super::support::{
     native_parameter, trim_include, wrapped,
 };
 use crate::graph::{
-    DatatypeKind, Edge, EdgeKind, Language, Node, NodeKind, Reference, Relation, Resolution,
-    Stated, identity, node, parameter,
+    DatatypeKind, Edge, EdgeKind, Language, Node, NodeBinding, NodeKind, NodePlacement, Reference,
+    Relation, Resolution, Stated, identity, node,
 };
 use crate::source::Source;
 use std::collections::{BTreeMap, BTreeSet};
@@ -112,9 +112,8 @@ impl Collector {
             .map(|name| self.text(name).to_string())
             .unwrap_or_else(|| "anonymous".to_string());
         let qualname = format!("{}::{named}", self.scope());
-        let mut declared = self.place(NodeKind::Module, &qualname, node);
-        declared.is_package = true;
-        let identifier = declared.id.clone();
+        let declared = self.place(NodeKind::Module, &qualname, node).packaged();
+        let identifier = declared.id().to_string();
         self.declare(declared, node);
         self.enter(ScopeEntry {
             qualname,
@@ -138,7 +137,7 @@ impl Collector {
             _ => DatatypeKind::Concrete,
         };
         let declared = self.place(NodeKind::Class, &qualname, node).datatype(kind);
-        let identifier = declared.id.clone();
+        let identifier = declared.id().to_string();
         self.declare(declared, node);
         if let Some(clause) = child(node, "base_class_clause") {
             for base in children(clause).into_iter().filter(|item| is_name(*item)) {
@@ -182,7 +181,7 @@ impl Collector {
     fn declare_callable(&mut self, node: Syntax, named: &str, declarator: Syntax) -> String {
         let qualname = self.qualify(named);
         let declared = self.place(self.member_or_free(named), &qualname, node);
-        let identifier = declared.id.clone();
+        let identifier = declared.id().to_string();
         self.declare(declared, node);
         self.signature(&identifier, declarator);
         self.named_type(&identifier, node);
@@ -211,12 +210,18 @@ impl Collector {
             else {
                 continue;
             };
-            let mut declared =
-                parameter(self.language, &format!("{held}::{named}"), ordinal, kind);
-            declared.has_default = has_default;
-            declared.path = Some(self.source.relative.clone());
-            declared.line = Some(stated.start_position().row + 1);
-            let identifier = declared.id.clone();
+            let declared = node(
+                self.language,
+                NodeKind::Parameter,
+                &format!("{held}::{named}"),
+            )
+            .binds(NodeBinding {
+                ordinal,
+                kind,
+                has_default,
+            })
+            .declared(self.written(stated));
+            let identifier = declared.id().to_string();
             self.nodes.push(declared);
             self.relate(
                 Relation {
@@ -238,7 +243,7 @@ impl Collector {
             let qualname = self.qualify(&named);
             let kind = self.member_or_free(&named);
             let declared = self.place(kind, &qualname, node);
-            let identifier = declared.id.clone();
+            let identifier = declared.id().to_string();
             self.declare(declared, node);
             self.signature(&identifier, declarator);
             return;
@@ -325,15 +330,23 @@ impl Collector {
     }
 
     fn place(&self, kind: NodeKind, qualname: &str, at: Syntax) -> Node {
-        let mut declared = node(self.language, kind, qualname);
-        declared.path = Some(self.source.relative.clone());
-        declared.line = Some(at.start_position().row + 1);
-        declared.source = matches!(
-            kind,
-            NodeKind::Method | NodeKind::Property | NodeKind::Attribute
-        )
-        .then(|| self.text(at).to_string());
-        declared
+        node(self.language, kind, qualname).declared(NodePlacement {
+            source: matches!(
+                kind,
+                NodeKind::Method | NodeKind::Property | NodeKind::Attribute
+            )
+            .then(|| self.text(at).to_string()),
+            ..self.written(at)
+        })
+    }
+
+    /// Point at the line of this file that writes one declaration.
+    fn written(&self, at: Syntax) -> NodePlacement {
+        NodePlacement {
+            path: self.source.relative.clone(),
+            line: Some(at.start_position().row + 1),
+            source: None,
+        }
     }
 
     fn enter(&mut self, entry: ScopeEntry) {
@@ -363,7 +376,7 @@ impl Collector {
 
     fn declare(&mut self, declared: Node, node: Syntax) {
         let owner = self.owner();
-        let identifier = declared.id.clone();
+        let identifier = declared.id().to_string();
         self.nodes.push(declared);
         self.relate(
             Relation {

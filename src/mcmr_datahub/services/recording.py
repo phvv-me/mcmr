@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from hashlib import sha1
 from typing import TYPE_CHECKING
 
 from anyio import sleep
@@ -7,7 +6,9 @@ from pydantic import JsonValue, TypeAdapter
 
 from mcmr.plugins import RuleTimeline, RunEvent, RunRecord, RunState
 
-from .publication.identities import subject_urn
+from .assertions import DataHubAssertionQueries
+from .publication.labels import assertion_urn, subject_urn
+from .publication.reported import ReportedFiles
 from .transport.exceptions import DataHubRequestError
 
 if TYPE_CHECKING:
@@ -51,104 +52,16 @@ class DataHubRecording:
     person opening the asset reads.
     """
 
-    upsert = """mutation MCMRUpsertAssertion(
-  $assertion: String!
-  $entity: String!
-  $category: String!
-  $description: String!
-  $platform: String!
-  $externalUrl: String
-) {
-  upsertCustomAssertion(
-    urn: $assertion
-    input: {
-      entityUrn: $entity
-      type: $category
-      description: $description
-      platform: {name: $platform}
-      externalUrl: $externalUrl
-    }
-  ) {
-    urn
-  }
-}"""
-
-    report = """mutation MCMRReportAssertionResult(
-  $assertion: String!
-  $timestampMillis: Long!
-  $type: AssertionResultType!
-  $properties: [StringMapEntryInput!]
-  $externalUrl: String
-) {
-  reportAssertionResult(
-    urn: $assertion
-    result: {
-      timestampMillis: $timestampMillis
-      type: $type
-      properties: $properties
-      externalUrl: $externalUrl
-    }
-  )
-}"""
-
-    link = """mutation MCMRWriteback(
-  $urn: String!
-  $url: String!
-  $label: String!
-) {
-  addLink(input: {resourceUrn: $urn, linkUrl: $url, label: $label})
-}"""
-
-    links = """query MCMRWritebackLinks($urn: String!) {
-  dataset(urn: $urn) {
-    institutionalMemory {
-      elements { url label }
-    }
-  }
-}"""
-
-    timeline = """query MCMRAssertionHistory($urn: String!, $count: Int!) {
-  dataset(urn: $urn) {
-    assertions(start: 0, count: $count) {
-      total
-      assertions {
-        urn
-        info { description externalUrl }
-        runEvents(limit: $count) {
-          total
-          failed
-          succeeded
-          runEvents {
-            timestampMillis
-            status
-            result { type nativeResults { key value } }
-          }
-        }
-      }
-    }
-  }
-}"""
-
-    def __init__(self, gateway: DataHubGraphQL, report_url: str) -> None:
+    def __init__(self, gateway: DataHubGraphQL, report_url: str, *, run: str = "") -> None:
         self.gateway = gateway
         self.report_url = report_url
-
-    @staticmethod
-    def identity(record: RunRecord) -> str:
-        """Return the assertion identity this rule and subject keep across every later run.
-
-        The digest is taken over what the verdict is about rather than where it is stored, so a
-        rule failing at two files inside one fact table keeps two timelines while a rule about a
-        warehouse asset keeps the single one it always had.
-        """
-        digest = sha1(record.anchor.encode("utf-8"), usedforsecurity=False).hexdigest()[:12]
-        return f"urn:li:assertion:mcmr-{record.rule.lower()}-{digest}"
+        self.run = run
 
     async def declare(self, record: RunRecord) -> str:
         """Upsert the assertion one verdict belongs to and return its identity."""
-        assertion = self.identity(record)
+        assertion = assertion_urn(record)
         await self.gateway.execute(
-            self.upsert,
+            DataHubAssertionQueries.upsert,
             {
                 "assertion": assertion,
                 "entity": subject_urn(record.subject),
@@ -165,7 +78,7 @@ class DataHubRecording:
         """Return every MCMR timeline DataHub already holds for one governed asset."""
         urn = subject_urn(subject)
         data = await self.gateway.execute(
-            self.timeline,
+            DataHubAssertionQueries.timeline,
             {"urn": urn, "count": _WINDOW},
             "MCMRAssertionHistory",
         )
@@ -203,21 +116,14 @@ class DataHubRecording:
         rule that ran this run knows every file it still reports, which is what licenses closing
         the rest. A rule that did not run closes nothing, because silence is not a resolution.
         """
-        executed = {record.rule for record in records}
-        failing = {
-            (record.rule, record.path)
-            for record in records
-            if record.state is RunState.FAILURE and record.path
-        }
+        reported = ReportedFiles.of(records)
         held = [found for subject in subjects for found in await self.reported(subject)]
-        closed = [
-            (assertion, rule, path)
-            for assertion, rule, path in held
-            if rule in executed and (rule, path) not in failing
-        ]
+        closed = [found for found in held if reported.settled(rule=found[1], path=found[2])]
         moment = at or datetime.now(UTC)
-        for assertion, rule, path in closed:
-            await self.report_result(self._resolution(assertion, rule=rule, path=path, at=moment))
+        for assertion, rule, path, lane in closed:
+            await self.report_result(
+                self._resolution(assertion, rule=rule, path=path, lane=lane, at=moment)
+            )
         return [f"{repository} closed {len(closed)} file verdicts".strip()] if closed else []
 
     async def record(self, records: Sequence[RunRecord], at: datetime | None = None) -> int:
@@ -228,18 +134,20 @@ class DataHubRecording:
         once per assertion. Declaring the run's assertions first spends that window on the rest of
         the batch instead, which is the difference between a run that records in seconds and one
         that spends minutes asleep.
+
+        Every result also states the identity of the invocation that reached it, so a reader who
+        opened one rule's timeline can ask what else the same run concluded.
         """
         declared = [(record, await self.declare(record)) for record in records]
         moment = at or datetime.now(UTC)
         for record, assertion in declared:
+            stated = record.properties | ({"runId": self.run} if self.run else {})
             await self.report_result(
                 {
                     "assertion": assertion,
                     "timestampMillis": int(moment.timestamp() * 1000),
                     "type": _RESULT[record.state],
-                    "properties": [
-                        {"key": key, "value": value} for key, value in record.properties.items()
-                    ],
+                    "properties": [{"key": key, "value": value} for key, value in stated.items()],
                     "externalUrl": self.report_url or None,
                 }
             )
@@ -257,7 +165,7 @@ class DataHubRecording:
         if not self.report_url or await self.remembered(subject, label=label):
             return
         await self.gateway.execute(
-            self.link,
+            DataHubAssertionQueries.link,
             {"urn": subject_urn(subject), "url": self.report_url, "label": label},
             "MCMRWriteback",
         )
@@ -265,7 +173,7 @@ class DataHubRecording:
     async def remembered(self, subject: str, *, label: str) -> bool:
         """Whether one judged asset already points at this run report under this label."""
         data = await self.gateway.execute(
-            self.links,
+            DataHubAssertionQueries.links,
             {"urn": subject_urn(subject)},
             "MCMRWritebackLinks",
         )
@@ -289,17 +197,21 @@ class DataHubRecording:
         """
         for delay in _SETTLING:
             try:
-                await self.gateway.execute(self.report, variables, "MCMRReportAssertionResult")
+                await self.gateway.execute(
+                    DataHubAssertionQueries.report, variables, "MCMRReportAssertionResult"
+                )
             except DataHubRequestError:
                 await sleep(delay)
             else:
                 return
-        await self.gateway.execute(self.report, variables, "MCMRReportAssertionResult")
+        await self.gateway.execute(
+            DataHubAssertionQueries.report, variables, "MCMRReportAssertionResult"
+        )
 
-    async def reported(self, subject: str) -> list[tuple[str, str, str]]:
+    async def reported(self, subject: str) -> list[tuple[str, str, str, str]]:
         """Return every file-scoped verdict one subject still holds open, as identity and place."""
         data = await self.gateway.execute(
-            self.timeline,
+            DataHubAssertionQueries.timeline,
             {"urn": subject_urn(subject), "count": _WINDOW},
             "MCMRAssertionHistory",
         )
@@ -364,14 +276,15 @@ class DataHubRecording:
         ]
         return sorted(found, key=lambda item: item.at)
 
-    def _open(self, assertion: Mapping[str, JsonValue]) -> tuple[str, str, str] | None:
+    def _open(self, assertion: Mapping[str, JsonValue]) -> tuple[str, str, str, str] | None:
         """Project one assertion into the file it still reports, or skip one that reports none."""
         events = self._events(assertion)
         if not events or events[-1].state is not RunState.FAILURE:
             return None
         stated = events[-1].properties
         rule, path = stated.get("rule", ""), stated.get("path", "")
-        return (self._text(assertion.get("urn")), rule, path) if rule and path else None
+        found = (self._text(assertion.get("urn")), rule, path, stated.get("lane", ""))
+        return found if rule and path else None
 
     def _properties(self, result: Mapping[str, JsonValue]) -> dict[str, str]:
         """Return the flat properties one recorded verdict carried."""
@@ -387,18 +300,22 @@ class DataHubRecording:
         *,
         rule: str,
         path: str,
+        lane: str,
         at: datetime,
     ) -> dict[str, JsonValue]:
         """State that one file a rule used to report is not reported by this run."""
+        stated: list[JsonValue] = [
+            {"key": "rule", "value": rule},
+            {"key": "path", "value": path},
+            {"key": "resolution", "value": _RESOLVED},
+        ]
+        if lane:
+            stated.insert(1, {"key": "lane", "value": lane})
         return {
             "assertion": assertion,
             "timestampMillis": int(at.timestamp() * 1000),
             "type": _RESULT[RunState.SUCCESS],
-            "properties": [
-                {"key": "rule", "value": rule},
-                {"key": "path", "value": path},
-                {"key": "resolution", "value": _RESOLVED},
-            ],
+            "properties": stated,
             "externalUrl": self.report_url or None,
         }
 

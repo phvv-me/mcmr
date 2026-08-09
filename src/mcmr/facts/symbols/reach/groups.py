@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Literal
 
 from patos import FrozenModel
+from pydantic import Field
 
 from ...foundation import SourceSpan, Visibility
 
@@ -14,39 +15,81 @@ class SymbolReachFields:
     class Identity(FrozenModel):
         """Retain declaration identity and stated visibility."""
 
-        qualname: str
-        kind: Literal["class", "function", "method", "property", "variable", "attribute"]
-        span: SourceSpan
-        visibility: Visibility = Visibility.PUBLIC
+        qualname: str = Field(description="fully qualified name of this declaration")
+        kind: Literal["class", "function", "method", "property", "variable", "attribute"] = Field(
+            description="language-neutral kind of this declaration"
+        )
+        span: SourceSpan = Field(description="source location of this declaration")
+        visibility: Visibility = Field(
+            default=Visibility.PUBLIC, description="effective visibility of this declaration"
+        )
 
     class Declaration(Identity):
         """Retain owner contract, scope, and local references."""
 
-        owner_visibility: Visibility = Visibility.PUBLIC
-        owner_has_inheritance: bool = False
-        is_module_scope: bool = False
-        is_decorated: bool = False
-        own_file_references: NonNegativeInt = 0
+        owner_visibility: Visibility = Field(
+            default=Visibility.PUBLIC,
+            description="visibility of the class or module that owns this declaration",
+        )
+        owner_has_inheritance: bool = Field(
+            default=False,
+            description="whether the owner participates in an inheritance edge, base or subclass",
+        )
+        is_module_scope: bool = Field(
+            default=False,
+            description="whether this declaration sits directly in its module's scope",
+        )
+        is_decorated: bool = Field(
+            default=False,
+            description="whether this declaration carries a decorator or a registered component",
+        )
+        own_file_references: NonNegativeInt = Field(
+            default=0, description="references reaching this declaration from its own file"
+        )
 
     class Ownership(Declaration):
         """Retain cross-file and owner resolution completeness."""
 
-        other_file_references: NonNegativeInt = 0
-        owner_references: NonNegativeInt = 0
-        non_owner_references: NonNegativeInt = 0
-        unresolved_name_references: NonNegativeInt = 0
+        other_file_references: NonNegativeInt = Field(
+            default=0, description="references reaching this declaration from a different file"
+        )
+        owner_references: NonNegativeInt = Field(
+            default=0, description="references reaching this declaration from within its own owner"
+        )
+        non_owner_references: NonNegativeInt = Field(
+            default=0, description="references reaching this declaration from outside its owner"
+        )
+        unresolved_name_references: NonNegativeInt = Field(
+            default=0,
+            description="edges reaching an unresolved symbol sharing this declaration's trailing "
+            "name",
+        )
 
     class Spread(Ownership):
         """Retain repository spread and resolved operation counts."""
 
-        referencing_files: NonNegativeInt = 0
-        referencing_directories: NonNegativeInt = 0
-        referencing_packages: NonNegativeInt = 0
-        call_count: NonNegativeInt = 0
-        instantiate_count: NonNegativeInt = 0
-        inherit_count: NonNegativeInt = 0
+        referencing_files: NonNegativeInt = Field(
+            default=0, description="distinct files that reference this declaration"
+        )
+        referencing_directories: NonNegativeInt = Field(
+            default=0, description="distinct directories that reference this declaration"
+        )
+        referencing_packages: NonNegativeInt = Field(
+            default=0, description="distinct packages that reference this declaration"
+        )
+        call_count: NonNegativeInt = Field(
+            default=0, description="call edges reaching this declaration"
+        )
+        instantiate_count: NonNegativeInt = Field(
+            default=0, description="instantiate edges reaching this declaration"
+        )
+        inherit_count: NonNegativeInt = Field(
+            default=0, description="inherit edges reaching this declaration"
+        )
 
     class Operations(Spread):
         """Retain import operations reaching the declaration."""
 
-        import_count: NonNegativeInt = 0
+        import_count: NonNegativeInt = Field(
+            default=0, description="import edges reaching this declaration"
+        )

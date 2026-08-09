@@ -5,6 +5,20 @@ use crate::source::is_test_path;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 
+/// What a class has to be before a shared models package is the right home for it.
+pub(super) struct ModelPlacement<'placement> {
+    pub(super) importing: &'placement [&'placement str],
+    pub(super) is_declarative_model: bool,
+    pub(super) has_ordinary_behavior: bool,
+}
+
+impl ModelPlacement<'_> {
+    /// Whether this class is validated data rather than a type that runs behavior of its own.
+    fn is_model(&self) -> bool {
+        self.is_declarative_model && !self.has_ordinary_behavior
+    }
+}
+
 impl<'repository> Repository<'repository> {
     /// Return which repository class one file's record names, when the repository knows it.
     pub(super) fn identify(&self, address: ClassAddress<'_>) -> Option<Identity> {
@@ -73,10 +87,24 @@ impl<'repository> Repository<'repository> {
     }
 
     /// Whether repository source explicitly exposes one class without consulting a fact record.
+    ///
+    /// An export list and a package re-export both name a module-level binding, so a class nested
+    /// inside another one is never the class they expose even when the bare names match.
     pub(super) fn named_export(&self, held: &Identity) -> bool {
+        if self.is_nested(held) {
+            return false;
+        }
         self.relations.directly_exported.contains(held)
             || self.relations.reexported.contains(held)
             || self.relations.reexported_names.contains(held.1.as_str())
+    }
+
+    /// Whether a class or a function holds one class rather than the module declaring it.
+    pub(super) fn is_nested(&self, held: &Identity) -> bool {
+        self.index
+            .definitions
+            .get(held)
+            .is_some_and(|class| class.is_nested())
     }
 
     /// Whether the only place outside its own module that names one class is its one subclass.
@@ -177,9 +205,20 @@ impl<'repository> Repository<'repository> {
     /// Return the file a reused model belongs in, given every module that imports it.
     ///
     /// Consumers inside one package propose that package's own models module, and consumers
-    /// spanning packages propose one file for the class below the nearest package they share.
-    pub(super) fn proposed_destination(&self, held: &Identity, importing: &[&str]) -> String {
-        let importing: Vec<&str> = importing
+    /// spanning packages propose one file for the class below the nearest package they share. Only
+    /// a model is proposed anywhere, since a shared models package is no home for a client or a
+    /// service that runs behavior, and a nested class is proposed nowhere either, because moving it
+    /// would mean lifting it out of its owner first, which is a different change from this one.
+    pub(super) fn proposed_destination(
+        &self,
+        held: &Identity,
+        placement: ModelPlacement<'_>,
+    ) -> String {
+        if self.is_nested(held) || !placement.is_model() {
+            return String::new();
+        }
+        let importing: Vec<&str> = placement
+            .importing
             .iter()
             .copied()
             .filter(|module| {
@@ -230,6 +269,9 @@ impl<'repository> Repository<'repository> {
     }
 
     /// Return the short co-imported role types one file declares under a shared name prefix.
+    ///
+    /// Only the types a module offers are grouped, because the evidence a group rests on is how
+    /// many other modules import two of them together, which a nested class is never part of.
     pub(super) fn coupled_groups(&self, path: &str) -> Vec<CoupledTypeGroupRecord> {
         let Some(module) = self.index.owners.get(path).copied() else {
             return Vec::new();
@@ -238,7 +280,7 @@ impl<'repository> Repository<'repository> {
             return Vec::new();
         };
         let mut grouped: BTreeMap<String, Vec<&Declared>> = BTreeMap::new();
-        for class in &stated.declared {
+        for class in stated.declared.iter().filter(|class| !class.is_nested()) {
             let words = camel_words(&class.name);
             if words.len() >= 2 {
                 grouped.entry(words[0].clone()).or_default().push(class);

@@ -36,7 +36,7 @@ def declared_field_count(subject: Table[SymbolReachFact]) -> CountQuery:
 
     Exceptions
     ----------
-    Callables are counted by the neighbouring public-method rule, because a wide record and a wide
+    Callables are counted by the neighboring public-method rule, because a wide record and a wide
     interface are two different defects. A module declaring no type at all measures zero. The count
     is a measurement, and a project policy owns the ceiling, since a serialized message and a
     service object tolerate very different widths.

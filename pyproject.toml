@@ -9,6 +9,7 @@ description = "Define and enforce the engineering rules that make your code your
 readme = "README.md"
 requires-python = ">=3.14"
 license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [{ name = "Pedro Valois", email = "contact@phvv.me" }]
 keywords = [
   "lint",
@@ -38,21 +39,6 @@ dependencies = [
   "sqlglot>=27,<28",
 ]
 
-[project.optional-dependencies]
-dev = [
-  "ruff>=0.6",
-  "pyrefly>=1",
-  "ty>=0.0.61,<0.1",
-  "mypy>=1.11",
-  "pytest>=8",
-  "hypothesis>=6.100",
-  "pytest-cov>=5",
-  "syrupy>=4",
-  "pytest-subprocess>=1.5",
-  "pytest-mock>=3.14",
-  "faker>=30",
-  "dirty-equals>=0.8",
-]
 [project.scripts]
 mcmr = "mcmr.commands.cli:app"
 
@@ -65,8 +51,8 @@ datahub = "mcmr_datahub:DataHubProvider"
 dependencies = "mcmr.project.dependencies:DependencyRefresher"
 
 [project.urls]
-Homepage = "https://phvv.me/mcmr"
-Documentation = "https://phvv.me/mcmr"
+Homepage = "https://phvv.me/mcmr/"
+Documentation = "https://phvv.me/mcmr/docs/"
 Repository = "https://github.com/phvv-me/mcmr"
 Issues = "https://github.com/phvv-me/mcmr/issues"
 
@@ -94,6 +80,7 @@ runtime-evaluated-base-classes = [
   "patos.Component",
   "patos.FrozenFlexModel",
   "patos.FrozenModel",
+  "patos.Model",
 ]
 runtime-evaluated-decorators = [
   "cyclopts.App.command",
@@ -152,9 +139,14 @@ exclude_lines = [
 [tool.mcmr]
 
 [tool.mcmr.contextual]
-backend = "codex"
-model = "gpt-5.6-terra"
-reasoning_effort = "medium"
+backend = "openrouter"
+model = "deepseek/deepseek-v4-flash-0731"
+reasoning_effort = "high"
+
+[tool.mcmr.providers.datahub]
+query = "mcmr"
+page_size = 50
+max_assets = 100
 
 [tool.mcmr.rules.ALL-FILE0002]
 framework_roots = ["src/mcmr/rules", "src/mcmr_datahub/rules"]
@@ -164,10 +156,25 @@ framework_roots = ["src/mcmr/rules", "src/mcmr_datahub/rules"]
 [tool.mcmr.rules.ALL-DUPL0005]
 exclude = ["tests"]
 
+# A test fixture, a replay recording, and the example subject all name warehouse assets that were
+# never meant to exist. The fixtures state them so the resolver has something exact to resolve, the
+# recordings state them so a checkout with no DataHub still replays the same exchanges, and
+# `examples/datahub/pipeline.py` states them because it is the deliberately broken subject the
+# tutorial asks a reader to run the rule against. None of the three is a claim about a live
+# catalog, so checking them against one measures the fixtures rather than the code. Source outside
+# these paths stays checked, and the resolver reports an unresolved name there.
+[tool.mcmr.rules.ALL-DATA0001]
+exclude = ["tests", "examples"]
+
 # One plugin owning exactly one rule family has a lane directory with one child, because
 # `rules.<scope>.<lane>.<family>` is the path the rule identity contract requires rather than a
 # navigation step somebody chose.
 [tool.mcmr.rules.ALL-FILE0004]
-exclude = ["src/mcmr_datahub/rules", "docs/contrib"]
-# `docs/contrib/datahub-skills/<skill>/` mirrors the upstream datahub-skills repository layout
+exclude = ["src/mcmr_datahub/rules", "contrib/datahub-skills", "docs/src/content/docs"]
+# `contrib/datahub-skills/<skill>/` mirrors the upstream datahub-skills repository layout
 # exactly so the contribution copies over unchanged, which fixes the directory pathway externally.
+# `docs/src/content/docs` is the collection root Starlight's own loader hardcodes, and Starlight
+# publishes no route prefix option, so the single `docs` child under it is the only thing putting
+# the built pages at `/mcmr/docs/` while a plain Astro page keeps the base itself. Removing the
+# hop would move routing out of the filesystem into a hand-written identifier hook, which is why
+# the layout is fixed externally rather than chosen.

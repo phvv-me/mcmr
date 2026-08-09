@@ -167,7 +167,7 @@ def test_a_response_that_omits_its_data_fails_before_a_rule_reads_it() -> None:
     closed = DataHubGraphQL(settings)
     anyio.run(partial(closed.__aexit__, None, None, None))
 
-    assert closed.client is None
+    assert closed.client.is_closed
 
 
 def test_a_stated_cast_is_normalized_against_the_catalog_before_it_is_judged() -> None:
@@ -197,3 +197,43 @@ def test_a_stated_cast_is_normalized_against_the_catalog_before_it_is_judged() -
         expected("SELECT total, CAST(1 AS STRING) FROM warehouse.orders"),
         expected("SELECT CAST(total AS STRING), CAST(total AS DATE) FROM warehouse.orders"),
     ) == (["NUMBER"], ["TEXT"], ["RECORD"], [""], ["", ""])
+
+
+def test_a_spelling_becomes_a_mention_only_when_it_carries_evidence_of_being_one() -> None:
+    """Prose a SQL parser accepts and a half built URN are not claims about the catalog."""
+    catalog = DataHubCatalog(
+        assets=[DataAsset(identifier=urn("warehouse.orders")), DataAsset(identifier="plain_name")]
+    )
+
+    assert (
+        resolved(catalog, "delete the annotation"),
+        resolved(catalog, "from . import writer"),
+        resolved(catalog, "Cache._prepare(value)"),
+        resolved(catalog, "urn:li:dataset:("),
+        resolved(catalog, f"{urn('warehouse.orders')} 1 verdict recorded, with no report"),
+        resolved(catalog, "SELECT * FROM plain_name"),
+        resolved(catalog, "SELECT * FROM warehouse.missing"),
+    ) == (
+        ([], []),
+        ([], []),
+        ([], []),
+        ([], []),
+        ([], []),
+        (["plain_name"], []),
+        (["warehouse.missing"], []),
+    )
+
+
+def test_only_a_complete_canonical_urn_states_a_dataset_name() -> None:
+    """A URN is read by its structure, so a fragment and a trailing sentence state nothing."""
+    read = DataHubCatalog(assets=[]).urn_name
+
+    assert (
+        read(urn("warehouse.orders")),
+        read("urn:li:dataset:(snowflake,(left,right),PROD)"),
+        read("urn:li:dataset:(snowflake,orders,PROD) and then some prose)"),
+        read("urn:li:dataset:(snowflake,orders)"),
+        read("urn:li:dataset:(snowflake,,PROD)"),
+        read("urn:li:dataset:("),
+        read("plain_name"),
+    ) == ("warehouse.orders", "(left,right)", "", "", "", "", "")

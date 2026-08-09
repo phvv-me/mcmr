@@ -29,6 +29,8 @@ def utility_namespace_class_count(
 
     Exceptions
     ----------
+    A type stub declares no bodies at all, so every method in one reads no state by construction
+    and a `.pyi` file is never inspected here.
     Nontrivial inheritance and metaclasses exempt framework contracts, enums, Protocols, and ABCs.
     Lowercase annotated fields, receiver assignments, `__slots__`, and attrs or dataclass field
     factories exempt data-bearing classes. Receiver state reads, properties, constructors,
@@ -124,6 +126,7 @@ def utility_namespace_class_count(
         )
         .filter(
             ~pl.col("is_test")
+            & ~pl.col("path").str.ends_with(".pyi")
             & pl.col("all_methods_are_module_functions")
             & (pl.col("invalid_base_count") == 0)
             & (pl.col("invalid_keyword_count") == 0)

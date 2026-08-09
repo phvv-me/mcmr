@@ -1,5 +1,6 @@
 import json
 from collections.abc import Callable, Coroutine
+from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -9,7 +10,7 @@ import httpx
 import pytest
 
 from mcmr.commands.interface import RepairMode
-from mcmr.commands.quality import RunPublication, check
+from mcmr.commands.quality import RunPublication, check, identity
 from mcmr.domain.contracts import Finding
 from mcmr.facts import SourceSpan
 from mcmr.plugins import (
@@ -27,6 +28,7 @@ from mcmr_datahub import (
     DataHubSettings,
 )
 from mcmr_datahub.services import recording as recording_module
+from mcmr_datahub.services.publication import assertion_urn
 from mcmr_datahub.services.recording import DataHubRecording
 
 from ...support import needs_kernel, project_root, written
@@ -254,8 +256,8 @@ def test_a_recorded_verdict_keeps_the_assertion_identity_its_rule_and_asset_shar
     again = first.model_copy(update={"state": RunState.FAILURE, "repair": RepairState.APPLIED})
     other = first.model_copy(update={"subject": "urn:li:dataset:(snowflake,invoices,PROD)"})
 
-    assert DataHubRecording.identity(first) == DataHubRecording.identity(again)
-    assert DataHubRecording.identity(first) != DataHubRecording.identity(other)
+    assert assertion_urn(first) == assertion_urn(again)
+    assert assertion_urn(first) != assertion_urn(other)
 
 
 @needs_kernel
@@ -401,6 +403,54 @@ def test_an_applied_repair_is_recorded_on_the_verdict_its_rerun_passed() -> None
         RepairState.APPLIED,
         "applied",
     )
+
+
+def test_every_verdict_of_one_invocation_is_stamped_with_that_invocation() -> None:
+    """A reader who opened one rule's timeline can pivot to the run that wrote it, by identity."""
+    reported: list[JsonValue] = []
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.content)
+        if payload["operationName"] == "MCMRReportAssertionResult":
+            reported.extend(payload["variables"]["properties"])
+        return httpx.Response(200, json={"data": {"upsertCustomAssertion": {"urn": "urn:li:x"}}})
+
+    async def record() -> None:
+        async with gateway(respond) as client:
+            await DataHubRecording(client, "", run="mcmr-orders-1786179600000").record(
+                [RunRecord(rule="ALL-DATA0002", subject="urn:li:dataset:(snowflake,orders,PROD)")]
+            )
+
+    anyio.run(record)
+
+    assert {"key": "runId", "value": "mcmr-orders-1786179600000"} in reported
+
+
+def test_a_run_identity_names_the_repository_and_the_moment_it_ran(tmp_path: Path) -> None:
+    """Two runs over one repository are two runs, which is what the moment keeps apart."""
+    moment = datetime(2026, 8, 8, 9, 0, tzinfo=UTC)
+
+    named = identity(tmp_path, "orders", moment)
+    unnamed = identity(tmp_path / "fallback", "", moment)
+
+    assert named == "mcmr-orders-1786179600000"
+    assert unnamed == "mcmr-fallback-1786179600000"
+    assert identity(tmp_path, "orders") != named
+
+
+@needs_kernel
+def test_a_recorded_run_is_published_beside_the_verdicts_that_name_it(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The whole invocation is recorded once, under the identity every verdict already carries."""
+    root = example(tmp_path / "example")
+
+    check(root, select="data_assets", report_only=True, writeback=True)
+
+    output = capsys.readouterr().out.replace("\n", " ")
+    assert "recorded run mcmr-example-" in output
+    assert "rules and" in output and "failures in" in output
 
 
 @needs_kernel

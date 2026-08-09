@@ -2,8 +2,11 @@ use super::{
     Collector, Owner, ReferenceRequest,
     support::{annotation_names, is_contract, python_parameters, python_visibility, tail},
 };
-use crate::graph::construction::{ExactEdge, identity, node, parameter, relate};
-use crate::graph::contracts::{EdgeKind, Language, Node, NodeKind, ParameterKind};
+use crate::graph::construction::{ExactEdge, identity, node, relate};
+use crate::graph::contracts::{
+    DatatypeKind, EdgeKind, Language, Node, NodeBinding, NodeKind, NodePlacement, NodeShape,
+    ParameterKind,
+};
 use crate::walk::{annotation_name, qualified_name};
 use ruff_python_ast::{
     AnyParameterRef, Decorator, Expr, Parameters, Stmt, StmtClassDef, StmtFunctionDef,
@@ -122,16 +125,22 @@ impl Collector {
         target: &AssignmentTarget,
         annotation: Option<String>,
     ) -> Node {
-        let mut declared = self.declaration_node(
+        let written = NodePlacement {
+            source: (target.kind == NodeKind::Attribute)
+                .then(|| self.source.slice(statement.range()).to_string()),
+            ..self.written(statement)
+        };
+        node(
+            Language::Python,
             target.kind,
             &format!("{}.{}", target.holder, target.name),
-            statement,
-        );
-        declared.source = (target.kind == NodeKind::Attribute)
-            .then(|| self.source.slice(statement.range()).to_string());
-        declared.visibility = python_visibility(&target.name);
-        declared.annotation = annotation;
-        declared
+        )
+        .declared(written)
+        .reached(python_visibility(&target.name))
+        .shaped(NodeShape {
+            annotation,
+            ..NodeShape::default()
+        })
     }
 
     fn assignment_target(&self, target: &Expr) -> Option<AssignmentTarget> {
@@ -158,12 +167,15 @@ impl Collector {
         decorators: Vec<String>,
     ) -> Node {
         let qualname = format!("{}.{}", self.owners.last().unwrap().qualname, item.name);
-        let mut declared = self.declaration_node(kind, &qualname, statement);
-        declared.source = (self.owners.last().unwrap().kind == NodeKind::Class)
-            .then(|| self.source.slice(statement.range()).to_string());
-        declared.visibility = python_visibility(item.name.as_str());
-        self.callable_surface(&mut declared, item, decorators);
-        declared
+        let written = NodePlacement {
+            source: (self.owners.last().unwrap().kind == NodeKind::Class)
+                .then(|| self.source.slice(statement.range()).to_string()),
+            ..self.written(statement)
+        };
+        node(Language::Python, kind, &qualname)
+            .declared(written)
+            .reached(python_visibility(item.name.as_str()))
+            .shaped(self.callable_surface(item, decorators))
     }
 
     fn callable_signature(&mut self, site: DeclarationSite<'_>, item: &StmtFunctionDef) {
@@ -173,21 +185,19 @@ impl Collector {
         self.parameters(site, &item.parameters);
     }
 
-    fn callable_surface(
-        &self,
-        declared: &mut Node,
-        item: &StmtFunctionDef,
-        mut decorators: Vec<String>,
-    ) {
+    fn callable_surface(&self, item: &StmtFunctionDef, mut decorators: Vec<String>) -> NodeShape {
         if self.is_stub_surface() {
             decorators.push("external-binding".to_string());
         }
-        declared.decorators = decorators;
-        declared.asynchronous = item.is_async;
-        declared.return_annotation = item
-            .returns
-            .as_ref()
-            .map(|returns| annotation_name(returns));
+        NodeShape {
+            return_annotation: item
+                .returns
+                .as_ref()
+                .map(|returns| annotation_name(returns)),
+            decorators,
+            asynchronous: item.is_async,
+            ..NodeShape::default()
+        }
     }
 
     fn class_bases(&mut self, declared: &str, item: &StmtClassDef) {
@@ -215,17 +225,25 @@ impl Collector {
     }
 
     fn class_node(&self, statement: &Stmt, item: &StmtClassDef, qualname: &str) -> Node {
-        let mut declared = self.declaration_node(NodeKind::Class, qualname, statement);
-        declared.visibility = python_visibility(item.name.as_str());
-        declared.decorators = decorators(&item.decorator_list);
+        let mut written = decorators(&item.decorator_list);
         if self.is_stub_surface() {
-            declared.decorators.push("external-binding".to_string());
+            written.push("external-binding".to_string());
         }
         if Self::registered_component(item) {
-            declared.decorators.push("registered-component".to_string());
+            written.push("registered-component".to_string());
         }
-        declared.is_abstract = is_contract(item);
-        declared
+        let role = match is_contract(item) {
+            true => DatatypeKind::Contract,
+            false => DatatypeKind::Concrete,
+        };
+        node(Language::Python, NodeKind::Class, qualname)
+            .datatype(role)
+            .declared(self.written(statement))
+            .reached(python_visibility(item.name.as_str()))
+            .shaped(NodeShape {
+                decorators: written,
+                ..NodeShape::default()
+            })
     }
 
     fn class_qualname(&self) -> String {
@@ -238,11 +256,13 @@ impl Collector {
             .to_string()
     }
 
-    fn declaration_node(&self, kind: NodeKind, qualname: &str, statement: &Stmt) -> Node {
-        let mut declared = node(Language::Python, kind, qualname);
-        declared.path = Some(self.source.relative.clone());
-        declared.line = Some(self.source.line_of(statement.range().start()));
-        declared
+    /// Point at the line of this file that writes one statement.
+    fn written(&self, statement: &Stmt) -> NodePlacement {
+        NodePlacement {
+            path: self.source.relative.clone(),
+            line: Some(self.source.line_of(statement.range().start())),
+            source: None,
+        }
     }
 
     fn is_receiver_attribute(&self, item: &ruff_python_ast::ExprAttribute) -> bool {
@@ -281,17 +301,21 @@ impl Collector {
         ordinal: usize,
         kind: ParameterKind,
     ) -> Node {
-        let mut declared = parameter(
+        node(
             Language::Python,
+            NodeKind::Parameter,
             &format!("{}.{}", site.qualname, stated.name()),
+        )
+        .binds(NodeBinding {
             ordinal,
             kind,
-        );
-        declared.has_default = stated.default().is_some();
-        declared.path = Some(self.source.relative.clone());
-        declared.line = Some(self.source.line_of(site.statement.range().start()));
-        declared.annotation = stated.annotation().map(annotation_name);
-        declared
+            has_default: stated.default().is_some(),
+        })
+        .declared(self.written(site.statement))
+        .shaped(NodeShape {
+            annotation: stated.annotation().map(annotation_name),
+            ..NodeShape::default()
+        })
     }
 
     fn parameters(&mut self, site: DeclarationSite<'_>, parameters: &Parameters) {
@@ -310,10 +334,15 @@ impl Collector {
     }
 
     fn store_assignment(&mut self, declared: Node, target: &AssignmentTarget, statement: &Stmt) {
-        if self.graph.nodes.iter().any(|node| node.id == declared.id) {
+        if self
+            .graph
+            .nodes
+            .iter()
+            .any(|node| node.id() == declared.id())
+        {
             return;
         }
-        let declared_id = declared.id.clone();
+        let declared_id = declared.id().to_string();
         self.graph.nodes.push(declared);
         let holder = identity(
             Language::Python,
@@ -333,7 +362,7 @@ impl Collector {
     }
 
     fn store_declaration(&mut self, declared: Node, statement: &Stmt) -> String {
-        let declared_id = declared.id.clone();
+        let declared_id = declared.id().to_string();
         self.define(&declared_id, statement);
         self.graph.nodes.push(declared);
         declared_id
@@ -345,8 +374,11 @@ impl Collector {
         stated: AnyParameterRef<'_>,
         declared: Node,
     ) {
-        self.declare(stated.name().as_ref(), declared.annotation.clone());
-        let declared_id = declared.id.clone();
+        self.declare(
+            stated.name().as_ref(),
+            declared.annotation().map(str::to_string),
+        );
+        let declared_id = declared.id().to_string();
         self.graph.nodes.push(declared);
         if let Some(declared_type) = stated.annotation() {
             self.annotation(site.id, declared_type);

@@ -1,4 +1,5 @@
 from .fixtures import (
+    CountedEvaluation,
     Declared,
     FactValue,
     built_catalog,
@@ -14,6 +15,7 @@ from .fixtures import (
 from .strategy import facts_of
 
 __all__ = [
+    "CountedEvaluation",
     "Declared",
     "FactValue",
     "built_catalog",

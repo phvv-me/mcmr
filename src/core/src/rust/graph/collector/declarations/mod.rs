@@ -1,7 +1,7 @@
 use super::Collector;
 use crate::graph::{
-    DatatypeKind, EdgeKind, Language, Node, NodeKind, ParameterKind, Relation, Visibility,
-    identity, node, parameter,
+    DatatypeKind, EdgeKind, Language, Node, NodeKind, NodePlacement, NodeShape, ParameterKind,
+    Relation, Visibility, identity, node, parameter,
 };
 use crate::rust::classes::{bound_names, derives, external_attributes, type_names};
 use crate::rust::graph::callable::CallableDefinition;
@@ -100,10 +100,9 @@ impl Collector {
     /// Walk into a module written inside this file, which its own name then qualifies.
     fn nested(&mut self, declared: &syn::ItemMod) {
         let qualname = format!("{}::{}", self.scope(), declared.ident);
-        let mut held = node(Language::Rust, NodeKind::Module, &qualname);
-        held.path = Some(self.source.relative.clone());
-        held.line = Some(declared.ident.span().start().line);
-        held.visibility = visibility(&declared.vis);
+        let held = node(Language::Rust, NodeKind::Module, &qualname)
+            .declared(self.written(declared.ident.span()))
+            .reached(visibility(&declared.vis));
         self.declare(held, declared.ident.span());
         let Some((_, items)) = &declared.content else {
             return;
@@ -132,14 +131,13 @@ impl Collector {
             DatatypeKind::Enumeration,
         );
         for variant in &declared.variants {
-            let mut member = node(
+            let member = node(
                 Language::Rust,
                 NodeKind::Attribute,
                 &format!("{qualname}::{}", variant.ident),
-            );
-            member.path = Some(self.source.relative.clone());
-            member.line = Some(variant.ident.span().start().line);
-            let member_id = member.id.clone();
+            )
+            .declared(self.written(variant.ident.span()));
+            let member_id = member.id().to_string();
             self.nodes.push(member);
             self.relate(
                 Relation {
@@ -241,23 +239,25 @@ impl Collector {
         kind: DatatypeKind,
     ) -> String {
         let qualname = format!("{}::{name}", self.scope());
-        let mut declared = node(Language::Rust, NodeKind::Class, &qualname).datatype(kind);
-        declared.path = Some(self.source.relative.clone());
-        declared.line = Some(name.span().start().line);
-        declared.visibility = visibility(reach);
-        declared.decorators = external_attributes(attributes);
-        let identifier = declared.id.clone();
+        let declared = node(Language::Rust, NodeKind::Class, &qualname)
+            .datatype(kind)
+            .declared(self.written(name.span()))
+            .reached(visibility(reach))
+            .shaped(NodeShape {
+                decorators: external_attributes(attributes),
+                ..NodeShape::default()
+            });
+        let identifier = declared.id().to_string();
         self.declare(declared, name.span());
         identifier
     }
 
     fn constant(&mut self, name: &syn::Ident, reach: &syn::Visibility) -> String {
         let qualname = format!("{}::{name}", self.scope());
-        let mut declared = node(Language::Rust, NodeKind::Variable, &qualname);
-        declared.path = Some(self.source.relative.clone());
-        declared.line = Some(name.span().start().line);
-        declared.visibility = visibility(reach);
-        let identifier = declared.id.clone();
+        let declared = node(Language::Rust, NodeKind::Variable, &qualname)
+            .declared(self.written(name.span()))
+            .reached(visibility(reach));
+        let identifier = declared.id().to_string();
         self.declare(declared, name.span());
         identifier
     }
@@ -269,16 +269,18 @@ impl Collector {
             .map_or_else(|| field.ty.span(), |name| name.span());
         if let Some(name) = &field.ident {
             let holder = owner.rsplit(':').next().unwrap_or_default();
-            let mut declared = node(
+            let declared = node(
                 Language::Rust,
                 NodeKind::Attribute,
                 &format!("{holder}::{name}"),
-            );
-            declared.path = Some(self.source.relative.clone());
-            declared.line = Some(span.start().line);
-            declared.visibility = visibility(&field.vis);
-            declared.annotation = Some(rendered(&field.ty));
-            let identifier = declared.id.clone();
+            )
+            .declared(self.written(span))
+            .reached(visibility(&field.vis))
+            .shaped(NodeShape {
+                annotation: Some(rendered(&field.ty)),
+                ..NodeShape::default()
+            });
+            let identifier = declared.id().to_string();
             self.nodes.push(declared);
             self.relate(
                 Relation {
@@ -300,7 +302,7 @@ impl Collector {
         definition: CallableDefinition<'_>,
     ) -> String {
         let declared = self.callable_node(identity, signature, &definition);
-        let identifier = declared.id.clone();
+        let identifier = declared.id().to_string();
         self.nodes.push(declared);
         self.relate(
             Relation {
@@ -328,18 +330,23 @@ impl Collector {
         } else {
             NodeKind::Function
         };
-        let mut declared = node(Language::Rust, kind, identity.qualname);
-        declared.path = Some(self.source.relative.clone());
-        declared.line = Some(signature.ident.span().start().line);
-        declared.source =
-            (kind == NodeKind::Method).then(|| spanned(&self.source, definition.span).to_string());
-        declared.visibility = definition.reach;
-        declared.decorators = external_attributes(definition.attributes);
-        declared.asynchronous = signature.asyncness.is_some();
-        if let ReturnType::Type(_, returns) = &signature.output {
-            declared.return_annotation = Some(rendered(returns));
-        }
-        declared
+        let written = NodePlacement {
+            source: (kind == NodeKind::Method)
+                .then(|| spanned(&self.source, definition.span).to_string()),
+            ..self.written(signature.ident.span())
+        };
+        node(Language::Rust, kind, identity.qualname)
+            .declared(written)
+            .reached(definition.reach)
+            .shaped(NodeShape {
+                return_annotation: match &signature.output {
+                    ReturnType::Type(_, returns) => Some(rendered(returns)),
+                    ReturnType::Default => None,
+                },
+                decorators: external_attributes(definition.attributes),
+                asynchronous: signature.asyncness.is_some(),
+                ..NodeShape::default()
+            })
     }
 
     fn declare_parameters(&mut self, qualname: &str, signature: &Signature, identifier: &str) {
@@ -352,16 +359,18 @@ impl Collector {
             let syn::Pat::Ident(name) = typed.pat.as_ref() else {
                 continue;
             };
-            let mut held = parameter(
+            let held = parameter(
                 Language::Rust,
                 &format!("{}::{}", qualname, name.ident),
                 ordinal,
                 ParameterKind::PositionalOnly,
-            );
-            held.path = Some(self.source.relative.clone());
-            held.line = Some(name.ident.span().start().line);
-            held.annotation = Some(rendered(&typed.ty));
-            let held_id = held.id.clone();
+            )
+            .declared(self.written(name.ident.span()))
+            .shaped(NodeShape {
+                annotation: Some(rendered(&typed.ty)),
+                ..NodeShape::default()
+            });
+            let held_id = held.id().to_string();
             self.nodes.push(held);
             self.relate(
                 Relation {

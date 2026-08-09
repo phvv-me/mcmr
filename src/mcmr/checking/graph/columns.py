@@ -60,8 +60,15 @@ def _walk(
     prefix: str,
     enclosing: Sequence[type[FrozenModel]],
 ) -> list[FactColumn]:
-    """Return every leaf below one model, named by the dotted path that reaches it."""
+    """Return every leaf below one model, named by the dotted path that reaches it.
+
+    A fact model states what each record it nests is for rather than annotating every field, so a
+    leaf with nothing of its own is described by the record it belongs to. A field the model does
+    describe keeps its own words, and a leaf of the fact itself keeps none, because the dataset
+    already carries that sentence.
+    """
     columns: list[FactColumn] = []
+    stated = (model.__doc__ or "").strip().splitlines()[0] if prefix else ""
     for name, field in model.model_fields.items():
         annotation = _element(field.annotation or str)
         path = f"{prefix}{name}"
@@ -75,7 +82,7 @@ def _walk(
                 path=path,
                 data_type=_scalar(annotation),
                 native=annotation.__name__,
-                description=field.description or "",
+                description=field.description or stated,
             )
         )
     return columns

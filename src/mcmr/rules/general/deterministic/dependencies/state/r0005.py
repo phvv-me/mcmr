@@ -8,7 +8,7 @@ from ......query import FindingQuery, PercentageQuery, RuleQuery
 from ......table import Table
 
 
-@rule("ALL-DEPE0001", policy=Numeric(minimum=95))
+@rule("ALL-DEPE0001", policy=Numeric(maximum=5))
 def dependency_technical_lag(
     subject: Table[DependencyFact],
     *,
@@ -42,7 +42,9 @@ def dependency_technical_lag(
     Examples
     --------
     Four dependencies beyond the configured lag among forty measurable dependencies produce `10`.
-    A year-old resolved release matching the latest compatible release does not count as lag.
+    A year-old resolved release matching the latest compatible release does not count as lag. The
+    value counts what lags rather than what is current, so the bound is a ceiling in the way its
+    sibling `ALL-DEPE0004` states one.
 
     References
     ----------

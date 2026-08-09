@@ -29,20 +29,7 @@ impl Organization {
     /// State enum reuse scopes and the shape of files inside shared enum packages.
     pub fn enum_fact(&self) -> Value {
         let definitions = self.definitions(|module| &module.enums);
-        let reused = self.reused(&definitions);
-        let mut groups: BTreeMap<ScopeKey, Vec<Reuse>> = BTreeMap::new();
-        for reuse in reused {
-            groups
-                .entry((
-                    common_directory(
-                        std::iter::once(reuse.definition.path.as_str())
-                            .chain(reuse.importer_spans.iter().map(|span| span.path.as_str())),
-                    ),
-                    reuse.definition.is_test,
-                ))
-                .or_default()
-                .push(reuse);
-        }
+        let groups = self.reuse_scopes(&definitions);
         let assigned = assigned_definitions(&definitions, &groups);
         let scopes = groups
             .into_iter()
@@ -102,20 +89,7 @@ impl Organization {
     /// State cohesive scopes that repeatedly import scattered typing declarations.
     pub fn typing_fact(&self) -> Value {
         let definitions = self.typing_definitions();
-        let reused = self.reused(&definitions);
-        let mut groups: BTreeMap<ScopeKey, Vec<Reuse>> = BTreeMap::new();
-        for reuse in reused {
-            groups
-                .entry((
-                    common_directory(
-                        std::iter::once(reuse.definition.path.as_str())
-                            .chain(reuse.importer_spans.iter().map(|span| span.path.as_str())),
-                    ),
-                    reuse.definition.is_test,
-                ))
-                .or_default()
-                .push(reuse);
-        }
+        let groups = self.reuse_scopes(&definitions);
         let assigned = assigned_definitions(&definitions, &groups);
         let scopes = groups
             .into_iter()
@@ -183,6 +157,25 @@ impl Organization {
                     .flatten()
             })
             .collect()
+    }
+
+    /// Group every reused declaration under the one scope a shared module for it would sit in.
+    ///
+    /// That scope is the deepest directory holding the definition and all of its importers, paired
+    /// with whether the declaration is test code, since test code and source never share a home.
+    fn reuse_scopes(&self, definitions: &[Definition]) -> BTreeMap<ScopeKey, Vec<Reuse>> {
+        let mut groups: BTreeMap<ScopeKey, Vec<Reuse>> = BTreeMap::new();
+        for reuse in self.reused(definitions) {
+            let directory = common_directory(
+                std::iter::once(reuse.definition.path.as_str())
+                    .chain(reuse.importer_spans.iter().map(|span| span.path.as_str())),
+            );
+            groups
+                .entry((directory, reuse.definition.is_test))
+                .or_default()
+                .push(reuse);
+        }
+        groups
     }
 
     fn reused(&self, definitions: &[Definition]) -> Vec<Reuse> {

@@ -351,7 +351,7 @@ fn a_relative_import_beyond_its_package_never_becomes_an_absolute_one() {
         graph
             .nodes
             .iter()
-            .any(|node| node.kind == NodeKind::UnresolvedSymbol
-                && node.qualname.ends_with("::..models.User"))
+            .any(|node| node.kind() == NodeKind::UnresolvedSymbol
+                && node.qualname().ends_with("::..models.User"))
     );
 }

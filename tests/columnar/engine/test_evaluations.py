@@ -7,23 +7,12 @@ from mcmr.domain.contracts import Finding
 from mcmr.facts import SourceSpan
 from mcmr.rules.general import abstraction_level
 
+from ...support import CountedEvaluation
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from mcmr.domain.contracts import RuleSetting
-
-
-class EvaluationSupplier:
-    """Return one evaluation while recording deferred materialization."""
-
-    def __init__(self, evaluation: Evaluation) -> None:
-        self.evaluation = evaluation
-        self.calls = 0
-
-    def __call__(self) -> Evaluation:
-        """Return the retained evaluation and count this request."""
-        self.calls += 1
-        return self.evaluation
 
 
 def prepared(settings: Mapping[str, RuleSetting]) -> PreparedRule:
@@ -77,8 +66,8 @@ def test_prepared_settings_reject_values_for_a_different_setting_contract() -> N
 def test_deferred_evaluation_materializes_complete_evidence_once() -> None:
     span = SourceSpan(path="subject.py", end_line=3)
     finding = Finding(message="The subject failed.", span=span)
-    supplier = EvaluationSupplier(
-        Evaluation(
+    supplier = CountedEvaluation(
+        evaluation=Evaluation(
             rule=abstraction_level.callable_path,
             fact="function:subject.py:answer",
             value="mixed",

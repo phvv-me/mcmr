@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING
 
-import httpx
 from pydantic import JsonValue, TypeAdapter
 
 if TYPE_CHECKING:
@@ -8,7 +7,9 @@ if TYPE_CHECKING:
     from types import TracebackType
     from typing import Self
 
-    from ..settings import DataHubSettings
+    import httpx
+
+    from ..configuration import DataHubSettings
 
 # How many entities one ingestion request carries, which keeps a large repository's fact tables
 # off a single multi-megabyte body without turning each entity into its own round trip.
@@ -24,6 +25,10 @@ class DataHubOpenAPI:
     dataset, a flow, or a job with the aspects this graph is made of, so publication uses the
     ingestion surface the catalog itself is loaded through. Every request is an upsert keyed by
     the entity URN, which is what lets a scheduled run post the same graph again unchanged.
+
+    The pool exists from construction, so there is no opening step a caller can forget and no
+    order for the methods to be called in. Entering the block gives the pool a lifetime rather
+    than a beginning, and leaving it closes the pool.
     """
 
     def __init__(
@@ -31,23 +36,10 @@ class DataHubOpenAPI:
         settings: DataHubSettings,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
-        self.settings = settings
-        self.transport = transport
-        self.client: httpx.AsyncClient | None = None
+        self.client = settings.connection(transport)
 
     async def __aenter__(self) -> Self:
-        """Open one reusable connection pool for the publication request."""
-        headers = (
-            {"Authorization": f"Bearer {token}"}
-            if (token := self.settings.token) is not None
-            else {}
-        )
-        self.client = httpx.AsyncClient(
-            base_url=f"{str(self.settings.server).rstrip('/')}/",
-            headers=headers,
-            timeout=self.settings.timeout_seconds,
-            transport=self.transport,
-        )
+        """Hand back the client whose connection pool this block will close."""
         return self
 
     async def __aexit__(
@@ -57,14 +49,10 @@ class DataHubOpenAPI:
         traceback: TracebackType | None,
     ) -> None:
         """Close the request-local connection pool."""
-        if self.client is not None:
-            await self.client.aclose()
-        self.client = None
+        await self.client.aclose()
 
     async def ingest(self, entity: str, entities: Sequence[JsonValue]) -> int:
         """Upsert every stated entity of one type and return how many were written."""
-        if self.client is None:
-            raise RuntimeError("DataHub OpenAPI client must be opened before use")
         for start in range(0, len(entities), _BATCH):
             response = await self.client.post(
                 f"openapi/v3/entity/{entity}",
@@ -80,8 +68,6 @@ class DataHubOpenAPI:
         A rule the whole instance shares is merged rather than overwritten, so publishing one
         repository has to see what every earlier repository already wrote onto it.
         """
-        if self.client is None:
-            raise RuntimeError("DataHub OpenAPI client must be opened before use")
         held: dict[str, dict[str, JsonValue]] = {}
         for start in range(0, len(urns), _BATCH):
             response = await self.client.post(

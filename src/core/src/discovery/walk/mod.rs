@@ -8,6 +8,7 @@ use walkdir::{DirEntry, IntoIter, WalkDir};
 pub use records::{Directory, Document, Inventory};
 pub use scope::Scope;
 
+mod entry_kind;
 mod records;
 mod retention;
 mod scope;

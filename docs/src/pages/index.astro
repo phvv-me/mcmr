@@ -1,0 +1,23 @@
+---
+import Marketing from '../layouts/Marketing.astro';
+import DataHub from '../components/marketing/DataHub.astro';
+import Demo from '../components/marketing/Demo.astro';
+import Footer from '../components/marketing/Footer.astro';
+import Hero from '../components/marketing/Hero.astro';
+import Nav from '../components/marketing/Nav.astro';
+import Pipeline from '../components/marketing/Pipeline.astro';
+---
+
+<Marketing
+  title="mcmr · my code, my rules"
+  description="Stop Code Slop, put your agent on a leash and know where your code is going. A Rust kernel, 63 typed fact tables, 285 rules in three lanes, and verified repairs."
+>
+  <Nav />
+  <main>
+    <Hero />
+    <Pipeline />
+    <Demo />
+    <DataHub />
+  </main>
+  <Footer />
+</Marketing>

@@ -15,6 +15,7 @@ mod queries;
 mod runtime_checks;
 mod strings;
 mod symbols;
+mod targets;
 mod test_facts;
 mod try_blocks;
 mod waivers;

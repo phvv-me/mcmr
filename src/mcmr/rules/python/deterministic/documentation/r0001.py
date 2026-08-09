@@ -8,6 +8,94 @@ from .....query import FindingQuery, RuleQuery
 from .....table import FunctionRelation, Table
 
 
+def _summary() -> pl.Expr:
+    """Read the first line of a docstring, where a callable stating none reads as empty."""
+    return pl.col("doc_lines").list.first().str.strip_chars().fill_null("")
+
+
+def _unfinished_summary(maximum_summary: NonNegativeInt) -> pl.Expr:
+    """Read a summary that is empty, overlong, unpunctuated, or only a pointer somewhere else."""
+    summary = _summary()
+    return (
+        (summary == "")
+        | (summary.str.len_chars() > maximum_summary)
+        | ~summary.str.slice(-1).is_in([".", "!", "?"])
+        | summary.str.to_lowercase().str.starts_with("see ")
+        | summary.str.to_lowercase().str.starts_with("refer to ")
+    )
+
+
+def _labeled_body() -> pl.Expr:
+    """Read a body carrying a Google or NumPy heading, a field list, or a bare label line."""
+    line = pl.element()
+    missing_label = line.str.contains(r"^[A-Za-z_][A-Za-z0-9_ ]*:\s*$")
+    directive = pl.element().str.strip_chars().str.starts_with(".. ")
+    return (
+        pl.col("doc_lines")
+        .list.slice(1)
+        .list.eval(
+            line.str.to_lowercase().is_in(
+                ["args:", "arguments:", "returns:", "parameters", "returns"]
+            )
+            | line.str.starts_with(":param")
+            | line.str.starts_with(":return")
+            | line.str.starts_with(":rtype")
+            | (missing_label & ~directive)
+        )
+        .list.any()
+    )
+
+
+def _findings(enriched: pl.LazyFrame, maximum_summary: NonNegativeInt) -> FindingQuery:
+    """Answer for the summary line and the body beneath it separately in one docstring order."""
+    measurements = (
+        ("characters in the summary", pl.col("summary_length"), Unit.COUNT),
+        ("characters this project accepts", pl.lit(maximum_summary), Unit.COUNT),
+    )
+    summary_findings = FindingQuery.build(
+        enriched,
+        pl.concat_str(
+            pl.lit("the docstring of `"),
+            pl.col("name"),
+            pl.lit("` opens with "),
+            pl.col("summary_length"),
+            pl.lit(" characters that do not read as one finished sentence"),
+        ),
+        measurements,
+        predicate=pl.col("invalid_summary"),
+        finding_order=pl.lit(0),
+        question=pl.concat_str(
+            pl.lit("rewrite the first line of `"),
+            pl.col("name"),
+            pl.lit("` as one sentence under "),
+            pl.lit(maximum_summary),
+            pl.lit(" characters"),
+        ),
+    )
+    body_findings = FindingQuery.build(
+        enriched,
+        pl.concat_str(
+            pl.lit("the docstring of `"),
+            pl.col("name"),
+            pl.lit("` carries a heading or a label where this project writes plain lines"),
+        ),
+        measurements,
+        predicate=pl.col("invalid_body"),
+        finding_order=pl.lit(1),
+        question=pl.concat_str(
+            pl.lit("drop the headings from `"),
+            pl.col("name"),
+            pl.lit("` and write `name` and its description on one line"),
+        ),
+    )
+    return FindingQuery(
+        rows=pl.concat(
+            [summary_findings.rows, body_findings.rows],
+            how="vertical",
+        ).sort("fact_id", "finding_order")
+    )
+
+
 @rule("PY-DOCU0001")
 def compact_house_docstring(
     subject: Table[FunctionFact], *, maximum_summary: NonNegativeInt = 99
@@ -74,82 +162,14 @@ def compact_house_docstring(
     frame = subject.lazy(FunctionRelation.FUNCTIONS).with_columns(
         pl.col("docstring").str.strip_chars().str.split("\n").alias("doc_lines")
     )
-    summary = pl.col("doc_lines").list.first().str.strip_chars().fill_null("")
-    summary_length = summary.str.len_chars()
-    invalid_summary = (
-        (summary == "")
-        | (summary_length > maximum_summary)
-        | ~summary.str.slice(-1).is_in([".", "!", "?"])
-        | summary.str.to_lowercase().str.starts_with("see ")
-        | summary.str.to_lowercase().str.starts_with("refer to ")
-    )
-    body_lines = pl.col("doc_lines").list.slice(1)
-    line = pl.element()
-    stripped_line = pl.element().str.strip_chars()
-    missing_label = line.str.contains(r"^[A-Za-z_][A-Za-z0-9_ ]*:\s*$")
-    directive = stripped_line.str.starts_with(".. ")
-    invalid_body = body_lines.list.eval(
-        line.str.to_lowercase().is_in(["args:", "arguments:", "returns:", "parameters", "returns"])
-        | line.str.starts_with(":param")
-        | line.str.starts_with(":return")
-        | line.str.starts_with(":rtype")
-        | (missing_label & ~directive)
-    ).list.any()
-    docstring_present = pl.col("docstring") != ""
+    stated = pl.col("docstring") != ""
     enriched = frame.with_columns(
-        summary_length.alias("summary_length"),
-        (docstring_present & invalid_summary).alias("invalid_summary"),
-        (docstring_present & invalid_body).alias("invalid_body"),
-    )
-    value = pl.col("invalid_summary") | pl.col("invalid_body")
-    measurements = (
-        ("characters in the summary", pl.col("summary_length"), Unit.COUNT),
-        ("characters this project accepts", pl.lit(maximum_summary), Unit.COUNT),
-    )
-    summary_findings = FindingQuery.build(
-        enriched,
-        pl.concat_str(
-            pl.lit("the docstring of `"),
-            pl.col("name"),
-            pl.lit("` opens with "),
-            pl.col("summary_length"),
-            pl.lit(" characters that do not read as one finished sentence"),
-        ),
-        measurements,
-        predicate=pl.col("invalid_summary"),
-        finding_order=pl.lit(0),
-        question=pl.concat_str(
-            pl.lit("rewrite the first line of `"),
-            pl.col("name"),
-            pl.lit("` as one sentence under "),
-            pl.lit(maximum_summary),
-            pl.lit(" characters"),
-        ),
-    )
-    body_findings = FindingQuery.build(
-        enriched,
-        pl.concat_str(
-            pl.lit("the docstring of `"),
-            pl.col("name"),
-            pl.lit("` carries a heading or a label where this project writes plain lines"),
-        ),
-        measurements,
-        predicate=pl.col("invalid_body"),
-        finding_order=pl.lit(1),
-        question=pl.concat_str(
-            pl.lit("drop the headings from `"),
-            pl.col("name"),
-            pl.lit("` and write `name` and its description on one line"),
-        ),
-    )
-    findings = FindingQuery(
-        rows=pl.concat(
-            [summary_findings.rows, body_findings.rows],
-            how="vertical",
-        ).sort("fact_id", "finding_order")
+        _summary().str.len_chars().alias("summary_length"),
+        (stated & _unfinished_summary(maximum_summary)).alias("invalid_summary"),
+        (stated & _labeled_body()).alias("invalid_body"),
     )
     return RuleQuery.boolean(
         enriched,
-        value,
-        findings=findings,
+        pl.col("invalid_summary") | pl.col("invalid_body"),
+        findings=_findings(enriched, maximum_summary),
     )

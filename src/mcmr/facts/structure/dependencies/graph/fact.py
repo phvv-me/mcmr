@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+from pydantic import Field
+
 from ....foundation import Fact
 
 if TYPE_CHECKING:
@@ -9,4 +11,6 @@ if TYPE_CHECKING:
 class DependencyComponentFact(Fact):
     """Describe the import graph of one repository."""
 
-    import_edges: list[DependencyEdge] = []
+    import_edges: list[DependencyEdge] = Field(
+        default=[], description="resolved import edges between modules this repository owns"
+    )

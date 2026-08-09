@@ -1,4 +1,6 @@
-use super::super::contracts::{Edge, EdgeKind, Language, Node, NodeKind, Resolution, Visibility};
+use super::super::contracts::{
+    Edge, EdgeKind, Language, Node, NodeKind, NodePlacement, Resolution, Visibility,
+};
 use super::primitives::{ExactEdge, node, relate};
 use crate::discovery::Document;
 use crate::graph::naming::Naming;
@@ -54,11 +56,11 @@ impl<'a> Workspace<'a> {
         }
     }
 
-    fn place(kind: NodeKind, path: &str) -> Node {
+    fn place(kind: NodeKind, path: &str, language: Option<Language>) -> Node {
         Node::new(
             format!("path:{}:{path}", kind.label()),
             kind,
-            None,
+            language,
             Visibility::Public,
             path.to_string(),
         )
@@ -77,8 +79,8 @@ impl<'a> Workspace<'a> {
         let mut owner = repository.to_string();
         let parts = document.relative.split('/').collect::<Vec<_>>();
         for depth in 1..parts.len() {
-            let entry = Self::place(NodeKind::Directory, &parts[..depth].join("/"));
-            let entry_id = entry.id.clone();
+            let entry = Self::place(NodeKind::Directory, &parts[..depth].join("/"), None);
+            let entry_id = entry.id().to_string();
             self.nodes.entry(entry_id.clone()).or_insert(entry);
             self.connect(ExactEdge {
                 source: &owner,
@@ -99,10 +101,16 @@ impl<'a> Workspace<'a> {
     }
 
     fn file(&mut self, document: &Document, owner: &str) -> String {
-        let mut file = Self::place(NodeKind::File, &document.relative);
-        file.path = Some(document.relative.clone());
-        file.language = Language::of(&document.relative);
-        let file_id = file.id.clone();
+        let file = Self::place(
+            NodeKind::File,
+            &document.relative,
+            Language::of(&document.relative),
+        )
+        .declared(NodePlacement {
+            path: document.relative.clone(),
+            ..NodePlacement::default()
+        });
+        let file_id = file.id().to_string();
         self.nodes.entry(file_id.clone()).or_insert(file);
         self.connect(ExactEdge {
             source: owner,
@@ -118,10 +126,14 @@ impl<'a> Workspace<'a> {
         let Some((language, named)) = self.naming.module(&document.relative) else {
             return;
         };
-        let mut module = node(language, NodeKind::Module, &named);
-        module.path = Some(document.relative.clone());
-        module.is_package = Self::is_package(&document.relative);
-        let module_id = module.id.clone();
+        let mut module = node(language, NodeKind::Module, &named).declared(NodePlacement {
+            path: document.relative.clone(),
+            ..NodePlacement::default()
+        });
+        if Self::is_package(&document.relative) {
+            module = module.packaged();
+        }
+        let module_id = module.id().to_string();
         self.nodes.entry(module_id.clone()).or_insert(module);
         self.edges.push(Edge {
             source: file.to_string(),
@@ -139,8 +151,8 @@ impl<'a> Workspace<'a> {
             .rsplit('/')
             .next()
             .unwrap_or(root);
-        let repository = Self::place(NodeKind::Repository, name);
-        let repository_id = repository.id.clone();
+        let repository = Self::place(NodeKind::Repository, name, None);
+        let repository_id = repository.id().to_string();
         self.nodes.insert(repository_id.clone(), repository);
         for document in self.documents {
             self.document(document, &repository_id);

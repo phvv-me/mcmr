@@ -19,9 +19,6 @@ _ABSENT = "absent"
 
 _UNFILLED: dict[str, str] = {
     "KernelLaunchFact": ("only a CUDA source states a launch and this corpus holds no CUDA"),
-    "ModuleSurfaceFact": (
-        "only the TypeScript frontend fills it and this corpus holds no TypeScript"
-    ),
 }
 
 # Every fact field this corpus never moves is paired with the missing shape.
@@ -50,20 +47,24 @@ _INVARIANT: dict[str, str] = {
     "ClassFact.classes[].has_redundant_direct_base": (
         "derived, and no class in the corpus names a base one of its other bases already inherits"
     ),
-    "ClassFact.coupled_groups[].type_count": (
-        "derived, and every short co-imported role group in the corpus contains two types"
-    ),
     "ClassFact.coupled_groups[].coimporting_module_count": (
-        "derived, and every coupled type group in the corpus is imported by one module"
+        "derived, and the one co-imported role group in the corpus is reached through its base "
+        "alone, so no module ever names two of its types together"
     ),
     "ClassFact.coupled_groups[].maximum_type_lines": (
-        "derived, and every coupled type group in the corpus has the same largest declaration"
+        "derived, and both types of the one co-imported role group in the corpus are two lines "
+        "long"
     ),
     "ClassFact.coupled_groups[].prefix": (
-        "derived, and the corpus contains one coupled type naming family"
+        "derived, and one file of the corpus is the only one declaring short role types that "
+        "share a name prefix"
     ),
     "ClassFact.coupled_groups[].role_suffixes": (
-        "derived, and the corpus contains one coupled type role combination"
+        "derived, and one file of the corpus is the only one declaring short role types that "
+        "share a name prefix"
+    ),
+    "ClassFact.coupled_groups[].type_count": (
+        "derived, and every short co-imported role group in the corpus contains two types"
     ),
     "CloneGroupFact.repository_line_count": (
         "one number per repository, and only this repository states a clone group at all"

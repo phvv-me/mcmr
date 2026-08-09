@@ -8,6 +8,91 @@ from ......query import CountQuery, FindingQuery, RuleQuery
 from ......table import CallRelation, Table
 
 
+def _in_repository_order(column: str) -> pl.Expr:
+    """Read one column of a group's occurrences in the order the repository states them."""
+    return pl.col(column).sort_by(["fact_order", "ordinal"])
+
+
+def _location() -> pl.Expr:
+    """Spell where one cast sits, as a path beside its single line or the range it spans."""
+    ranged = pl.concat_str(
+        pl.lit("`"),
+        pl.col("node_path"),
+        pl.lit(":"),
+        pl.col("node_start_line"),
+        pl.lit("-"),
+        pl.col("node_end_line"),
+        pl.lit("`"),
+    )
+    single = pl.concat_str(
+        pl.lit("`"),
+        pl.col("node_path"),
+        pl.lit(":"),
+        pl.col("node_start_line"),
+        pl.lit("`"),
+    )
+    return (
+        pl.when(pl.col("node_end_line") > pl.col("node_start_line")).then(ranged).otherwise(single)
+    )
+
+
+def _cast_calls(subject: Table[CallFact], facts: pl.LazyFrame) -> pl.LazyFrame:
+    """Return every two-argument `cast` beside the producer it asserts about and where it sits."""
+    arguments = (
+        subject.lazy(CallRelation.EXPRESSIONS)
+        .filter((pl.col("root_relation") == "argument") & (pl.col("depth") == 0))
+        .group_by("call_id", maintain_order=True)
+        .agg(
+            pl.len().cast(pl.UInt64).alias("argument_count"),
+            pl.col("text").filter(pl.col("root_ordinal") == 0).first().alias("cast_target"),
+            pl.col("text").filter(pl.col("root_ordinal") == 1).first().alias("producer_text"),
+            pl.col("qualified_name")
+            .filter(pl.col("root_ordinal") == 1)
+            .first()
+            .alias("producer_qualified_name"),
+        )
+    )
+    return (
+        subject.lazy(CallRelation.CALLS)
+        .join(facts.select("fact_id", "fact_order"), on="fact_id", how="inner")
+        .join(arguments, on="call_id", how="inner")
+        .filter(
+            pl.col("qualified_name").is_in(["typing.cast", "typing_extensions.cast"])
+            & (pl.col("argument_count") == 2)
+        )
+        .with_columns(
+            pl.when(pl.col("producer_qualified_name") != "")
+            .then(pl.col("producer_qualified_name"))
+            .otherwise(pl.col("producer_text"))
+            .alias("producer"),
+            _location().alias("location"),
+        )
+    )
+
+
+def _repeated_patterns(
+    selected: pl.LazyFrame, minimum_repetitions: NonNegativeInt
+) -> pl.LazyFrame:
+    """Group casts by target and producer and keep the groups repeated often enough to matter."""
+    return (
+        selected.group_by("cast_target", "producer", maintain_order=True)
+        .agg(
+            pl.len().cast(pl.UInt64).alias("group_count"),
+            pl.col("path").n_unique().cast(pl.UInt64).alias("file_count"),
+            _in_repository_order("location").head(32).str.join(", ").alias("locations"),
+            _in_repository_order("fact_id").first().alias("fact_id"),
+            _in_repository_order("node_path").first().alias("path"),
+            _in_repository_order("node_start_line").first().alias("start_line"),
+            _in_repository_order("node_start_column").first().alias("start_column"),
+            _in_repository_order("node_end_line").first().alias("end_line"),
+            _in_repository_order("node_end_column").first().alias("end_column"),
+        )
+        .filter(pl.col("group_count") >= minimum_repetitions)
+        .sort("cast_target", "producer")
+        .with_row_index("finding_order")
+    )
+
+
 @rule("PY-TYPE0005")
 def repeated_cast_patterns(
     subject: Table[CallFact], *, minimum_repetitions: NonNegativeInt = 3
@@ -67,87 +152,7 @@ def repeated_cast_patterns(
         .group_by("fact_id", maintain_order=True)
         .agg(pl.col("signal").sort_by("ordinal").alias("evidence"))
     )
-    arguments = (
-        subject.lazy(CallRelation.EXPRESSIONS)
-        .filter((pl.col("root_relation") == "argument") & (pl.col("depth") == 0))
-        .group_by("call_id", maintain_order=True)
-        .agg(
-            pl.len().cast(pl.UInt64).alias("argument_count"),
-            pl.col("text").filter(pl.col("root_ordinal") == 0).first().alias("cast_target"),
-            pl.col("text").filter(pl.col("root_ordinal") == 1).first().alias("producer_text"),
-            pl.col("qualified_name")
-            .filter(pl.col("root_ordinal") == 1)
-            .first()
-            .alias("producer_qualified_name"),
-        )
-    )
-    selected = (
-        subject.lazy(CallRelation.CALLS)
-        .join(facts.select("fact_id", "fact_order"), on="fact_id", how="inner")
-        .join(arguments, on="call_id", how="inner")
-        .filter(
-            pl.col("qualified_name").is_in(["typing.cast", "typing_extensions.cast"])
-            & (pl.col("argument_count") == 2)
-        )
-        .with_columns(
-            pl.when(pl.col("producer_qualified_name") != "")
-            .then(pl.col("producer_qualified_name"))
-            .otherwise(pl.col("producer_text"))
-            .alias("producer"),
-            pl.when(pl.col("node_end_line") > pl.col("node_start_line"))
-            .then(
-                pl.concat_str(
-                    pl.lit("`"),
-                    pl.col("node_path"),
-                    pl.lit(":"),
-                    pl.col("node_start_line"),
-                    pl.lit("-"),
-                    pl.col("node_end_line"),
-                    pl.lit("`"),
-                )
-            )
-            .otherwise(
-                pl.concat_str(
-                    pl.lit("`"),
-                    pl.col("node_path"),
-                    pl.lit(":"),
-                    pl.col("node_start_line"),
-                    pl.lit("`"),
-                )
-            )
-            .alias("location"),
-        )
-    )
-    repeated = (
-        selected.group_by("cast_target", "producer", maintain_order=True)
-        .agg(
-            pl.len().cast(pl.UInt64).alias("group_count"),
-            pl.col("path").n_unique().cast(pl.UInt64).alias("file_count"),
-            pl.col("location")
-            .sort_by(["fact_order", "ordinal"])
-            .head(32)
-            .str.join(", ")
-            .alias("locations"),
-            pl.col("fact_id").sort_by(["fact_order", "ordinal"]).first().alias("fact_id"),
-            pl.col("node_path").sort_by(["fact_order", "ordinal"]).first().alias("path"),
-            pl.col("node_start_line")
-            .sort_by(["fact_order", "ordinal"])
-            .first()
-            .alias("start_line"),
-            pl.col("node_start_column")
-            .sort_by(["fact_order", "ordinal"])
-            .first()
-            .alias("start_column"),
-            pl.col("node_end_line").sort_by(["fact_order", "ordinal"]).first().alias("end_line"),
-            pl.col("node_end_column")
-            .sort_by(["fact_order", "ordinal"])
-            .first()
-            .alias("end_column"),
-        )
-        .filter(pl.col("group_count") >= minimum_repetitions)
-        .sort("cast_target", "producer")
-        .with_row_index("finding_order")
-    )
+    repeated = _repeated_patterns(_cast_calls(subject, facts), minimum_repetitions)
     counts = repeated.group_by("fact_id", maintain_order=True).agg(
         pl.col("group_count").sum().cast(pl.UInt64).alias("value")
     )

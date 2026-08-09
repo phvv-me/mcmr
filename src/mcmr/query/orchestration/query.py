@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from patos import FrozenModel, Runtime
 
 from ...checking.evaluations import TableEvaluationReport, TableRuleSummary
-from ...domain.contracts import EngineStats
+from ...domain.contracts import EngineStats, ModelSpend
 from ...table import RepositoryTables
 from ..schema.values import frame_value
 from .materialization import CollectedRules, QueryEvaluations
@@ -22,6 +22,7 @@ class QueryExecution(FrozenModel):
     tables: Runtime[RepositoryTables]
     rules: list[ResolvedRule]
     failure_limit: int | None
+    spend: dict[str, dict[str, ModelSpend]] = {}
 
     def report(self) -> TableEvaluationReport:
         """Compile, collect, and adapt the lazy graph at one execution boundary."""
@@ -38,18 +39,6 @@ class QueryExecution(FrozenModel):
         )
         stats = self._stats(summaries, fix_candidates, timings)
         return self._report(evaluations, summaries, stats)
-
-    @staticmethod
-    def _report(
-        evaluations: QueryEvaluations,
-        summaries: list[TableRuleSummary],
-        stats: EngineStats,
-    ) -> TableEvaluationReport:
-        return TableEvaluationReport(
-            summaries=summaries,
-            failures=evaluations.evaluations(),
-            stats=stats,
-        )
 
     @staticmethod
     def _summaries(collected: pl.DataFrame) -> list[TableRuleSummary]:
@@ -120,6 +109,19 @@ class QueryExecution(FrozenModel):
             name = rule.prepared.primary_family.__name__
             counts[name] = counts.get(name, 0) + 1
         return counts
+
+    def _report(
+        self,
+        evaluations: QueryEvaluations,
+        summaries: list[TableRuleSummary],
+        stats: EngineStats,
+    ) -> TableEvaluationReport:
+        return TableEvaluationReport(
+            summaries=summaries,
+            failures=evaluations.evaluations(),
+            stats=stats,
+            spend=self.spend,
+        )
 
     def _stats(
         self,

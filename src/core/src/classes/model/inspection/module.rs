@@ -5,7 +5,8 @@ use crate::walk::{expression_tree, expressions, walk};
 use ruff_python_ast::{Expr, ModModule, Stmt};
 
 use super::super::contracts::Identity;
-use super::classes::executable;
+
+pub(super) use crate::walk::is_reexport_only;
 
 /// Return which names one module calls and which it names anywhere else, at any depth.
 pub(super) fn usage(module: &ModModule) -> (BTreeSet<String>, BTreeSet<String>) {
@@ -89,20 +90,6 @@ pub(super) fn states_policy(module: &ModModule) -> bool {
             .is_some_and(|origin| is_approved_foundation_module(origin.as_str())),
         _ => false,
     })
-}
-
-/// Whether one module hands names on rather than declaring anything of its own.
-pub(super) fn is_reexport_only(module: &ModModule) -> bool {
-    executable(&module.body)
-        .iter()
-        .all(|statement| match statement {
-            Stmt::Import(_) | Stmt::ImportFrom(_) => true,
-            Stmt::Assign(item) => item
-                .targets
-                .iter()
-                .all(|target| matches!(target, Expr::Name(name) if name.id.as_str() == "__all__")),
-            _ => false,
-        })
 }
 
 /// Return the names one module lists in `__all__`, which are exported on purpose.

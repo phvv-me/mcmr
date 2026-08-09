@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 from ..transport.openapi import DataHubOpenAPI
-from .identities import flow_urn, post_urn
+from .labels import flow_urn
 
 if TYPE_CHECKING:
     import httpx
@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
     from mcmr.plugins import RunGraph
 
-    from ..settings import DataHubSettings
+    from ..configuration import DataHubSettings
 
 # Where DataHub shows one published flow, stated without a host so the link resolves against
 # whichever front end the reader already has open.
@@ -43,9 +43,12 @@ class DataHubAnnouncement:
 
     @staticmethod
     def _post(graph: RunGraph) -> dict[str, JsonValue]:
-        """State the home page card one repository's published graph is shown behind."""
+        """State the home page card one repository's published graph is shown behind.
+
+        The card is keyed by the repository it announces, so a later run rewrites that same one.
+        """
         return {
-            "urn": post_urn(graph.repository),
+            "urn": f"urn:li:post:mcmr-{graph.repository}",
             "postInfo": {
                 "value": {
                     "type": "HOME_PAGE_ANNOUNCEMENT",

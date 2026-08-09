@@ -1,3 +1,4 @@
+use super::targets::declared_targets;
 use crate::source::Source;
 use crate::walk::{blocks, children, expressions, walk};
 use ruff_python_ast::{Expr, ModModule, Stmt};
@@ -250,17 +251,7 @@ pub(super) fn owned(body: &[Stmt]) -> Vec<&Stmt> {
 /// to. Counting how often a name is bound needs both sides.
 pub(super) fn stated(statement: &Stmt) -> Vec<&Expr> {
     let mut found = expressions(statement);
-    match statement {
-        Stmt::Assign(item) => found.extend(item.targets.iter()),
-        Stmt::AnnAssign(item) => found.push(item.target.as_ref()),
-        Stmt::AugAssign(item) => found.push(item.target.as_ref()),
-        Stmt::With(item) => found.extend(
-            item.items
-                .iter()
-                .filter_map(|entry| entry.optional_vars.as_deref()),
-        ),
-        _ => {}
-    }
+    found.extend(declared_targets(statement));
     found
 }
 

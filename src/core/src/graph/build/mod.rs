@@ -25,10 +25,7 @@ pub fn build(root: &str, documents: &[Document]) -> Result<Graph, String> {
     for (index, module, stated) in state(documents, &naming, &specifiers) {
         building.absorb(&documents[index].relative, module, stated);
     }
-    let reachable = building.reachable();
-    building.enrich_exports(&reachable.modules);
-    building.resolve(&reachable);
-    Ok(building.finish())
+    Ok(building.resolve())
 }
 
 /// State every document through the frontend its language owns, back in document order.

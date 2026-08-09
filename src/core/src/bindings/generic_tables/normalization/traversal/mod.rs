@@ -7,6 +7,7 @@ use self::values::{
 use super::frames::joined;
 use super::kind::ContainerKind;
 use super::path::{FieldContext, RowPath};
+use super::support;
 use super::support::{RecordRow, ScalarKey, ScalarValue, ValueRow};
 use crate::bindings::generic_tables::schema::{Schema, Shape, effective};
 use serde_json::{Map, Value};
@@ -368,10 +369,14 @@ impl Traversal<'_, '_> {
     ) -> Result<(), String> {
         let value = scalar_value(schema, Some(actual))?
             .ok_or_else(|| format!("relation {relation} value is not scalar"))?;
-        self.values.push(self.value_row(relation, location, value));
+        self.values
+            .push(self.value_row(relation, location, Some(value)));
         Ok(())
     }
 
+    /// Build the row standing in for one nested container, which holds no scalar of its own.
+    ///
+    /// The container names itself as its value, so every entry below it addresses the same id.
     fn container_row(
         &self,
         relation: &str,
@@ -379,25 +384,19 @@ impl Traversal<'_, '_> {
         container_id: &str,
         length: u64,
     ) -> ValueRow {
-        ValueRow {
-            fact_order: self.fact_order,
-            fact_id: self.fact_id.to_string(),
-            location: crate::bindings::generic_tables::normalization::support::ValueLocation {
-                relation: relation.to_string(),
-                parent_id: location.parent_id.to_string(),
-                container:
-                    crate::bindings::generic_tables::normalization::support::ValueContainer {
-                        id: container_id.to_string(),
-                        ordinal: Some(location.container_ordinal),
-                        length: Some(length),
-                    },
-                entry_kind: "container".to_string(),
+        self.value_row(
+            relation,
+            ValueLocation {
+                parent_id: location.parent_id,
+                container_id: container_id.to_string(),
+                container_ordinal: Some(location.container_ordinal),
+                container_length: length,
                 value_id: container_id.to_string(),
                 ordinal: 0,
                 map_key: location.map_key.clone(),
             },
-            value: None,
-        }
+            None,
+        )
     }
 
     fn record_row(
@@ -419,30 +418,37 @@ impl Traversal<'_, '_> {
         }
     }
 
+    /// Build one row of the value table, which is where every entry of a container lands.
+    ///
+    /// A row carrying no scalar of its own is the container it was asked for rather than an entry
+    /// inside one, and that is the only thing telling the two entry kinds apart.
     fn value_row(
         &self,
         relation: &str,
         location: ValueLocation<'_>,
-        value: ScalarValue,
+        value: Option<ScalarValue>,
     ) -> ValueRow {
+        let entry_kind = match value.is_some() {
+            true => "value",
+            false => "container",
+        };
         ValueRow {
             fact_order: self.fact_order,
             fact_id: self.fact_id.to_string(),
-            location: crate::bindings::generic_tables::normalization::support::ValueLocation {
+            location: support::ValueLocation {
                 relation: relation.to_string(),
                 parent_id: location.parent_id.to_string(),
-                container:
-                    crate::bindings::generic_tables::normalization::support::ValueContainer {
-                        id: location.container_id,
-                        ordinal: location.container_ordinal,
-                        length: Some(location.container_length),
-                    },
-                entry_kind: "value".to_string(),
+                container: support::ValueContainer {
+                    id: location.container_id,
+                    ordinal: location.container_ordinal,
+                    length: Some(location.container_length),
+                },
+                entry_kind: entry_kind.to_string(),
                 value_id: location.value_id,
                 ordinal: location.ordinal,
                 map_key: location.map_key,
             },
-            value: Some(value),
+            value,
         }
     }
 }

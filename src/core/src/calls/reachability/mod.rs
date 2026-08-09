@@ -14,8 +14,8 @@ impl TestReachability {
         let internal = repository
             .nodes
             .iter()
-            .filter(|node| node.path.is_some())
-            .map(|node| (node.qualname.as_str(), node.id.as_str()))
+            .filter(|node| node.path().is_some())
+            .map(|node| (node.qualname(), node.id()))
             .collect::<BTreeMap<_, _>>();
         let routes = repository
             .exports
@@ -47,8 +47,8 @@ impl TestReachability {
             .iter()
             .filter_map(|node| {
                 aliases
-                    .get(&node.qualname)
-                    .map(|target| (node.id.clone(), target.clone()))
+                    .get(node.qualname())
+                    .map(|target| (node.id().to_string(), target.clone()))
             })
             .collect::<BTreeMap<_, _>>();
         let mut calls: BTreeMap<String, Vec<String>> = BTreeMap::new();
@@ -67,25 +67,25 @@ impl TestReachability {
             .nodes
             .iter()
             .filter_map(|node| {
-                let path = node.path.as_deref().filter(|path| is_test_path(path))?;
-                let line = node.line?;
+                let path = node.path().filter(|path| is_test_path(path))?;
+                let line = node.line()?;
                 matches!(
-                    node.kind,
+                    node.kind(),
                     graph::NodeKind::Function | graph::NodeKind::Method
                 )
-                .then(|| ((path.to_string(), line), node.id.clone()))
+                .then(|| ((path.to_string(), line), node.id().to_string()))
             })
             .collect();
         let production = repository
             .nodes
             .iter()
             .filter_map(|node| {
-                node.path.as_deref().filter(|path| !is_test_path(path))?;
+                node.path().filter(|path| !is_test_path(path))?;
                 matches!(
-                    node.kind,
+                    node.kind(),
                     graph::NodeKind::Class | graph::NodeKind::Function | graph::NodeKind::Method
                 )
-                .then(|| (node.id.clone(), node.qualname.clone()))
+                .then(|| (node.id().to_string(), node.qualname().to_string()))
             })
             .collect();
         Self {

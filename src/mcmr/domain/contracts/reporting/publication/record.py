@@ -13,6 +13,7 @@ class RunRecord(RunRecordFields.Estimate):
         """Return the flat key and value pairs a receiving system stores beside the verdict."""
         stated = {
             "rule": self.rule,
+            "lane": self.lane,
             "path": self.path,
             "measurement": self.measurement,
             "findings": str(self.finding_count),
@@ -20,5 +21,5 @@ class RunRecord(RunRecordFields.Estimate):
             "reasons": " | ".join(self.reasons),
             "reasoning": self.reasoning,
             "confidence": "" if self.confidence is None else f"{self.confidence:.2f}",
-        }
+        } | self.spend.properties
         return {name: value for name, value in stated.items() if value}

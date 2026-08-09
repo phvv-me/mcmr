@@ -1,4 +1,4 @@
-use crate::graph::{Edge, Language, Node, NodeKind, Reference, identity};
+use crate::graph::{Edge, Language, Node, NodeKind, NodePlacement, Reference, identity};
 use crate::source::Source;
 use std::collections::BTreeMap;
 
@@ -45,5 +45,14 @@ impl Collector {
             .last()
             .cloned()
             .expect("the Rust collector must retain its module scope")
+    }
+
+    /// Point at the line of this file that writes one declaration.
+    pub(super) fn written(&self, at: proc_macro2::Span) -> NodePlacement {
+        NodePlacement {
+            path: self.source.relative.clone(),
+            line: Some(at.start().line),
+            source: None,
+        }
     }
 }

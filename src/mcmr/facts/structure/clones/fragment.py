@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 from patos import FrozenModel
-from pydantic import PositiveInt, model_validator
+from pydantic import Field, PositiveInt, model_validator
 
 if TYPE_CHECKING:
     from typing import Self
@@ -10,10 +10,12 @@ if TYPE_CHECKING:
 class CloneFragment(FrozenModel):
     """Retain one copy of a repeated fragment and the lines it covers."""
 
-    path: str
-    start_line: PositiveInt
-    end_line: PositiveInt
-    source: str = ""
+    path: str = Field(description="repository relative path this copy occurs in")
+    start_line: PositiveInt = Field(description="first line of this copy, one indexed")
+    end_line: PositiveInt = Field(description="last line of this copy, one indexed and inclusive")
+    source: str = Field(
+        default="", description="literal source text of the lines this copy covers"
+    )
 
     @property
     def line_count(self) -> int:

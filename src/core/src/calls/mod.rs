@@ -178,7 +178,7 @@ pub(crate) fn enrich_records(facts: &mut [CallRecord], resolutions: &mut Resolut
         let names = fact
             .calls
             .iter()
-            .map(|call| (call.span_key(), call.qualified_name.clone()))
+            .map(|call| (call.span_key(), call.target.qualified_name.clone()))
             .collect::<BTreeMap<_, _>>();
         for call in &mut fact.calls {
             enrich_record_expressions(call, &names);
@@ -202,37 +202,43 @@ fn enrich_record_expressions(
     call: &mut CallSite,
     names: &BTreeMap<(usize, usize, usize, usize), String>,
 ) {
-    for expression in &mut call.arguments {
+    for expression in &mut call.syntax.arguments {
         enrich_expression_names(expression, names);
     }
-    if let Some(receiver) = &mut call.receiver {
+    if let Some(receiver) = &mut call.syntax.receiver {
         enrich_expression_names(receiver, names);
     }
 }
 
 fn enrich_python_record_call(call: &mut CallSite, resolutions: &mut ResolutionIndex<'_>) {
-    let Some(answer) = resolutions.next(&call.path, call.node.span.start_line) else {
+    let Some(answer) = resolutions.next(&call.syntax.path, call.syntax.node.span.start_line)
+    else {
         return;
     };
-    let graph_shadowed = !call.qualified_name.contains('.')
-        && graph::is_builtin(&call.qualified_name)
+    let graph_shadowed = !call.target.qualified_name.contains('.')
+        && graph::is_builtin(&call.target.qualified_name)
         && answer.is_first_party;
-    call.target_id.clone_from(&answer.target_id);
-    call.qualified_name.clone_from(&answer.qualified_name);
-    call.is_external = answer.is_external;
-    call.is_first_party = answer.is_first_party;
-    call.is_standard_library = answer.is_standard_library;
-    call.is_shadowed |= graph_shadowed;
-    call.is_constructor |= answer.is_constructor;
+    call.target.target_id.clone_from(&answer.target_id);
+    call.target
+        .qualified_name
+        .clone_from(&answer.qualified_name);
+    call.target.is_external = answer.is_external;
+    call.target.is_first_party = answer.is_first_party;
+    call.target.is_standard_library = answer.is_standard_library;
+    call.context.is_shadowed |= graph_shadowed;
+    call.target.is_constructor |= answer.is_constructor;
 }
 
 fn enrich_resolved_record_call(call: &mut CallSite, resolutions: &mut ResolutionIndex<'_>) {
-    let Some(answer) = resolutions.next(&call.path, call.node.span.start_line) else {
+    let Some(answer) = resolutions.next(&call.syntax.path, call.syntax.node.span.start_line)
+    else {
         return;
     };
-    call.target_id.clone_from(&answer.target_id);
+    call.target.target_id.clone_from(&answer.target_id);
     if answer.resolution != graph::Resolution::Unresolved {
-        call.qualified_name.clone_from(&answer.qualified_name);
+        call.target
+            .qualified_name
+            .clone_from(&answer.qualified_name);
     }
 }
 

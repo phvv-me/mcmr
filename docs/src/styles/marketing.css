@@ -1,0 +1,108 @@
+/* The landing page only. Starlight never loads this file.
+
+   daisyUI's variables are scoped to `[data-mcmr-marketing]` so nothing it defines can leak into
+   a docs page, and the typography component is excluded because Starlight owns prose styling
+   everywhere else.
+
+   The palette comes straight off the project poster: warm cream paper, a deep propaganda red,
+   a golden ray yellow, and a dark charcoal ink. Unlike a muted SaaS palette, the accent colors
+   are meant to be seen, so sections block out in full color rather than staying a single
+   neutral surface with borders. */
+
+@import 'tailwindcss';
+
+@plugin "daisyui" {
+  themes: mcmr --default, mcmr-dark --prefersdark;
+  root: '[data-mcmr-marketing]';
+  exclude: typography;
+  logs: false;
+}
+
+/* These hexes are the brand pack's own palette, sampled straight from icon.svg and banner.svg
+   (cream #f5e6c0, charcoal #1a1512, red #bd281b, deep red #7a1a10, gold #e8af3d / #eac36d), so the
+   theme and the brand assets always agree rather than approximating each other. */
+@plugin "daisyui/theme" {
+  name: 'mcmr';
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: #f5e6c0;
+  --color-base-200: #eddcac;
+  --color-base-300: #d9c48a;
+  --color-base-content: #1a1512;
+  --color-primary: #bd281b;
+  --color-primary-content: #f5e6c0;
+  --color-secondary: #e8af3d;
+  --color-secondary-content: #1a1512;
+  --color-accent: #1a1512;
+  --color-accent-content: #f5e6c0;
+  --color-neutral: #1a1512;
+  --color-neutral-content: #f5e6c0;
+  --color-info: #4a7ba6;
+  --color-info-content: #f5e6c0;
+  --color-success: #3d7a4a;
+  --color-success-content: #f5e6c0;
+  --color-warning: #e8af3d;
+  --color-warning-content: #1a1512;
+  --color-error: #7a1a10;
+  --color-error-content: #f5e6c0;
+  --radius-selector: 0;
+  --radius-field: 0.125rem;
+  --radius-box: 0;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 2px;
+  --depth: 0;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  name: 'mcmr-dark';
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #1a1512;
+  --color-base-200: #241d18;
+  --color-base-300: #362b22;
+  --color-base-content: #f5e6c0;
+  --color-primary: #d9432f;
+  --color-primary-content: #f5e6c0;
+  --color-secondary: #eac36d;
+  --color-secondary-content: #1a1512;
+  --color-accent: #f5e6c0;
+  --color-accent-content: #1a1512;
+  --color-neutral: #f5e6c0;
+  --color-neutral-content: #1a1512;
+  --color-info: #6ea0cc;
+  --color-info-content: #1a1512;
+  --color-success: #6bb37a;
+  --color-success-content: #1a1512;
+  --color-warning: #eac36d;
+  --color-warning-content: #1a1512;
+  --color-error: #d9432f;
+  --color-error-content: #1a1512;
+  --radius-selector: 0;
+  --radius-field: 0.125rem;
+  --radius-box: 0;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 2px;
+  --depth: 0;
+  --noise: 0;
+}
+
+@theme {
+  --font-display: 'Anton', var(--font-sans);
+  --font-brand: 'Archivo', var(--font-sans);
+  --font-sans: 'Inter', var(--font-sans);
+  --font-mono: 'JetBrains Mono', var(--font-mono);
+}
+
+/* Anton only has one weight, and it is meant to be shouted. Tighten it or a poster headline
+   reads loose and weak. Reserved for the hero line and the biggest section numerals, never for
+   running prose. */
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}

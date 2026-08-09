@@ -205,15 +205,22 @@ class DependencyInventory(FrozenModel):
             + cls._declared(build.get("requires", []), is_development=True)
         )
 
-    @classmethod
+    def _names_this_repository(self, value: JsonValue) -> bool:
+        """Whether one Chefe entry installs this repository itself rather than a dependency."""
+        if isinstance(value, str):
+            return False
+        path = self.table(value).get("path")
+        return isinstance(path, str) and (self.root / path).resolve() == self.root.resolve()
+
     def _stated_all(
-        cls,
+        self,
         values: Mapping[str, JsonValue],
         *,
         is_development: bool = False,
     ) -> list[DependencyDeclaration]:
-        """Normalize every named Chefe constraint in one table."""
+        """Normalize every named Chefe constraint that stands for another package."""
         return [
-            cls.stated(name, value, is_development=is_development)
+            self.stated(name, value, is_development=is_development)
             for name, value in values.items()
+            if not self._names_this_repository(value)
         ]

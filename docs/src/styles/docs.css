@@ -1,0 +1,67 @@
+/* mcmr brand for Starlight.
+
+   The poster is warm cream paper, deep propaganda red, golden ray yellow, and dark charcoal
+   ink. Starlight reads its accent and gray ramps from the tokens below, so the accent ramp
+   carries the poster red rather than a generic blue, and the gray ramp leans warm instead of
+   neutral, which is what keeps a code sample or a sidebar from reading as a different product
+   than the landing page above it. */
+
+@layer base, starlight, theme, components, utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@700;800;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import '@astrojs/starlight-tailwind';
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+/* Stops derived from the brand pack's own red (#bd281b, #7a1a10) and charcoal (#1a1512) on cream
+   (#f5e6c0), so Starlight's accent and gray ramps read as the same product as the landing page. */
+@theme {
+  --font-brand: 'Archivo', var(--font-sans);
+  --color-accent-50: #fbeee9;
+  --color-accent-100: #f6d9d0;
+  --color-accent-200: #eab3a3;
+  --color-accent-300: #dc8672;
+  --color-accent-400: #cc5a45;
+  --color-accent-500: #bd281b;
+  --color-accent-600: #9c2116;
+  --color-accent-700: #7a1a10;
+  --color-accent-800: #5c130c;
+  --color-accent-900: #3f0d08;
+  --color-accent-950: #240705;
+  --color-gray-50: #f8f2e2;
+  --color-gray-100: #f0e5c8;
+  --color-gray-200: #ddcda0;
+  --color-gray-300: #c2ab78;
+  --color-gray-400: #9c8355;
+  --color-gray-500: #776540;
+  --color-gray-600: #574a30;
+  --color-gray-700: #3c3324;
+  --color-gray-800: #271f18;
+  --color-gray-900: #1a1512;
+  --color-gray-950: #100d0b;
+}
+
+/* The handful of rules Tailwind utilities cannot reach, because they style markup Starlight
+   renders itself. */
+.site-title,
+.sl-markdown-content :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-brand);
+  letter-spacing: -0.01em;
+}
+
+.sl-markdown-content a:not(:where(.not-content *)) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.sl-markdown-content :is(pre, .expressive-code, .expressive-code .frame, :not(pre) > code),
+.starlight-aside,
+.card,
+.sl-link-card {
+  border-radius: 0.125rem;
+}
+
+.sl-markdown-content :is(.mermaid, .astro-d2) {
+  display: flex;
+  justify-content: center;
+}

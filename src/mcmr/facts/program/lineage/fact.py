@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+from pydantic import Field
+
 from ...foundation import Fact
 
 if TYPE_CHECKING:
@@ -10,4 +12,6 @@ class LineageEdgeFact(Fact):
     """Describe one resolved data lineage edge."""
 
     external_evidence = True
-    edges: list[LineageEdge] = []
+    edges: list[LineageEdge] = Field(
+        default=[], description="resolved lineage edges this fact retains"
+    )

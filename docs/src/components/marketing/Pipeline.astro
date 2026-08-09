@@ -1,0 +1,65 @@
+---
+const steps = [
+  {
+    n: '01',
+    title: 'Configuration and plugin discovery',
+    body: 'MCMR reads `pyproject.toml` for your policy, then finds every rule and provider an installed package registers through the `mcmr.rules` and `mcmr.providers` entry points.',
+  },
+  {
+    n: '02',
+    title: 'One fact family dependency graph',
+    body: 'The planner works out exactly which typed tables the selected rules need and groups rules whose tables connect, so shared work is never repeated.',
+  },
+  {
+    n: '03',
+    title: 'One repository walk',
+    body: 'The Rust kernel parses the tree once into typed Polars tables. Enabled external providers, DataHub included, fill in whatever the kernel cannot see from source alone.',
+  },
+  {
+    n: '04',
+    title: 'One lazy query per rule',
+    body: 'Every rule runs one query over the shared tables it was given, never once per file or per object. A rule receives only the tables and services its own signature names.',
+  },
+  {
+    n: '05',
+    title: 'Judgment and bounded evidence',
+    body: 'Each rule’s effective policy turns a Boolean, count, percentage, or category into a verdict. Detailed findings are collected only for the failures a report will show.',
+  },
+  {
+    n: '06',
+    title: 'Report, and only then a verified repair',
+    body: 'Rich, plain, or JSON output either way. A fix is written back only after MCMR reparses the candidate and reruns the originating rule to confirm the finding is gone.',
+  },
+];
+---
+
+<section id="what" class="bg-neutral text-neutral-content border-b-2 border-base-300">
+  <div class="mx-auto max-w-6xl px-4 py-16 lg:py-20">
+    <div class="max-w-2xl space-y-3">
+      <p class="font-mono text-xs tracking-[0.2em] text-secondary uppercase">What MCMR is</p>
+      <h2 class="font-display text-4xl sm:text-5xl">One walk. One query per rule.</h2>
+      <p class="text-neutral-content/70">
+        A normal run is stateless. It creates no cache, no history, and no hidden evidence
+        directory unless you ask it to write a report or apply a repair.
+      </p>
+    </div>
+
+    <ol class="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2">
+      {
+        steps.map((step) => (
+          <li class="border-t-2 border-secondary/40 pt-4">
+            <span class="font-display text-secondary text-3xl">{step.n}</span>
+            <h3 class="mt-2 text-xl font-bold" style="font-family: var(--font-brand)">
+              {step.title}
+            </h3>
+            <p class="text-neutral-content/70 mt-2 text-sm leading-relaxed">{step.body}</p>
+          </li>
+        ))
+      }
+    </ol>
+
+    <a href="/mcmr/docs/concepts/fact-tables/" class="btn btn-outline btn-sm mt-12">
+      Read how fact tables work
+    </a>
+  </div>
+</section>

@@ -1,0 +1,21 @@
+[
+  {
+    "variables": {},
+    "response": [
+      {
+        "urn": "urn:li:glossaryNode:mcmr-rule-families",
+        "glossaryNodeInfo": {
+          "value": {
+            "name": "MCMR Rule Families",
+            "definition": "The families MCMR groups its rules into, one term each."
+          }
+        },
+        "glossaryNodeKey": {
+          "value": {
+            "name": "mcmr-rule-families"
+          }
+        }
+      }
+    ]
+  }
+]

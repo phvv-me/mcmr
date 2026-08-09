@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+from pydantic import Field
+
 from ....foundation import Fact
 from .coupling import ModuleCoupling
 
@@ -10,9 +12,15 @@ if TYPE_CHECKING:
 class ModuleCouplingFact(ModuleCoupling, Fact):
     """Describe one module through Robert Martin's package metrics."""
 
-    declaration_count: NonNegativeInt = 0
-    abstract_declaration_count: NonNegativeInt = 0
-    dependencies: list[ModuleCoupling] = []
+    declaration_count: NonNegativeInt = Field(
+        default=0, description="classes this module declares"
+    )
+    abstract_declaration_count: NonNegativeInt = Field(
+        default=0, description="classes this module declares that state an abstract contract"
+    )
+    dependencies: list[ModuleCoupling] = Field(
+        default=[], description="modules this module imports and their own coupling counts"
+    )
 
     @property
     def abstractness(self) -> float:

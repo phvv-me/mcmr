@@ -2,7 +2,7 @@ use super::exports::{References, enrich};
 use super::reachable::Reachable;
 use crate::graph::contracts::{Edge, EdgeKind, Export, Graph, Language, Node, Reference, Stated};
 use crate::graph::resolution_engine::{ResolutionContext, resolve};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 /// The repository graph while the frontend and resolution passes are still filling it.
 pub(super) struct Building {
@@ -51,20 +51,23 @@ impl Building {
         self.export_references.append(&mut stated.export_references);
     }
 
-    /// Count who consumes each export and record every route that goes around it.
-    pub(super) fn enrich_exports(&mut self, modules: &BTreeSet<String>) {
+    /// Resolve everything the absorbed documents stated and hand over the repository graph.
+    ///
+    /// Every later pass reads the names the absorbed nodes reach, so those are read once and then
+    /// drive both the export enrichment and the reference attachment. Absorbing is the only step
+    /// before this one, and this one consumes the graph under construction, so no caller can read a
+    /// half-resolved graph.
+    pub(super) fn resolve(mut self) -> Graph {
+        let reachable = Reachable::of(&self.nodes);
         enrich(
             &mut self.exports,
             References {
                 runtime: &self.references,
                 type_checking: &self.export_references,
             },
-            modules,
+            &reachable.modules,
         );
-    }
-
-    /// Hand over the finished repository graph.
-    pub(super) fn finish(self) -> Graph {
+        self.attach_all(&reachable);
         Graph {
             nodes: self.nodes.into_values().collect(),
             edges: self.edges,
@@ -72,13 +75,8 @@ impl Building {
         }
     }
 
-    /// Read the names every stated reference is allowed to land on.
-    pub(super) fn reachable(&self) -> Reachable {
-        Reachable::of(&self.nodes)
-    }
-
     /// Attach every stated reference to the declaration it named.
-    pub(super) fn resolve(&mut self, reachable: &Reachable) {
+    fn attach_all(&mut self, reachable: &Reachable) {
         let lookup = crate::native::Lookup::of(&reachable.symbols);
         for reference in &self.references {
             let symbols = match reference.kind {
@@ -102,10 +100,10 @@ impl Building {
     /// Keep every node once, narrowing the visibility when two files declare the same one.
     fn merge(&mut self, nodes: Vec<Node>) {
         for node in nodes {
-            let (id, visibility) = (node.id.clone(), node.visibility);
+            let (id, visibility) = (node.id().to_string(), node.visibility());
             self.nodes
                 .entry(id)
-                .and_modify(|held| held.visibility = held.visibility.narrower(visibility))
+                .and_modify(|held| held.narrow(visibility))
                 .or_insert(node);
         }
     }

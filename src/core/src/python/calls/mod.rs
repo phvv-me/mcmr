@@ -185,22 +185,22 @@ fn collect_call_expressions(
         let is_shadowed = bindings.contains(head);
         let has_ambiguous_alias = collector.ambiguous.contains(head);
         let mut call = TypedCallSite::new(called, collector.source.node_of("call", item));
-        call.arguments = arguments;
-        call.keyword_names = keyword_names;
-        call.receiver = receiver(collector.source, &item.func);
-        call.assigned_target = assigned_target.to_string();
-        call.result_is_discarded = context.result_is_discarded;
-        call.callee = Some(collector.source.node_of("callee", item.func.as_ref()));
-        call.is_constructor = is_constructor;
-        call.is_decorator_factory = context.is_decorator_factory;
-        call.is_shadowed = is_shadowed;
-        call.has_ambiguous_alias = has_ambiguous_alias;
-        call.has_starred_arguments = item
+        call.syntax.arguments = arguments;
+        call.syntax.keyword_names = keyword_names;
+        call.syntax.receiver = receiver(collector.source, &item.func);
+        call.syntax.assigned_target = assigned_target.to_string();
+        call.context.result_is_discarded = context.result_is_discarded;
+        call.syntax.callee = Some(collector.source.node_of("callee", item.func.as_ref()));
+        call.target.is_constructor = is_constructor;
+        call.context.is_decorator_factory = context.is_decorator_factory;
+        call.context.is_shadowed = is_shadowed;
+        call.context.has_ambiguous_alias = has_ambiguous_alias;
+        call.context.has_starred_arguments = item
             .arguments
             .args
             .iter()
             .any(|argument| matches!(argument, Expr::Starred(_)));
-        call.enclosing_is_async = context.enclosing_is_async;
+        call.context.enclosing_is_async = context.enclosing_is_async;
         collector.calls.push(call);
     }
     for child in children(expression) {

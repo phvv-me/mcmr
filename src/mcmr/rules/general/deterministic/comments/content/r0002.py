@@ -36,7 +36,7 @@ def comment_length(
     `normalization_max` and stated as a percentage, so a group at or past the normalization maximum
     reads as one hundred and everything shorter scales beneath it.
 
-    A licence is left out because it is not a comment about this code. It is the same words in
+    A license is left out because it is not a comment about this code. It is the same words in
     every file of the project, put there by policy, and the fifteen-line notice one library opens
     all of its two hundred and six files with made this rule fail every one of them, which tells a
     reader nothing at all. `notice_markers` names what a notice opens with, so a project spelling
@@ -57,7 +57,7 @@ def comment_length(
     Exceptions
     ----------
     A file with no ordinary comment measures zero rather than being skipped, which keeps the value
-    comparable across a repository, and so does a file holding only documentation or its licence.
+    comparable across a repository, and so does a file holding only documentation or its license.
     Nothing here judges whether a long implementation comment is worth its length, so a rationale
     and a safety note measure exactly as long as they are. The contextual comment rules say whether
     they earn it.

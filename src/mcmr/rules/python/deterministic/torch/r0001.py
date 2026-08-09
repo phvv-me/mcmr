@@ -47,26 +47,9 @@ _TENSOR_METHODS = {
 _POWER_FUNCTIONS = {"torch.pow", "torch.float_power"}
 
 
-def _valid_paths(
-    subject: Table[CallFact],
-) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFrame]:
-    """Return facts, evidence, and fully matched tensor-operation paths."""
-    facts = subject.lazy(CallRelation.FACTS)
-    evidence = (
-        subject.lazy(CallRelation.EVIDENCE)
-        .group_by("fact_id", maintain_order=True)
-        .agg(pl.col("signal").sort_by("ordinal").alias("evidence"))
-    )
-    expressions = subject.lazy(CallRelation.EXPRESSIONS)
-    ancestry = subject.lazy(CallRelation.EXPRESSION_ANCESTRY)
-    edges = ancestry.select(
-        "parent_id",
-        "parent_kind",
-        "child_expression_id",
-        "relation",
-        "ordinal",
-    ).unique(maintain_order=True)
-    arguments = (
+def _operands(edges: pl.LazyFrame, *, expressions: pl.LazyFrame) -> pl.LazyFrame:
+    """Count the arguments each application states and read the shape of the first one."""
+    return (
         edges.filter(pl.col("relation") == "argument")
         .join(
             expressions.select(
@@ -90,6 +73,12 @@ def _valid_paths(
             .alias("first_argument_literal_kind"),
         )
     )
+
+
+def _foldable_operations(
+    subject: Table[CallFact], *, edges: pl.LazyFrame, expressions: pl.LazyFrame
+) -> pl.LazyFrame:
+    """Resolve each application into the tensor method it folds into and the operand it reads."""
     keyword_calls = subject.lazy(CallRelation.KEYWORDS).select("call_id").unique()
     call_parents = (
         subject.lazy(CallRelation.CALLS)
@@ -107,7 +96,7 @@ def _valid_paths(
         "qualified_name",
     )
     parents = pl.concat([call_parents, expression_parents], how="vertical").join(
-        arguments, on=["parent_id", "parent_kind"], how="inner"
+        _operands(edges, expressions=expressions), on=["parent_id", "parent_kind"], how="inner"
     )
     ordinary_method = pl.col("qualified_name").replace_strict(_TENSOR_METHODS, default="")
     ordinary = (ordinary_method != "") & (pl.col("argument_count") == 1)
@@ -117,7 +106,7 @@ def _valid_paths(
         & (pl.col("first_argument_literal_kind") == "number")
         & pl.col("first_argument_text").is_in(["2", "2.0"])
     )
-    operations = parents.filter(ordinary | power).select(
+    return parents.filter(ordinary | power).select(
         "parent_id",
         "parent_kind",
         pl.when(power)
@@ -126,6 +115,16 @@ def _valid_paths(
         .alias("operand_ordinal"),
         pl.when(power).then(pl.lit("exp2")).otherwise(ordinary_method).alias("method"),
     )
+
+
+def _folded_chains(
+    ancestry: pl.LazyFrame,
+    *,
+    edges: pl.LazyFrame,
+    operations: pl.LazyFrame,
+    expressions: pl.LazyFrame,
+) -> pl.LazyFrame:
+    """Keep the paths whose every step folds and spell each one as the chain it becomes."""
     eligible_edges = edges.filter(pl.col("relation") == "argument").join(
         operations,
         left_on=["parent_id", "parent_kind", "ordinal"],
@@ -140,7 +139,7 @@ def _valid_paths(
         on=["parent_id", "parent_kind", "child_expression_id"],
         how="inner",
     )
-    valid_paths = (
+    return (
         matched.group_by("call_id", "descendant_expression_id", maintain_order=True)
         .agg(
             pl.len().cast(pl.UInt64).alias("matched_count"),
@@ -170,7 +169,25 @@ def _valid_paths(
             how="inner",
         )
     )
-    return facts, evidence, valid_paths
+
+
+def _fluent_paths(subject: Table[CallFact]) -> pl.LazyFrame:
+    """Return every nested application whose whole path folds into one fluent tensor chain."""
+    expressions = subject.lazy(CallRelation.EXPRESSIONS)
+    ancestry = subject.lazy(CallRelation.EXPRESSION_ANCESTRY)
+    edges = ancestry.select(
+        "parent_id",
+        "parent_kind",
+        "child_expression_id",
+        "relation",
+        "ordinal",
+    ).unique(maintain_order=True)
+    return _folded_chains(
+        ancestry,
+        edges=edges,
+        operations=_foldable_operations(subject, edges=edges, expressions=expressions),
+        expressions=expressions,
+    )
 
 
 def _selected_calls(
@@ -310,11 +327,16 @@ def fluent_tensor_call_chain(
     Cites "PyTorch documentation", `torch.pow`
     https://docs.pytorch.org/docs/stable/generated/torch.pow.html
     """
-    facts, evidence, valid_paths = _valid_paths(subject)
+    facts = subject.lazy(CallRelation.FACTS)
+    evidence = (
+        subject.lazy(CallRelation.EVIDENCE)
+        .group_by("fact_id", maintain_order=True)
+        .agg(pl.col("signal").sort_by("ordinal").alias("evidence"))
+    )
     selected = _selected_calls(
         subject,
         facts=facts,
-        valid_paths=valid_paths,
+        valid_paths=_fluent_paths(subject),
         minimum_operations=minimum_operations,
     )
     counts = selected.group_by("fact_id", maintain_order=True).agg(

@@ -74,8 +74,8 @@ fn a_header_and_the_unit_that_implements_it_declare_one_module() {
     let modules: Vec<&str> = graph
         .nodes
         .iter()
-        .filter(|item| item.kind == NodeKind::Module)
-        .map(|item| item.qualname.as_str())
+        .filter(|item| item.kind() == NodeKind::Module)
+        .map(|item| item.qualname())
         .collect();
 
     assert_eq!(modules, vec!["src::engine"]);
@@ -83,7 +83,7 @@ fn a_header_and_the_unit_that_implements_it_declare_one_module() {
         graph
             .nodes
             .iter()
-            .any(|item| item.id == "cpp:class:src::engine::Engine")
+            .any(|item| item.id() == "cpp:class:src::engine::Engine")
     );
     assert!(graph.edges.iter().any(|edge| edge.kind == EdgeKind::Define
         && edge.target == "cpp:method:src::engine::Engine::run"));
@@ -369,14 +369,8 @@ fn a_parameter_binds_by_position_and_says_when_a_caller_may_leave_it_out() {
     let stated: Vec<(&str, Option<ParameterKind>, bool)> = graph
         .nodes
         .iter()
-        .filter(|item| item.kind == NodeKind::Parameter)
-        .map(|item| {
-            (
-                item.qualname.as_str(),
-                item.parameter_kind,
-                item.has_default,
-            )
-        })
+        .filter(|item| item.kind() == NodeKind::Parameter)
+        .map(|item| (item.qualname(), item.parameter_kind(), item.has_default()))
         .collect();
 
     assert_eq!(

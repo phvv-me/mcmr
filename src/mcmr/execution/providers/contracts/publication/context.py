@@ -4,7 +4,7 @@ from pathlib import Path
 from patos import FrozenModel
 from pydantic import JsonValue
 
-from .....domain.contracts import RunGraph, RunRecord
+from .....domain.contracts import RunGraph, RunRecord, RunSummary
 
 
 class PublicationContext(FrozenModel):
@@ -13,7 +13,9 @@ class PublicationContext(FrozenModel):
     The records are the run itself rather than a rendering of it, so a receiving system can store
     each verdict against the subject it judged and a later run can be compared with this one. The
     graph beside them states the fact tables the run consumed and the rules that read them, which
-    is what gives a verdict about ordinary source somewhere to be stored.
+    is what gives a verdict about ordinary source somewhere to be stored. The run identity is what
+    every one of those verdicts is stamped with, so a reader who found one of them can ask what
+    else the same invocation concluded.
     """
 
     repository: Path
@@ -21,3 +23,5 @@ class PublicationContext(FrozenModel):
     records: list[RunRecord] = []
     label: str = "MCMR policy run"
     graph: RunGraph = RunGraph()
+    run: str = ""
+    summary: RunSummary = RunSummary()

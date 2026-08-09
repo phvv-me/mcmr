@@ -1,0 +1,47 @@
+[
+  {
+    "variables": {},
+    "response": [
+      {
+        "urn": "urn:li:structuredProperty:mcmr.lane",
+        "propertyDefinition": {
+          "value": {
+            "allowedValues": [
+              {
+                "value": {
+                  "string": "deterministic"
+                },
+                "description": "Computed from repository structure alone."
+              },
+              {
+                "value": {
+                  "string": "contextual"
+                },
+                "description": "Judged by a classification backend the caller configured."
+              },
+              {
+                "value": {
+                  "string": "external"
+                },
+                "description": "Read from a system outside the repository."
+              }
+            ],
+            "qualifiedName": "mcmr.lane",
+            "displayName": "MCMR Lane",
+            "valueType": "urn:li:dataType:datahub.string",
+            "description": "How a rule reaches its answer, which is what a rulebook is filtered by.",
+            "entityTypes": [
+              "urn:li:entityType:datahub.dataJob"
+            ],
+            "cardinality": "SINGLE"
+          }
+        },
+        "structuredPropertyKey": {
+          "value": {
+            "id": "mcmr.lane"
+          }
+        }
+      }
+    ]
+  }
+]

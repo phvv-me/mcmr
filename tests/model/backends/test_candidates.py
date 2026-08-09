@@ -24,7 +24,7 @@ from ..fakes import (
 
 @pytest.mark.anyio
 async def test_backend_batches_isolate_one_invalid_classification() -> None:
-    """One unusable response becomes uncertainty without cancelling healthy siblings."""
+    """One unusable response becomes uncertainty without canceling healthy siblings."""
     valid = candidate()
     invalid = valid.model_copy(update={"fact_id": "broken", "path": "broken.py"})
 

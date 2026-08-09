@@ -1,0 +1,11 @@
+[
+  {
+    "variables": {},
+    "response": {
+      "data": {
+        "raiseIncident": "urn:li:incident:9af47206-8eab-4026-b0cb-6b7a734d1709"
+      },
+      "extensions": {}
+    }
+  }
+]

@@ -1,13 +1,15 @@
 from patos import FrozenModel
-from pydantic import NonNegativeInt
+from pydantic import Field, NonNegativeInt
 
 
 class ModuleCoupling(FrozenModel):
     """Retain inward and outward internal module dependency counts."""
 
-    module: str = ""
-    afferent_count: NonNegativeInt = 0
-    efferent_count: NonNegativeInt = 0
+    module: str = Field(default="", description="dotted qualified name of the module")
+    afferent_count: NonNegativeInt = Field(
+        default=0, description="modules that import this module"
+    )
+    efferent_count: NonNegativeInt = Field(default=0, description="modules this module imports")
 
     @property
     def instability(self) -> float:

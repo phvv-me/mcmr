@@ -1,6 +1,8 @@
 import polars as pl
 from patos import FrozenModel, Runtime
 
+_MAXIMUM_ENTRIES_PER_CANDIDATE = 200
+
 
 class CandidateRelations(FrozenModel):
     """Build the stable contextual payload directly from one family's native relations."""
@@ -94,12 +96,12 @@ class CandidateRelations(FrozenModel):
         record_groups = (
             self.records.sort("fact_order", "ordinal", *record_order)
             .group_by("fact_id", maintain_order=True)
-            .agg(pl.struct(*record_fields).alias("records"))
+            .agg(pl.struct(*record_fields).head(_MAXIMUM_ENTRIES_PER_CANDIDATE).alias("records"))
         )
         value_groups = (
             self.values.sort("fact_order", "ordinal", *value_order)
             .group_by("fact_id", maintain_order=True)
-            .agg(pl.struct(*value_fields).alias("values"))
+            .agg(pl.struct(*value_fields).head(_MAXIMUM_ENTRIES_PER_CANDIDATE).alias("values"))
         )
         evidence = (
             self.records.filter(
@@ -107,7 +109,11 @@ class CandidateRelations(FrozenModel):
             )
             .sort("fact_order", "ordinal")
             .group_by("fact_id", maintain_order=True)
-            .agg(pl.struct("signal", "detail", "source", "confidence").alias("evidence"))
+            .agg(
+                pl.struct("signal", "detail", "source", "confidence")
+                .head(_MAXIMUM_ENTRIES_PER_CANDIDATE)
+                .alias("evidence")
+            )
         )
         return (
             self.facts.with_columns(pl.struct(*fact_fields).alias("fields"))

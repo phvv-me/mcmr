@@ -1,5 +1,4 @@
 use crate::protocol::Span;
-use crate::source::is_test_path;
 use serde::Serialize;
 
 mod identity;
@@ -36,20 +35,8 @@ pub struct FunctionRecord {
 impl FunctionRecord {
     /// Start one record with its provider-guaranteed identity and neutral defaults.
     pub fn new(span: Span, language: &str, name: String) -> Self {
-        let key = format!(
-            "function:{}:{}:{}:{name}",
-            span.path, span.start_line, span.start_column
-        );
-        let is_test = is_test_path(&span.path);
         Self {
-            identity: FunctionIdentity {
-                key,
-                span,
-                language: language.to_string(),
-                is_test,
-                name,
-                ..FunctionIdentity::default()
-            },
+            identity: FunctionIdentity::of(span, language, name),
             ..Self::default()
         }
     }
@@ -79,7 +66,7 @@ mod tests {
         let first = FunctionRecord::new(span(3), "rust", "fact".to_string());
         let second = FunctionRecord::new(span(9), "rust", "fact".to_string());
 
-        assert_ne!(first.identity.key, second.identity.key);
-        assert_eq!(first.identity.key, "function:src/service.rs:3:4:fact");
+        assert_ne!(first.identity.key(), second.identity.key());
+        assert_eq!(first.identity.key(), "function:src/service.rs:3:4:fact");
     }
 }

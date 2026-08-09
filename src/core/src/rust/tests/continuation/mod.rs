@@ -21,8 +21,8 @@ fn a_super_path_beyond_the_crate_root_stays_unresolved() {
         graph
             .nodes
             .iter()
-            .any(|node| node.kind == NodeKind::UnresolvedSymbol
-                && node.qualname == "kernel::super::builder")
+            .any(|node| node.kind() == NodeKind::UnresolvedSymbol
+                && node.qualname() == "kernel::super::builder")
     );
 }
 

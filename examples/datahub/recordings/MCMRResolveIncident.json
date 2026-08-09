@@ -1,0 +1,11 @@
+[
+  {
+    "variables": {},
+    "response": {
+      "data": {
+        "updateIncidentStatus": true
+      },
+      "extensions": {}
+    }
+  }
+]

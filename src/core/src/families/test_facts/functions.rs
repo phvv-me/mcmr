@@ -1,6 +1,6 @@
-use super::super::collections::stated;
+use super::super::collections::{owned, stated};
 use super::super::waivers::days_since;
-use super::structure::{conditional_count, declared_tests, literal_shape, owned_statements};
+use super::structure::{conditional_count, declared_tests, literal_shape};
 use crate::source::Source;
 use crate::walk::{children, docstring, qualified_name};
 use ruff_python_ast::{Expr, ModModule, Number, Stmt};
@@ -47,7 +47,7 @@ pub fn test_functions(source: &Source, module: &ModModule) -> Value {
             "literal_values": literal_values,
             "assertion_shapes": assertion_shapes(source, &item.body),
             "owned_conditional_count": conditional_count(&item.body),
-            "owned_statement_count": owned_statements(&item.body).len()
+            "owned_statement_count": owned(&item.body).len()
                 - usize::from(docstring(&item.body).is_some()),
             "module_state_mutation_count": module_state_mutations(&item.body, &state),
             "parametrized_range_sizes": parametrized_sizes(item),
@@ -64,7 +64,7 @@ pub fn test_functions(source: &Source, module: &ModModule) -> Value {
 }
 
 fn assertion_shapes(source: &Source, body: &[Stmt]) -> Vec<String> {
-    owned_statements(body)
+    owned(body)
         .into_iter()
         .filter(|statement| matches!(statement, Stmt::Assert(_)))
         .map(|statement| literal_shape(source, std::slice::from_ref(statement)).0)
@@ -168,7 +168,7 @@ fn module_state_mutations(body: &[Stmt], state: &BTreeSet<String>) -> usize {
         "discard",
     ];
     let mut count = 0;
-    for statement in owned_statements(body) {
+    for statement in owned(body) {
         match statement {
             Stmt::Global(item) => count += item.names.len(),
             Stmt::Assign(item) => {
@@ -259,7 +259,7 @@ fn range_size(call: &ruff_python_ast::ExprCall) -> Option<usize> {
 /// keeps only the location and spelling that the test rule reads.
 fn test_calls(source: &Source, body: &[Stmt]) -> Vec<Value> {
     let mut found = Vec::new();
-    for statement in owned_statements(body) {
+    for statement in owned(body) {
         for expression in stated(statement) {
             collect_test_calls(source, expression, &mut found);
         }

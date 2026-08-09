@@ -182,7 +182,10 @@ def test_two_timelines_inside_one_fact_table_are_told_apart_by_the_file_each_nam
 
 def opened(rule: str, *, path: str, urn: str) -> JsonValue:
     """Return one recorded assertion whose last run reported a rule failing at one file."""
-    stated: list[JsonValue] = [{"key": "rule", "value": rule}]
+    stated: list[JsonValue] = [
+        {"key": "rule", "value": rule},
+        {"key": "lane", "value": "deterministic"},
+    ]
     if path:
         stated.append({"key": "path", "value": path})
     return {
@@ -251,6 +254,7 @@ def test_a_file_a_rule_stopped_reporting_is_closed_rather_than_left_failing() ->
     assert closed["type"] == "SUCCESS"
     assert closed["properties"] == [
         {"key": "rule", "value": "ALL-DUPL0005"},
+        {"key": "lane", "value": "deterministic"},
         {"key": "path", "value": "repaired.py"},
         {"key": "resolution", "value": "no longer reported"},
     ]

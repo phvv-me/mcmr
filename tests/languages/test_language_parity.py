@@ -1,9 +1,9 @@
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import pytest
 
 from mcmr.domain.contracts import RuleLane, RuleScope
-from mcmr.facts import CallFact, ClassFact, FunctionFact, ImportBindingFact, SyntaxFact, buildable
+from mcmr.facts import buildable
 from mcmr.query import RuleQuery
 from mcmr.table import AnalysisSession
 
@@ -11,7 +11,7 @@ from ..support import needs_kernel
 from .coverage.support import language_fixtures, language_suffixes
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Mapping
     from pathlib import Path
 
     from mcmr.domain.contracts import RuleContract
@@ -84,26 +84,11 @@ def findings(catalog: Catalog, root: Path, language: str) -> set[str]:
         typed_families=sorted(selected, key=lambda family: family.__name__),
     )
     tables: dict[str, Table[Fact]] = {
-        name: family_table(session, family)
-        for name, family in families.items()
-        if family in selected
+        name: session.table(family) for name, family in families.items() if family in selected
     }
     return {
         rule_id for rule_id, family, rule in general(catalog) if has_findings(rule, tables[family])
     }
-
-
-def family_table(session: AnalysisSession, family: type[Fact]) -> Table[Fact]:
-    """Move one selected native table through its specialized or generic boundary."""
-    specialized: dict[type[Fact], Callable[[], Table[Fact]]] = {
-        FunctionFact: lambda: cast("Table[Fact]", session.function_tables()),
-        CallFact: lambda: cast("Table[Fact]", session.call_tables()),
-        ClassFact: lambda: cast("Table[Fact]", session.class_tables()),
-        ImportBindingFact: lambda: cast("Table[Fact]", session.import_binding_tables()),
-        SyntaxFact: lambda: cast("Table[Fact]", session.syntax_tables()),
-    }
-    factory = specialized.get(family)
-    return session.table(family) if factory is None else factory()
 
 
 def has_findings(rule: RuleContract, table: Table[Fact]) -> bool:

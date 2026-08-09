@@ -1,23 +1,46 @@
 use crate::protocol::Node;
 use serde::{Deserialize, Serialize};
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 
 mod usage;
 
 use usage::ImportUsage;
 
+/// Which module imported one binding and which nodes stand for it, over how it is used.
+///
+/// Nothing here is settable from outside, because the declaration, the binding and the module node
+/// are three views of one import statement and a caller replacing any one of them alone would
+/// describe an import that was never written.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ImportContext {
     #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub importer_module: String,
+    importer_module: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub declaration: Option<Node>,
+    declaration: Option<Node>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub binding: Option<Node>,
+    binding: Option<Node>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub module_node: Option<Node>,
+    module_node: Option<Node>,
     #[serde(flatten)]
-    pub usage: ImportUsage,
+    usage: ImportUsage,
+}
+
+impl ImportContext {
+    pub fn binding(&self) -> Option<&Node> {
+        self.binding.as_ref()
+    }
+
+    pub fn declaration(&self) -> Option<&Node> {
+        self.declaration.as_ref()
+    }
+
+    pub fn importer_module(&self) -> &str {
+        &self.importer_module
+    }
+
+    pub fn module_node(&self) -> Option<&Node> {
+        self.module_node.as_ref()
+    }
 }
 
 impl Deref for ImportContext {
@@ -25,11 +48,5 @@ impl Deref for ImportContext {
 
     fn deref(&self) -> &Self::Target {
         &self.usage
-    }
-}
-
-impl DerefMut for ImportContext {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.usage
     }
 }

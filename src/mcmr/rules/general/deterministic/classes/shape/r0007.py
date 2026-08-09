@@ -36,7 +36,7 @@ def public_method_count(subject: Table[ClassFact]) -> CountQuery:
 
     Exceptions
     ----------
-    Data members are counted by the neighbouring field rule rather than here. Properties and
+    Data members are counted by the neighboring field rule rather than here. Properties and
     cached properties are attribute access rather than call sites, so they do not inflate the
     callable surface. A wide record and a wide interface stay two different findings with two
     different repairs. A module that declares no type at all measures zero rather than being

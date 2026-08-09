@@ -1,4 +1,5 @@
 use super::model::{Declared, Identity, Stated, built, coimports, importers, resolve};
+use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
 
 mod analysis;
@@ -24,56 +25,16 @@ pub(super) struct Repository<'repository> {
 
 impl<'repository> Repository<'repository> {
     pub(super) fn of(stated: &'repository [Stated]) -> Self {
-        let definitions: BTreeMap<Identity, &Declared> = stated
+        let modules: BTreeMap<&str, &Stated> = stated
             .iter()
-            .flat_map(|module| {
-                module
-                    .declared
-                    .iter()
-                    .map(|class| ((module.module.clone(), class.name.clone()), class))
-            })
+            .map(|module| (module.module.as_str(), module))
             .collect();
-        let reexports: BTreeMap<Identity, Identity> = stated
-            .iter()
-            .filter(|module| module.shape.is_package)
-            .flat_map(|module| {
-                module
-                    .imported
-                    .iter()
-                    .filter(|(_, name)| module.usage.exported.contains(name))
-                    .map(|imported| {
-                        (
-                            (module.module.clone(), imported.1.clone()),
-                            imported.clone(),
-                        )
-                    })
-            })
-            .collect();
-        let mut bases: BTreeMap<Identity, Vec<Identity>> = BTreeMap::new();
-        let mut subclasses: BTreeMap<Identity, Vec<Identity>> = BTreeMap::new();
-        for module in stated {
-            for class in &module.declared {
-                let held = (module.module.clone(), class.name.clone());
-                let resolved: Vec<Identity> = class
-                    .bases
-                    .iter()
-                    .filter_map(|base| resolve(module, base, &definitions, &reexports))
-                    .collect();
-                for base in &resolved {
-                    subclasses
-                        .entry(base.clone())
-                        .or_default()
-                        .push(held.clone());
-                }
-                bases.insert(held, resolved);
-            }
-        }
+        let definitions = definitions(stated);
+        let reexports = reexports(stated);
+        let (bases, subclasses) = inheritance(&modules, &definitions, &reexports);
         let mut repository = Self {
             index: RepositoryIndex {
-                modules: stated
-                    .iter()
-                    .map(|module| (module.module.as_str(), module))
-                    .collect(),
+                modules,
                 paths: stated
                     .iter()
                     .map(|module| (module.module.as_str(), module.path.as_str()))
@@ -149,12 +110,13 @@ impl<'repository> Repository<'repository> {
     /// Return every directory named `models` that really holds the data models of this project.
     ///
     /// A folder of neural networks is also called `models`, and a placement rule that judged one
-    /// as a shared data package would report every file it holds forever.
+    /// as a shared data package would report every file it holds forever. Only the models a module
+    /// offers count, since a class nested inside another one is not what a shared package hands out.
     fn model_packages(&self) -> BTreeSet<String> {
         self.index
             .definitions
             .iter()
-            .filter(|(_, class)| class.shape.is_declarative)
+            .filter(|(_, class)| class.shape.is_declarative && !class.is_nested())
             .filter_map(|(held, _)| self.index.paths.get(held.0.as_str()))
             .filter_map(|path| path.rsplit_once('/'))
             .filter(|(directory, _)| directory.rsplit('/').next() == Some("models"))
@@ -165,12 +127,95 @@ impl<'repository> Repository<'repository> {
     /// Whether this project owns a model foundation its own classes are expected to derive.
     ///
     /// A foundation declares no data of its own and is derived by classes that do, which is what
-    /// separates a base a project settled on from a module somebody happened to name `bases`.
+    /// separates a base a project settled on from a module somebody happened to name `bases`. It
+    /// also has to be one other modules can import, so a nested class never establishes the policy.
     fn owns_model_foundation(&self) -> bool {
         self.index.definitions.iter().any(|(held, class)| {
             class.shape.is_declarative
                 && class.field_count == 0
+                && !class.is_nested()
                 && self.index.subclasses.contains_key(held)
         })
     }
+}
+
+/// Return one declaration per module and bare name, preferring the one an importer can reach.
+///
+/// Nested classes mean a module can now write the same bare name twice, and the class facts key on
+/// that bare name alone, so the repository has to settle on one declaration. A top-level class wins
+/// because it is the only one another module can name, and otherwise the first nested class in
+/// source order wins, so the choice never depends on the order a map happened to be filled in.
+fn definitions(stated: &[Stated]) -> BTreeMap<Identity, &Declared> {
+    let mut found: BTreeMap<Identity, &Declared> = BTreeMap::new();
+    for module in stated {
+        for class in &module.declared {
+            match found.entry((module.module.clone(), class.name.clone())) {
+                Entry::Vacant(slot) => {
+                    slot.insert(class);
+                }
+                Entry::Occupied(mut slot) if slot.get().is_nested() && !class.is_nested() => {
+                    slot.insert(class);
+                }
+                Entry::Occupied(_) => {}
+            }
+        }
+    }
+    found
+}
+
+/// Return which name each package hands on, as the definition the package exports it from.
+fn reexports(stated: &[Stated]) -> BTreeMap<Identity, Identity> {
+    stated
+        .iter()
+        .filter(|module| module.shape.is_package)
+        .flat_map(|module| {
+            module
+                .imported
+                .iter()
+                .filter(|(_, name)| module.usage.exported.contains(name))
+                .map(|imported| {
+                    (
+                        (module.module.clone(), imported.1.clone()),
+                        imported.clone(),
+                    )
+                })
+        })
+        .collect()
+}
+
+/// Return the resolved base of every class and the reverse edge each base gains from it.
+///
+/// This walks the settled definitions rather than every declaration a module writes, so a bare name
+/// a module declares twice contributes exactly the one inheritance edge the repository kept.
+fn inheritance(
+    modules: &BTreeMap<&str, &Stated>,
+    definitions: &BTreeMap<Identity, &Declared>,
+    reexports: &BTreeMap<Identity, Identity>,
+) -> (
+    BTreeMap<Identity, Vec<Identity>>,
+    BTreeMap<Identity, Vec<Identity>>,
+) {
+    let mut bases: BTreeMap<Identity, Vec<Identity>> = BTreeMap::new();
+    let mut subclasses: BTreeMap<Identity, Vec<Identity>> = BTreeMap::new();
+    for (held, class) in definitions {
+        let Some(module) = modules.get(held.0.as_str()) else {
+            continue;
+        };
+        let resolved: Vec<Identity> = class
+            .bases
+            .iter()
+            .filter_map(|base| resolve(module, base, definitions, reexports))
+            // A class whose base name is the class the repository kept under that name would
+            // otherwise stand above itself, which a name written twice in one module can produce.
+            .filter(|base| base != held)
+            .collect();
+        for base in &resolved {
+            subclasses
+                .entry(base.clone())
+                .or_default()
+                .push(held.clone());
+        }
+        bases.insert(held.clone(), resolved);
+    }
+    (bases, subclasses)
 }

@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from .definition import TypingDefinition
 
@@ -13,7 +13,9 @@ if TYPE_CHECKING:
 class TypingReuse(TypingDefinition):
     """Locate one typing declaration and every other module importing it."""
 
-    importing_spans: list[SourceSpan] = []
+    importing_spans: list[SourceSpan] = Field(
+        default=[], description="source locations of every other module importing this declaration"
+    )
 
     @model_validator(mode="after")
     def imports_are_distinct_other_modules(self) -> Self:

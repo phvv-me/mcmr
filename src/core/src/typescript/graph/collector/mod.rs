@@ -1,8 +1,8 @@
 use super::paths::Specifiers;
 use super::paths::{Located, names::ImportedName};
 use crate::graph::{
-    Edge, EdgeKind, Language, Node, NodeKind, Reference, Resolution, Stated, Visibility, expand,
-    identity, node,
+    Edge, EdgeKind, Language, Node, NodeKind, NodePlacement, Reference, Resolution, Stated,
+    Visibility, expand, identity, node,
 };
 use crate::source::Source;
 use crate::typescript::support::range;
@@ -64,11 +64,11 @@ impl<'ts> Collector<'ts> {
     pub(super) fn stated(mut self) -> Stated {
         let prefix = format!("{}.", self.module);
         for declared in &mut self.state.graph.nodes {
-            if let Some(name) = declared.qualname.strip_prefix(&prefix)
+            if let Some(name) = declared.qualname().strip_prefix(&prefix)
                 && !name.contains('.')
                 && self.state.names.exported.contains(name)
             {
-                declared.visibility = Visibility::Public;
+                declared.exported();
             }
         }
         Stated {
@@ -153,9 +153,9 @@ impl<'ts> Collector<'ts> {
 
     fn declare_for(&mut self, declared: Node, holder: &Owner, span: Span) -> Owner {
         let owner = Owner {
-            id: declared.id.clone(),
-            kind: declared.kind,
-            qualname: declared.qualname.clone(),
+            id: declared.id().to_string(),
+            kind: declared.kind(),
+            qualname: declared.qualname().to_string(),
         };
         if self.state.graph.placed.insert(owner.id.clone()) {
             self.state.graph.nodes.push(declared);
@@ -201,7 +201,7 @@ impl<'ts> Collector<'ts> {
         span: Span,
     ) {
         let declared = node(Language::TypeScript, kind, qualname);
-        let target = declared.id.clone();
+        let target = declared.id().to_string();
         if self.state.graph.placed.insert(target.clone()) {
             self.state.graph.nodes.push(declared);
         }
@@ -238,20 +238,20 @@ impl<'ts> Collector<'ts> {
     }
 
     fn place(&self, kind: NodeKind, named: &str, span: Span, reach: Visibility) -> Node {
-        let mut declared = node(
+        node(
             Language::TypeScript,
             kind,
             &format!("{}.{named}", self.owner().qualname),
-        );
-        declared.path = Some(self.source.relative.clone());
-        declared.line = Some(self.line(span));
-        declared.source = matches!(
-            kind,
-            NodeKind::Method | NodeKind::Property | NodeKind::Attribute
         )
-        .then(|| self.rendered(span));
-        declared.visibility = reach;
-        declared
+        .declared(NodePlacement {
+            source: matches!(
+                kind,
+                NodeKind::Method | NodeKind::Property | NodeKind::Attribute
+            )
+            .then(|| self.rendered(span)),
+            ..self.written(span)
+        })
+        .reached(reach)
     }
 
     /// Return how widely a declaration at this point reaches.
@@ -341,6 +341,15 @@ impl<'ts> Collector<'ts> {
                 module_node: None,
             },
         });
+    }
+
+    /// Point at the line of this file that writes one declaration.
+    fn written(&self, span: Span) -> NodePlacement {
+        NodePlacement {
+            path: self.source.relative.clone(),
+            line: Some(self.line(span)),
+            source: None,
+        }
     }
 }
 

@@ -37,7 +37,11 @@ class CandidateProtocol(FrozenModel):
         "cite one to eight exact strings from the evidence `id` fields, and state confidence from "
         "zero to one. Confidence is the probability that the yes, no, or unknown answer is "
         "correct, not the probability that the predicate is true. A source path is not an "
-        "evidence ID."
+        "evidence ID. Every fragment you are shown already parsed, so never answer that it is a "
+        "syntax error, and read it against the language version this project targets rather than "
+        "an older one. Current Python allows an unparenthesized list of exception types in an "
+        "except clause, and a construct you have not met before is far more likely to be current "
+        "syntax than a defect."
     )
     classification_guidance: NonEmptyStr = (
         "You answer one small factual software engineering classification from supplied evidence. "
@@ -52,7 +56,11 @@ class CandidateProtocol(FrozenModel):
         "one to eight exact strings from the evidence `id` fields, and state confidence from zero "
         "to one. A confidence score is the probability that the selected category is correct "
         "given the available evidence, including when that category is uncertainty. A source path "
-        "is not an evidence ID."
+        "is not an evidence ID. Every fragment you are shown already parsed, so never select a "
+        "category on the ground that it is a syntax error, and read it against the language "
+        "version this project targets rather than an older one. Current Python allows an "
+        "unparenthesized list of exception types in an except clause, and a construct you have "
+        "not met before is far more likely to be current syntax than a defect."
     )
 
     @cached_property

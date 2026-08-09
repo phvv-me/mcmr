@@ -5,38 +5,56 @@ use crate::walk::{
 use ruff_python_ast::{Expr, ModModule, Stmt, StmtClassDef};
 use ruff_text_size::Ranged;
 
-use super::super::contracts::{ClassShape, Declared, Member};
+use super::super::contracts::{ClassScope, ClassShape, Declared, Member};
 
-/// Return every top-level class one module declares, read for what a class rule asks of it.
+/// Return every class one module declares, in source order, read for what a class rule asks of it.
+///
+/// The class fact walks into class and function bodies, so this walks the same statements and the
+/// two sides of the kernel agree on what counts as a declaration. They disagreed before, and a
+/// class nested inside another class was then missing from every inheritance chain the repository
+/// followed, which reported classes for not deriving the model foundation they do derive.
 pub(super) fn declarations(source: &Source, module: &ModModule) -> Vec<Declared> {
-    module
-        .body
-        .iter()
-        .filter_map(|statement| match statement {
-            Stmt::ClassDef(item) => Some(Declared {
-                name: item.name.to_string(),
-                span: source.span(item.range()),
-                bases: item
+    let mut found = Vec::new();
+    collect(source, &module.body, ClassScope::Module, &mut found);
+    found
+}
+
+fn collect(source: &Source, body: &[Stmt], scope: ClassScope, found: &mut Vec<Declared>) {
+    for statement in body {
+        match statement {
+            Stmt::ClassDef(item) => {
+                found.push(declared(source, item, scope));
+                collect(source, &item.body, ClassScope::Nested, found);
+            }
+            Stmt::FunctionDef(item) => collect(source, &item.body, ClassScope::Nested, found),
+            _ => {}
+        }
+    }
+}
+
+fn declared(source: &Source, item: &StmtClassDef, scope: ClassScope) -> Declared {
+    Declared {
+        name: item.name.to_string(),
+        span: source.span(item.range()),
+        bases: item
+            .arguments
+            .iter()
+            .flat_map(|arguments| arguments.args.iter())
+            .map(|base| last_segment(&qualified_name(base)).to_string())
+            .collect(),
+        line_count: source.line_count(item.range()),
+        members: members(item),
+        field_count: class_instance_fields(item).len(),
+        shape: ClassShape {
+            is_declarative: is_declarative(item),
+            is_plain: item.decorator_list.is_empty()
+                && item
                     .arguments
                     .iter()
-                    .flat_map(|arguments| arguments.args.iter())
-                    .map(|base| last_segment(&qualified_name(base)).to_string())
-                    .collect(),
-                line_count: source.line_count(item.range()),
-                members: members(item),
-                field_count: class_instance_fields(item).len(),
-                shape: ClassShape {
-                    is_declarative: is_declarative(item),
-                    is_plain: item.decorator_list.is_empty()
-                        && item
-                            .arguments
-                            .iter()
-                            .all(|arguments| arguments.keywords.is_empty()),
-                },
-            }),
-            _ => None,
-        })
-        .collect()
+                    .all(|arguments| arguments.keywords.is_empty()),
+            scope,
+        },
+    }
 }
 
 /// Return every method one class declares, read for whether inheriting it twice is a hazard.

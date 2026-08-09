@@ -21,9 +21,9 @@ pub(super) fn function_frame(records: &[FunctionRecord]) -> PolarsResult<DataFra
 fn function_text_frame(records: &[FunctionRecord]) -> PolarsResult<DataFrame> {
     df![
         "entity_id" => records.iter().map(entity_id).collect::<Vec<_>>(),
-        "fact_key" => records.iter().map(|row| row.identity.key.as_str()).collect::<Vec<_>>(),
-        "name" => records.iter().map(|row| row.identity.name.as_str()).collect::<Vec<_>>(),
-        "scope" => records.iter().map(|row| row.identity.scope.as_str()).collect::<Vec<_>>(),
+        "fact_key" => records.iter().map(|row| row.identity.key()).collect::<Vec<_>>(),
+        "name" => records.iter().map(|row| row.identity.name()).collect::<Vec<_>>(),
+        "scope" => records.iter().map(|row| row.identity.scope()).collect::<Vec<_>>(),
         "visibility" => records.iter().map(|row| row.presentation.visibility.as_str()).collect::<Vec<_>>(),
         "cache_decorator" => records.iter().map(|row| row.presentation.cache_decorator.as_str()).collect::<Vec<_>>(),
         "docstring" => records.iter().map(|row| row.presentation.docstring.as_str()).collect::<Vec<_>>(),
@@ -89,7 +89,7 @@ fn function_flag_frame(records: &[FunctionRecord]) -> PolarsResult<DataFrame> {
 
 fn function_async_flag_frame(records: &[FunctionRecord]) -> PolarsResult<DataFrame> {
     df![
-        "is_test" => records.iter().map(|row| row.identity.is_test).collect::<Vec<_>>(),
+        "is_test" => records.iter().map(|row| row.identity.is_test()).collect::<Vec<_>>(),
         "gather_consumes_created_tasks" => records.iter().map(|row| row.measures.gather_consumes_created_tasks).collect::<Vec<_>>(),
         "gather_returns_exceptions" => records.iter().map(|row| row.measures.gather_returns_exceptions).collect::<Vec<_>>(),
         "has_task_group" => records.iter().map(|row| row.measures.has_task_group).collect::<Vec<_>>(),

@@ -22,7 +22,11 @@ fn graph_of(source: &str) -> Graph {
 }
 
 fn count(graph: &Graph, kind: NodeKind) -> usize {
-    graph.nodes.iter().filter(|node| node.kind == kind).count()
+    graph
+        .nodes
+        .iter()
+        .filter(|node| node.kind() == kind)
+        .count()
 }
 
 fn relations(graph: &Graph, kind: EdgeKind) -> usize {
@@ -56,7 +60,7 @@ fn a_class_carries_its_members_its_bases_and_its_parameters() {
         graph
             .nodes
             .iter()
-            .any(|node| node.id == "python:method:pkg.example.Engine.run")
+            .any(|node| node.id() == "python:method:pkg.example.Engine.run")
     );
 }
 
@@ -101,8 +105,13 @@ fn every_frontend_marks_enumerations_and_hides_their_variants_from_state() {
     let enums = graph
         .nodes
         .iter()
-        .filter(|node| node.kind == NodeKind::Class && node.is_enum)
-        .map(|node| node.qualname.rsplit([':', '.']).next().unwrap_or_default())
+        .filter(|node| node.kind() == NodeKind::Class && node.is_enum())
+        .map(|node| {
+            node.qualname()
+                .rsplit([':', '.'])
+                .next()
+                .unwrap_or_default()
+        })
         .collect::<BTreeSet<_>>();
     let declarations = reach(&graph)
         .into_iter()
@@ -240,12 +249,19 @@ fn member_reach_separates_owner_external_and_unresolved_uses() {
 
 #[test]
 fn a_public_rust_item_inside_a_private_module_is_not_a_public_surface() {
-    let mut module = node(Language::Rust, NodeKind::Module, "core::private");
-    module.visibility = Visibility::Private;
-    module.path = Some("src/lib.rs".to_string());
-    let mut function = node(Language::Rust, NodeKind::Function, "core::private::helper");
-    function.path = Some("src/lib.rs".to_string());
-    function.line = Some(2);
+    let module = node(Language::Rust, NodeKind::Module, "core::private")
+        .reached(Visibility::Private)
+        .declared(NodePlacement {
+            path: "src/lib.rs".to_string(),
+            ..NodePlacement::default()
+        });
+    let function = node(Language::Rust, NodeKind::Function, "core::private::helper").declared(
+        NodePlacement {
+            path: "src/lib.rs".to_string(),
+            line: Some(2),
+            ..NodePlacement::default()
+        },
+    );
     let graph = Graph {
         nodes: vec![module, function],
         edges: Vec::new(),
@@ -350,7 +366,7 @@ fn an_unresolved_call_stays_visible_rather_than_being_dropped() {
         graph
             .nodes
             .iter()
-            .any(|node| node.qualname == "pkg.example::handler")
+            .any(|node| node.qualname() == "pkg.example::handler")
     );
     assert!(
         graph

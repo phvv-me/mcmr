@@ -225,7 +225,12 @@ _CASES: list[tuple[str, dict[str, CriterionValue], str]] = [
     ("ALL-STRI1001", {"template semantics": _NO}, "f_string_join"),
     ("ALL-STRI1001", {"python iteration": _UNKNOWN}, "uncertain"),
     ("ALL-DESI1001", {}, "modeled"),
-    ("ALL-DESI1001", {"domain rules repeat": _NO}, "overmodeled"),
+    ("ALL-DESI1001", {"domain rules repeat": _NO}, "appropriate"),
+    (
+        "ALL-DESI1001",
+        {"domain rules repeat": _NO, "generic form required": _NO},
+        "overmodeled",
+    ),
     ("ALL-DESI1001", {"one value owns meaning": _UNKNOWN}, "uncertain"),
 ]
 

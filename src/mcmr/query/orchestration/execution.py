@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
     from ...checking.engine.batch import RuleBatch
     from ...checking.evaluations import PreparedRule
+    from ...domain.contracts import ModelSpend
     from ...domain.policy import Policy
     from ...facts import Fact
 
@@ -70,9 +71,9 @@ class TableExecution(FrozenModel):
             elapsed += added
             applicable = [rule for rule in runnable if rule.applies_to(tables)]
             if applicable:
-                await self._run_rules(tables, applicable, fix_counts)
+                spend = await self._run_rules(tables, applicable, fix_counts)
                 coverage.runnable.update(rule.path for rule in applicable)
-                graph.record(tables, applicable, self.accumulator.identity)
+                graph.record(tables, applicable, self.accumulator.identity, spend=spend)
         return coverage.completed(session.kernel_stats(elapsed), graph.graph())
 
     @staticmethod
@@ -174,8 +175,8 @@ class TableExecution(FrozenModel):
         tables: RepositoryTables,
         rules: Sequence[PreparedRule],
         fix_counts: Mapping[str, int],
-    ) -> None:
-        """Run applicable rules and retain their bounded report rows."""
+    ) -> dict[str, dict[str, ModelSpend]]:
+        """Run applicable rules, retain their bounded report rows, and say what they cost."""
         report = await TableRunner(self.dependencies).report(
             tables,
             rules,
@@ -188,6 +189,7 @@ class TableExecution(FrozenModel):
             summaries=report.summaries,
             failures=report.failures,
         )
+        return report.spend
 
     async def _session(
         self,

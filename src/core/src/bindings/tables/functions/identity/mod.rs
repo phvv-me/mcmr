@@ -6,5 +6,5 @@ pub(super) fn entity_id(record: &FunctionRecord) -> &str {
         .nodes
         .definition
         .as_ref()
-        .map_or(record.identity.key.as_str(), |node| node.id.as_str())
+        .map_or(record.identity.key(), |node| node.id.as_str())
 }

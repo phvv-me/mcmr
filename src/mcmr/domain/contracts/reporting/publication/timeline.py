@@ -42,6 +42,11 @@ class RuleTimeline(FrozenModel):
         return self.events[-1].state if self.events else RunState.ERROR
 
     @property
+    def tokens(self) -> int:
+        """Return what every recorded run of this rule has cost here, in tokens."""
+        return sum(event.tokens for event in self.events)
+
+    @property
     def where(self) -> str:
         """Return the file this timeline is about, which only a source subject carries.
 

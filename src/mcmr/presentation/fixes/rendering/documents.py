@@ -2,7 +2,7 @@ from bisect import bisect_right
 from typing import TYPE_CHECKING
 
 from ....domain.errors import UnrenderableFix
-from ....facts import MemberKind
+from .deletion import DeletionShape
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -37,26 +37,19 @@ class SourceDocument:
     def deletion_range(self, node: NodeRef) -> tuple[int, int]:
         """Include a line ending when a node is the line's only meaningful source."""
         start, end = self.node_range(node)
-        if node.kind == "sequence-item":
+        shape = DeletionShape.of(node.kind)
+        if shape is DeletionShape.ITEM:
             return self._sequence_item_range(start, end=end)
         line_start, _, _ = self.line_bounds(start)
         _, content_end, line_end = self.line_bounds(end)
         if self.original[line_start:start].strip() or self.original[end:content_end].strip():
             return start, end
-        separated = node.kind in {
-            MemberKind.CONSTRUCTOR,
-            MemberKind.DESTRUCTOR,
-            MemberKind.PROPERTY,
-            MemberKind.STATIC_METHOD,
-            MemberKind.CLASS_METHOD,
-            MemberKind.METHOD,
-        }
-        if node.kind not in {"comment", "comment-group", "function", "import"} and not separated:
+        if shape is DeletionShape.LINE:
             return line_start, line_end
         line_end = self._following_blank_end(line_end)
         return (
             self._separated_start(line_start=line_start, line_end=line_end)
-            if separated
+            if shape is DeletionShape.SEPARATED
             else (line_start, line_end)
         )
 

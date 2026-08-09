@@ -1,0 +1,79 @@
+---
+const groups = [
+  {
+    title: 'Start',
+    links: [
+      { label: 'What MCMR is', href: '/mcmr/docs/start/what-is-mcmr/' },
+      { label: 'Install', href: '/mcmr/docs/start/install/' },
+      { label: 'The demo walkthrough', href: '/mcmr/docs/start/demo-walkthrough/' },
+    ],
+  },
+  {
+    title: 'Understand',
+    links: [
+      { label: 'Fact tables', href: '/mcmr/docs/concepts/fact-tables/' },
+      { label: 'Rules and lanes', href: '/mcmr/docs/concepts/rules-and-lanes/' },
+      { label: 'Verified repairs', href: '/mcmr/docs/concepts/verified-repairs/' },
+    ],
+  },
+  {
+    title: 'DataHub',
+    links: [
+      { label: 'Why metadata', href: '/mcmr/docs/datahub/why-metadata/' },
+      { label: 'What gets published', href: '/mcmr/docs/datahub/what-gets-published/' },
+      { label: 'Reading history back', href: '/mcmr/docs/datahub/reading-history/' },
+    ],
+  },
+  {
+    title: 'Reference',
+    links: [
+      { label: 'CLI commands', href: '/mcmr/docs/reference/cli/' },
+      { label: 'Configuration keys', href: '/mcmr/docs/reference/configuration/' },
+      { label: 'GitHub', href: 'https://github.com/phvv-me/mcmr' },
+    ],
+  },
+];
+---
+
+<footer class="bg-neutral text-neutral-content">
+  <div class="mx-auto max-w-6xl px-4 py-16">
+    <div class="grid gap-10 md:grid-cols-[1.5fr_repeat(4,1fr)]">
+      <div class="space-y-3">
+        <p class="text-lg font-black" style="font-family: var(--font-brand)">mcmr</p>
+        <p class="text-neutral-content/60 max-w-xs text-sm">
+          Define and enforce the engineering rules that make your code yours.
+        </p>
+        <div class="flex gap-2">
+          <a href="https://github.com/phvv-me/mcmr" class="btn btn-outline btn-xs" rel="noopener">
+            GitHub
+          </a>
+          <a href="/mcmr/docs/" class="btn btn-outline btn-xs">Docs</a>
+        </div>
+      </div>
+      {
+        groups.map((group) => (
+          <nav class="space-y-2 text-sm">
+            <p class="font-mono text-xs opacity-50">{group.title}</p>
+            {group.links.map((link) => (
+              <a href={link.href} class="hover:text-neutral-content block opacity-75">
+                {link.label}
+              </a>
+            ))}
+          </nav>
+        ))
+      }
+    </div>
+
+    <div
+      class="border-neutral-content/20 text-neutral-content/50 mt-12 flex flex-wrap items-center justify-between gap-3 border-t-2 pt-6 text-xs"
+    >
+      <p>Apache-2.0 licensed. Built by Pedro Valois.</p>
+      <p>
+        Security reports go to <a
+          href="mailto:contact@phvv.me"
+          class="underline underline-offset-4">contact@phvv.me</a
+        >
+      </p>
+    </div>
+  </div>
+</footer>

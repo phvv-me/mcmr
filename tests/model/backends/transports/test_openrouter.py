@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from httpx import ConnectError
+from httpx import ConnectError, MockTransport, Request, Response
 
 from mcmr.execution import CriterionValue, OpenRouterBackend
 from mcmr.execution.backends import CandidateProtocol
@@ -136,15 +136,64 @@ async def test_a_missing_key_refuses_the_request_before_it_is_sent(
         await backend.classify_candidate(
             candidate(), category=Category, instructions="Judge the structure."
         )
-    isolated = await backend.classify_many(
-        [candidate()], category=Category, instructions="Judge the structure."
-    )
+    with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
+        await backend.classify_many(
+            [candidate()], category=Category, instructions="Judge the structure."
+        )
 
     assert probe.requests == []
-    assert (isolated[0].value, "OPENROUTER_API_KEY" in isolated[0].reasoning) == (
-        Category.UNCERTAIN,
-        True,
+
+
+@pytest.mark.anyio
+async def test_one_answering_batch_keeps_a_dead_one_isolated() -> None:
+    """A batch whose turn never reached the server stays isolated once another batch proves it."""
+    live = cited()
+    dead = candidate(Evidence(signal="dead", detail="one", source="dead.py"))
+    requests: list[Request] = []
+
+    def flaky_respond(request: Request) -> Response:
+        requests.append(request)
+        if len(requests) == 1:
+            raise ConnectError("refused")
+        return Response(200, json=RouterProbe.batched([payload()]))
+
+    backend = OpenRouterBackend(transport=MockTransport(flaky_respond), batch_size=1)
+
+    answers = await backend.classify_many(
+        [dead, live], category=Category, instructions="Judge the structure."
     )
+
+    assert [answer.value for answer in answers] == [Category.UNCERTAIN, Category.SUPPORTED]
+    assert "could not answer" in answers[0].reasoning
+    assert len(requests) == 2
+
+
+@pytest.mark.anyio
+async def test_a_call_where_every_batch_dies_raises_instead_of_reporting_uncertainty() -> None:
+    """A run that never once reached the server surfaces its failure instead of hiding it."""
+    probe = RouterProbe(RouterProbe.completion(payload()), failure=ConnectError("refused"))
+    backend = OpenRouterBackend(transport=probe.transport, batch_size=1)
+    cases = [
+        candidate(Evidence(signal="first", detail="one", source="first.py")),
+        candidate(Evidence(signal="second", detail="one", source="second.py")),
+    ]
+
+    with pytest.raises(RuntimeError, match="could not answer"):
+        await backend.classify_many(cases, category=Category, instructions="Judge the structure.")
+
+
+@pytest.mark.anyio
+async def test_an_assessment_call_where_every_batch_dies_raises_too() -> None:
+    """The same total-outage escalation covers the assessment lane, not only classification."""
+    probe = RouterProbe(RouterProbe.completion(payload()), failure=ConnectError("refused"))
+    backend = OpenRouterBackend(transport=probe.transport, batch_size=1)
+    cases = [
+        candidate(Evidence(signal="first", detail="one", source="first.py")),
+        candidate(Evidence(signal="second", detail="one", source="second.py")),
+    ]
+
+    with pytest.raises(RuntimeError, match="could not answer"):
+        await backend.assess_many(cases, criteria=criteria(), instructions="Assess the structure.")
 
 
 @pytest.mark.anyio

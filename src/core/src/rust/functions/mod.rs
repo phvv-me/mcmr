@@ -86,7 +86,7 @@ fn identified_function(
         "rust",
         signature.ident.to_string(),
     );
-    fact.identity.scope = definition.scope.to_string();
+    fact.identity.state_scope(definition.scope);
     fact.presentation.visibility = label(definition.reach).to_string();
     fact.presentation.nodes.definition =
         Some(source.node("function", source.range_location(opened..closed)));

@@ -9,8 +9,12 @@ from ....domain.primitives import NonEmptyStr
 class HistoryChange(FrozenModel):
     """Retain one commit's requested paths and its repository-wide width."""
 
-    other_file_count: NonNegativeInt = 0
-    paths: Annotated[list[NonEmptyStr], Field(min_length=1)]
+    other_file_count: NonNegativeInt = Field(
+        default=0, description="files this commit touched outside the request's in scope paths"
+    )
+    paths: Annotated[list[NonEmptyStr], Field(min_length=1)] = Field(
+        description="in scope repository paths this commit touched"
+    )
 
     @property
     def changed_file_count(self) -> int:

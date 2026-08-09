@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+from pydantic import Field
+
 from ...foundation import Fact
 
 if TYPE_CHECKING:
@@ -9,4 +11,6 @@ if TYPE_CHECKING:
 class BranchFact(Fact):
     """Describe one conditional structure and the arms it selects between."""
 
-    chains: list[ConditionalChain] = []
+    chains: list[ConditionalChain] = Field(
+        default=[], description="conditional chains this fact retains"
+    )

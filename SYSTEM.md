@@ -298,16 +298,70 @@ reader following lineage lands on the rule and reads what it concluded everywher
 anything, and one link per codebase, failing first, points at the fact table its verdicts are
 recorded against.
 
+### What a contextual rule costs
+
+A contextual rule is the only kind of rule that costs money to run, and the amount is what tells
+an expensive rule apart from a cheap one that fires just as often. The backend reports its token
+usage per candidate already, so that usage is kept per file rather than aggregated away, and it
+travels with the run graph as the spend of the rule job that paid it. Every verdict a contextual
+rule reaches then states `backend`, `model`, `reasoningEffort`, `inputTokens`, `cachedInputTokens`
+and `outputTokens` for the turns behind that verdict alone, whether the rule failed or passed,
+because the model was paid either way. A verdict about one file states what the turns that read
+that file cost, and the repository-wide verdict states the whole rule. A batched assessment
+answers every criterion in one turn and stamps that one turn on each answer, so the distinct turns
+are counted rather than the answers, which is what stops one turn being billed once per criterion.
+The cached input travels beside the fresh input because a harness that reuses a prompt reports
+almost all of its input as cached, and a rule read as costing one token would be a lie.
+
+The rule job rolls the same numbers up per codebase as `tokens.<repo>`, everything that rule has
+cost there across its recorded timeline, and `lastRunTokens.<repo>`, what the run that just
+finished cost, beside a `totalTokens` rollup across every codebase. Sorting the properties table
+by that answers which rule costs the most for what it finds. A deterministic rule states none of
+these keys at all rather than a row of zeroes a reader has to learn to ignore.
+
+### The run itself
+
+An assertion timeline answers what one rule keeps concluding. It cannot answer what a single
+invocation did, because every verdict in it belongs to a different rule and a different day. Each
+`mcmr check --writeback` therefore mints one run identity, `mcmr-<repository>-<epoch millis>`,
+stamps it on every assertion result it reports as `runId`, and writes that same identity as one
+`DataProcessInstance` whose `parentTemplate` is the repository's flow. The instance carries a
+`STARTED` and a `COMPLETE` run event. A completed invocation states `SUCCESS` because policy
+failures describe the code rather than an operational failure of MCMR. Those failures remain in
+the instance properties and assertion results. The two events put the invocation on the flow's
+own Runs tab rather than only in search.
+
+Its properties say how much the invocation reached and what kind of work it was, as `files`,
+`facts`, `failures`, `findings`, `rulesExecuted`, `rulesFailing`, one `rules<Lane>` count per lane
+the run activated, `durationMillis` measured over the whole invocation rather than the query
+engine alone, and, when the contextual lane ran, the backend, the model and the run's total token
+usage. Reusing the identity already stamped on every verdict is what lets a reader pivot from one
+rule's timeline to the invocation that wrote it and back. A run that published no fact table has
+no flow to hang under, so it records no instance rather than an orphan the catalog cannot show.
+
 What the UI calls each of these is stated rather than inferred. A fact dataset is a `Fact table`,
-a rule job is a `Rule`, and a repository's own job is an `Extraction`, so a search result says
-what it found instead of naming the generic type every platform contributes.
+a repository's own job is an `Extraction`, and a rule is named by the lane it answers in, so a
+search result says what it found instead of naming the generic type every platform contributes.
+
+A rulebook of hundreds is only readable if a reader can narrow it, so a rule also carries its lane
+as a coloured tag a search filters on and its family as a glossary term. The lane is two axes
+rather than one, because a rule can need both a classification backend and a network, so the type
+label states the stronger of them while the tags state both, and every recorded verdict carries
+the same lane as a property. The family terms hang off one `MCMR Rule Families` group, which is
+the taxonomy the whole catalog is browsed by. Only the lanes and families a run actually reached
+are published, so no tag exists that nothing carries.
+
+A fact dataset's schema is described from the model rather than annotated by hand. A column keeps
+whatever its own field states, and a column with nothing of its own is described by the record it
+belongs to, since a fact model says what each record it nests is for. A column of the fact itself
+keeps none, because the dataset already carries that sentence.
 
 None of this reaches a home page on its own, so an owner and a domain travel with everything a run
 publishes. Both are settings, both default to something a fresh DataHub already knows about, and
 the `Codebases` domain every published flow is filed under is the codebase registry rather than a
-second mechanism beside one. The platform card carries its own mark, since DataHub reads `logoUrl`
-as an ordinary image source and a data URI needs nothing served from anywhere. A project that asks
-for it also receives one home page post per repository, keyed by that repository so a later run
+second mechanism beside one. The platform card carries its own mark over a public HTTPS URL,
+because DataHub's web interface does not consistently render a data URI. A project that asks for
+it also receives one home page post per repository, keyed by that repository so a later run
 rewrites the same card.
 
 A link nobody can follow is worse than no link. An unset or placeholder `report_url` writes no

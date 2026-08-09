@@ -1,12 +1,16 @@
 use ruff_python_ast::{Expr, Stmt};
 use ruff_text_size::Ranged;
 
+mod documentation;
 mod expressions;
 mod fields;
+mod reexport;
 mod traversal;
 
+pub use documentation::docstring;
 pub use expressions::{children, expression_tree, expressions};
 pub use fields::{annotation_name, class_instance_fields};
+pub use reexport::is_reexport_only;
 pub use traversal::{blocks, statements, walk};
 
 pub fn qualified_name(expression: &Expr) -> String {
@@ -22,25 +26,6 @@ pub fn qualified_name(expression: &Expr) -> String {
         }
         Expr::Call(call) => qualified_name(&call.func),
         _ => String::new(),
-    }
-}
-
-pub fn docstring(body: &[Stmt]) -> Option<String> {
-    match body.first() {
-        Some(Stmt::Expr(item)) => match item.value.as_ref() {
-            Expr::StringLiteral(literal) => {
-                let raw = literal.value.to_str();
-                let (summary, body) = raw.split_once('\n').unwrap_or((raw, ""));
-                let body = textwrap::dedent(body);
-                let body = body.trim_matches('\n');
-                Some(match body.is_empty() {
-                    true => summary.trim().to_string(),
-                    false => format!("{}\n\n{body}", summary.trim()),
-                })
-            }
-            _ => None,
-        },
-        _ => None,
     }
 }
 

@@ -10,6 +10,7 @@ from ..cases import ContextualTrial
 from ..profiles import BackendProfile
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
     from enum import StrEnum
 
     from ....execution import Assessment, Classification
@@ -25,30 +26,24 @@ class CaseEvaluator(FrozenModel):
 
     async def run(self) -> list[ContextualTrial]:
         """Dispatch this batch through its query mode and retain exact comparisons."""
-        return (
-            await self._classify()
-            if self.template.mode is ModelMode.CLASSIFY
-            else await self._assess()
-        )
-
-    async def _assess(self) -> list[ContextualTrial]:
-        """Evaluate a criterion query and retain one trial per case."""
-        try:
-            answers = await self.backend.assess_many(
-                [case.candidate for case in self.cases],
+        candidates = [case.candidate for case in self.cases]
+        if self.template.mode is ModelMode.CLASSIFY:
+            return await self._paired(
+                self.backend.classify_many(
+                    candidates,
+                    category=self.template.category,
+                    instructions=self.template.instructions,
+                ),
+                self._classification_trial,
+            )
+        return await self._paired(
+            self.backend.assess_many(
+                candidates,
                 criteria=self.template.criteria,
                 instructions=self.template.instructions,
-            )
-        except Exception as failure:
-            return self._failed(failure)
-        if len(answers) != len(self.cases):
-            return self._failed(
-                ValueError("contextual backend returned a different number of answers")
-            )
-        return [
-            self._assessment_trial(case, answer)
-            for case, answer in zip(self.cases, answers, strict=True)
-        ]
+            ),
+            self._assessment_trial,
+        )
 
     def _assessment_trial(self, case: ContextualCase, assessment: Assessment) -> ContextualTrial:
         """Convert one criterion assessment into an exact labeled trial."""
@@ -87,25 +82,6 @@ class CaseEvaluator(FrozenModel):
             provenance=classification.provenance,
         )
 
-    async def _classify(self) -> list[ContextualTrial]:
-        """Evaluate a categorical query and retain one trial per case."""
-        try:
-            answers = await self.backend.classify_many(
-                [case.candidate for case in self.cases],
-                category=self.template.category,
-                instructions=self.template.instructions,
-            )
-        except Exception as failure:
-            return self._failed(failure)
-        if len(answers) != len(self.cases):
-            return self._failed(
-                ValueError("contextual backend returned a different number of answers")
-            )
-        return [
-            self._classification_trial(case, answer)
-            for case, answer in zip(self.cases, answers, strict=True)
-        ]
-
     def _failed(self, failure: Exception) -> list[ContextualTrial]:
         """Turn one backend failure into explicit failed trials for its whole batch."""
         return [
@@ -118,3 +94,23 @@ class CaseEvaluator(FrozenModel):
             )
             for case in self.cases
         ]
+
+    async def _paired[Answer](
+        self,
+        batch: Awaitable[Sequence[Answer]],
+        trial: Callable[[ContextualCase, Answer], ContextualTrial],
+    ) -> list[ContextualTrial]:
+        """Line one backend batch up with the cases it answered, one answer to one case.
+
+        batch: the pending backend call, whose failure becomes failed trials rather than an error.
+        trial: how one answer beside its case reads as a labeled trial.
+        """
+        try:
+            answers = await batch
+        except Exception as failure:
+            return self._failed(failure)
+        if len(answers) != len(self.cases):
+            return self._failed(
+                ValueError("contextual backend returned a different number of answers")
+            )
+        return [trial(case, answer) for case, answer in zip(self.cases, answers, strict=True)]

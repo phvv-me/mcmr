@@ -1,3 +1,4 @@
 from .backend import ClassificationBackend
+from .resolved import ResolvedQuery
 
-__all__ = ["ClassificationBackend"]
+__all__ = ["ClassificationBackend", "ResolvedQuery"]

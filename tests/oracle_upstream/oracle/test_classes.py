@@ -102,7 +102,7 @@ def test_relative_import_beyond_top_level_agrees_with_pylint(tmp_path: Path) -> 
     """Both halves of this are in the repository, so the answer is arithmetic rather than a guess.
 
     The tree carries a package initializer and a module beside it, because an initializer is its
-    own package and therefore affords one more level than its neighbour does.
+    own package and therefore affords one more level than its neighbor does.
     """
     root = written(
         tmp_path,

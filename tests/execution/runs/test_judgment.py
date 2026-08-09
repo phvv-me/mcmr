@@ -31,7 +31,7 @@ from mcmr.plugins import RunGraph, fact_table
 from mcmr.query.orchestration import TableExecution
 from mcmr.rulebook.scope import LanguageScope
 
-from ...support import built_catalog, kernel_binary, needs_kernel, written
+from ...support import CountedEvaluation, built_catalog, kernel_binary, needs_kernel, written
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -185,22 +185,11 @@ def test_a_bounded_judgment_keeps_exact_totals() -> None:
 
 
 def test_deferred_evidence_is_built_only_for_a_retained_failure() -> None:
-    class EvaluationProbe:
-        """Count how often deferred source evidence is requested."""
-
-        def __init__(self, evaluation: Evaluation) -> None:
-            self.evaluation = evaluation
-            self.calls = 0
-
-        def __call__(self) -> Evaluation:
-            self.calls += 1
-            return self.evaluation
-
     counted = definition("ALL-DEMO0001")
     unstated = definition("ALL-DEMO0002", output="str", unit="")
     span = SourceSpan(path="subject.py")
-    failing = EvaluationProbe(
-        Evaluation(
+    failing = CountedEvaluation(
+        evaluation=Evaluation(
             rule=counted.callable,
             fact="fail",
             value=1,
@@ -208,8 +197,8 @@ def test_deferred_evidence_is_built_only_for_a_retained_failure() -> None:
             findings=[Finding(message="failed", span=span)],
         )
     )
-    dropped = EvaluationProbe(
-        Evaluation(
+    dropped = CountedEvaluation(
+        evaluation=Evaluation(
             rule=counted.callable,
             fact="dropped",
             value=2,

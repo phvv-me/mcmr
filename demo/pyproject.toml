@@ -11,9 +11,29 @@ deterministic = true
 contextual = false
 external = false
 
+# The contextual lane stays off by default so the documented arc is deterministic; enable it
+# per run with `--contextual` to add model-judged rules through Claude Sonnet 5.
+[tool.mcmr.contextual]
+backend = "claude"
+model = "claude-sonnet-5"
+reasoning_effort = "high"
+
 [tool.mcmr.providers.datahub]
 server = "http://localhost:8080"
 report_url = "https://github.com/phvv-me/mcmr"
+
+# Who answers for this codebase and what operates the checks on their behalf. The model that
+# judges the contextual lane joins them on its own, taken from whichever backend the run asked.
+[tool.mcmr.providers.datahub.people.human]
+id = "pedro"
+name = "Pedro Valois"
+email = "contact@phvv.me"
+title = "Author of MCMR and owner of this demo codebase"
+
+[tool.mcmr.providers.datahub.people.agent]
+id = "claude-fable-5"
+name = "Claude Fable 5"
+title = "Operating agent that runs MCMR and publishes what it concluded"
 
 # This repository is the deliberate subject of an MCMR convergence demo, so the general
 # purpose linter is switched off here. MCMR is the only judge that runs against it.

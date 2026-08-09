@@ -1,0 +1,48 @@
+---
+import '../styles/marketing.css';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefined;
+
+// The social preview image, the brand pack's own banner. `import.meta.glob` never throws on a
+// zero match, so the tag simply does not render until the file lands.
+const bannerFiles = import.meta.glob('../assets/banner.svg', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+});
+const banner = Object.values(bannerFiles)[0] as string | undefined;
+const ogImage = banner && Astro.site ? new URL(banner, Astro.site) : undefined;
+---
+
+<!doctype html>
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {canonical && <link rel="canonical" href={canonical} />}
+    <link rel="icon" href="/mcmr/favicon.svg" type="image/svg+xml" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    {canonical && <meta property="og:url" content={canonical} />}
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@700;800;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+  </head>
+  <body data-mcmr-marketing class="bg-base-100 text-base-content font-sans antialiased">
+    <slot />
+  </body>
+</html>

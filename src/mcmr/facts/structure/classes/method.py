@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+from pydantic import Field
+
 from .groups import MethodAnalysisFields
 
 if TYPE_CHECKING:
@@ -9,10 +11,19 @@ if TYPE_CHECKING:
 class MethodAnalysis(MethodAnalysisFields):
     """Retain ordering and binding facts for one declared method."""
 
-    is_protocol_name: bool = False
-    reads_receiver: bool = False
-    reads_receiver_state: bool = False
-    owner_qualified_calls: list[str] = []
+    is_protocol_name: bool = Field(
+        default=False, description="whether the method name matches a recognized dunder protocol"
+    )
+    reads_receiver: bool = Field(
+        default=False, description="whether an ordinary or class bound method reads its receiver"
+    )
+    reads_receiver_state: bool = Field(
+        default=False, description="whether the method reads state off the receiver it declares"
+    )
+    owner_qualified_calls: list[str] = Field(
+        default=[],
+        description="sibling methods this method calls through the owning class's literal name",
+    )
 
     def order_key(
         self,

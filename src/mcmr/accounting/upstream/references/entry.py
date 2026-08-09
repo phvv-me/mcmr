@@ -6,7 +6,7 @@ from pydantic import Field
 from ....domain.contracts import RuleScope
 from ....rulebook.catalog import RuleDefinition
 from ..profiles.relation import Relation
-from ..profiles.tools.rule import UpstreamRule
+from .models import UpstreamRule
 
 if TYPE_CHECKING:
     from typing import Self

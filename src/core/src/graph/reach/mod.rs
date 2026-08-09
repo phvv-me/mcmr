@@ -58,7 +58,7 @@ impl<'a> ReachIndex<'a> {
         graph
             .nodes
             .iter()
-            .map(|node| (node.qualname.as_str(), node.id.as_str()))
+            .map(|node| (node.qualname(), node.id()))
             .collect()
     }
 
@@ -73,15 +73,15 @@ impl<'a> ReachIndex<'a> {
             graph
                 .nodes
                 .iter()
-                .filter(|node| node.is_enum)
-                .map(|node| node.id.clone()),
+                .filter(|node| node.is_enum())
+                .map(|node| node.id().to_string()),
         );
         while Self::extend_registered(graph, &mut enums) {}
         graph
             .nodes
             .iter()
-            .filter(|node| enums.contains(&node.id))
-            .map(|node| node.qualname.as_str())
+            .filter(|node| enums.contains(node.id()))
+            .map(|node| node.qualname())
             .collect()
     }
 
@@ -108,8 +108,8 @@ impl<'a> ReachIndex<'a> {
         graph
             .nodes
             .iter()
-            .filter(|node| node.kind == NodeKind::Module)
-            .filter_map(|node| Some((node.path.as_deref()?, node.qualname.as_str())))
+            .filter(|node| node.kind() == NodeKind::Module)
+            .filter_map(|node| Some((node.path()?, node.qualname())))
             .collect()
     }
 
@@ -128,7 +128,7 @@ impl<'a> ReachIndex<'a> {
                 qualnames: graph
                     .nodes
                     .iter()
-                    .map(|node| (node.id.as_str(), node.qualname.as_str()))
+                    .map(|node| (node.id(), node.qualname()))
                     .collect(),
                 identities: Self::by_qualname(graph),
                 unresolved_names: Self::unresolved_names(graph),
@@ -149,7 +149,7 @@ impl<'a> ReachIndex<'a> {
     fn owner(reachable: Reachable<'_>) -> Option<&str> {
         reachable
             .node
-            .qualname
+            .qualname()
             .rsplit_once(reachable.language.separator())
             .map(|(owner, _)| owner)
     }
@@ -159,8 +159,8 @@ impl<'a> ReachIndex<'a> {
             .nodes
             .iter()
             .filter_map(|node| {
-                let (owner, _) = node.qualname.rsplit_once(node.language?.separator())?;
-                Some((node.id.as_str(), owner))
+                let (owner, _) = node.qualname().rsplit_once(node.language()?.separator())?;
+                Some((node.id(), owner))
             })
             .collect()
     }
@@ -169,10 +169,10 @@ impl<'a> ReachIndex<'a> {
         graph
             .nodes
             .iter()
-            .filter(|node| node.kind == NodeKind::Module)
+            .filter(|node| node.kind() == NodeKind::Module)
             .filter_map(|node| {
-                let root = node.qualname.split(node.language?.separator()).next()?;
-                Some((node.path.as_deref()?, root))
+                let root = node.qualname().split(node.language()?.separator()).next()?;
+                Some((node.path()?, root))
             })
             .collect()
     }
@@ -198,18 +198,18 @@ impl<'a> ReachIndex<'a> {
             .nodes
             .iter()
             .filter(|node| {
-                node.decorators
+                node.decorators()
                     .iter()
                     .any(|decorator| decorator == "registered-component")
             })
-            .map(|node| node.id.clone())
+            .map(|node| node.id().to_string())
             .collect::<BTreeSet<_>>();
         while Self::extend_registered(graph, &mut registered) {}
         registered
     }
 
     fn span(node: &Node, path: &str) -> Span {
-        let line = node.line.expect("a source declaration has a line");
+        let line = node.line().expect("a source declaration has a line");
         Span {
             path: path.to_string(),
             start_line: line,
@@ -223,11 +223,11 @@ impl<'a> ReachIndex<'a> {
         let names = graph
             .nodes
             .iter()
-            .filter(|node| node.kind == NodeKind::UnresolvedSymbol)
+            .filter(|node| node.kind() == NodeKind::UnresolvedSymbol)
             .map(|node| {
                 (
-                    node.id.as_str(),
-                    node.qualname
+                    node.id(),
+                    node.qualname()
                         .rsplit(['.', ':'])
                         .find(|part| !part.is_empty())
                         .unwrap_or_default()
@@ -248,7 +248,7 @@ impl<'a> ReachIndex<'a> {
         graph
             .nodes
             .iter()
-            .map(|node| (node.id.as_str(), node.visibility))
+            .map(|node| (node.id(), node.visibility()))
             .collect()
     }
 
@@ -258,18 +258,18 @@ impl<'a> ReachIndex<'a> {
             self.owner_reference_counts(reachable, reaching, owner);
         let name = reachable
             .node
-            .qualname
+            .qualname()
             .rsplit(reachable.language.separator())
             .next()
             .unwrap_or_default();
         Declaration {
-            qualname: reachable.node.qualname.clone(),
+            qualname: reachable.node.qualname().to_string(),
             kind: reachable.kind.as_str().to_string(),
             context: DeclarationContext {
                 span: Self::span(reachable.node, reachable.path),
                 is_module_scope: self.is_module_scope(reachable),
-                is_decorated: !reachable.node.decorators.is_empty()
-                    || self.registered.contains(&reachable.node.id),
+                is_decorated: !reachable.node.decorators().is_empty()
+                    || self.registered.contains(reachable.node.id()),
             },
             visibility: self.effective_visibility(reachable.node),
             owner: OwnerContract {
@@ -300,10 +300,10 @@ impl<'a> ReachIndex<'a> {
     }
 
     fn effective_visibility(&self, node: &Node) -> Visibility {
-        if node.visibility != Visibility::Public || node.language != Some(Language::Rust) {
-            return node.visibility;
+        if node.visibility() != Visibility::Public || node.language() != Some(Language::Rust) {
+            return node.visibility();
         }
-        let mut owner = node.qualname.rsplit_once("::").map(|(owner, _)| owner);
+        let mut owner = node.qualname().rsplit_once("::").map(|(owner, _)| owner);
         while let Some(qualname) = owner {
             let module = identity(Language::Rust, NodeKind::Module, qualname);
             if self
@@ -324,10 +324,10 @@ impl<'a> ReachIndex<'a> {
     }
 
     fn is_enum_member(&self, node: &Node) -> bool {
-        node.kind == NodeKind::Attribute
+        node.kind() == NodeKind::Attribute
             && node
-                .language
-                .and_then(|language| node.qualname.rsplit_once(language.separator()))
+                .language()
+                .and_then(|language| node.qualname().rsplit_once(language.separator()))
                 .is_some_and(|(owner, _)| self.enum_classes.contains(owner))
     }
 
@@ -338,10 +338,10 @@ impl<'a> ReachIndex<'a> {
             .get(reachable.path)
             .copied()
             .unwrap_or_default();
-        let separator = reachable.node.language.map_or(".", Language::separator);
+        let separator = reachable.node.language().map_or(".", Language::separator);
         reachable
             .node
-            .qualname
+            .qualname()
             .rsplit_once(separator)
             .is_some_and(|(owner, _)| owner == module)
     }
@@ -372,7 +372,7 @@ impl<'a> ReachIndex<'a> {
         if self.is_enum_member(node) {
             return None;
         }
-        let kind = match node.kind {
+        let kind = match node.kind() {
             NodeKind::Class => DeclarationKind::Class,
             NodeKind::Function => DeclarationKind::Function,
             NodeKind::Method => DeclarationKind::Method,
@@ -383,8 +383,8 @@ impl<'a> ReachIndex<'a> {
         };
         Some(Reachable {
             node,
-            path: node.path.as_deref()?,
-            language: node.language?,
+            path: node.path()?,
+            language: node.language()?,
             kind,
         })
     }
@@ -395,7 +395,7 @@ impl<'a> ReachIndex<'a> {
         };
         let reaching = self
             .arrivals
-            .get(node.id.as_str())
+            .get(node.id())
             .map(Vec::as_slice)
             .unwrap_or_default();
         let declaration = self.declaration(reachable, reaching);

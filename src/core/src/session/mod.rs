@@ -3,7 +3,7 @@ use super::delivery::{CaptureSelection, Delivery, GenericCapture};
 use super::pipeline::analyze;
 use super::runtime::{TypedFamilies, TypedRows};
 use crate::protocol::{Request, Response, Stats, VERSION};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 mod contracts;
 
@@ -13,18 +13,7 @@ pub use contracts::{SessionFamilies, SessionOutput};
 pub fn run(request: &Request) -> Result<Response, String> {
     let built = built_families(request);
     let mut discard = |_: String, _: Vec<serde_json::Value>| Ok(());
-    let mut delivery = Delivery {
-        retained: built
-            .iter()
-            .map(|family| (family.clone(), Vec::new()))
-            .collect(),
-        pending: BTreeMap::new(),
-        typed_markers: BTreeSet::new(),
-        emitted_families: BTreeSet::new(),
-        emitted_count: 0,
-        generic: GenericCapture::default(),
-        emit: &mut discard,
-    };
+    let mut delivery = Delivery::new(&built, GenericCapture::default(), &mut discard);
     let (graph, stats) = analyze(
         request,
         &built,
@@ -34,7 +23,7 @@ pub fn run(request: &Request) -> Result<Response, String> {
     )?;
     Ok(Response {
         version: VERSION,
-        facts: delivery.retained,
+        facts: delivery.close(&request.families)?.retained,
         graph,
         stats,
     })
@@ -51,15 +40,7 @@ where
         );
     }
     let built = built_families(request);
-    let mut delivery = Delivery {
-        retained: BTreeMap::new(),
-        pending: BTreeMap::new(),
-        typed_markers: BTreeSet::new(),
-        emitted_families: BTreeSet::new(),
-        emitted_count: 0,
-        generic: GenericCapture::default(),
-        emit: &mut emit,
-    };
+    let mut delivery = Delivery::new(&[], GenericCapture::default(), &mut emit);
     let (_, stats) = analyze(
         request,
         &built,
@@ -67,12 +48,7 @@ where
         TypedRows::default(),
         DeferredMode::Spools,
     )?;
-    delivery.flush()?;
-    for family in &request.families {
-        if !delivery.emitted_families.contains(family) {
-            (delivery.emit)(family.clone(), Vec::new())?;
-        }
-    }
+    delivery.close(&request.families)?;
     Ok(stats)
 }
 
@@ -112,18 +88,11 @@ where
     let generic_families = families.generic.iter().cloned().collect::<BTreeSet<_>>();
     let selected_request = selected_request(request, &generic_families);
     let built = built_families(&selected_request);
-    let mut delivery = Delivery {
-        retained: BTreeMap::new(),
-        pending: BTreeMap::new(),
-        typed_markers: BTreeSet::new(),
-        emitted_families: BTreeSet::new(),
-        emitted_count: 0,
-        generic: GenericCapture::new(CaptureSelection {
-            selected: generic_families,
-            mirrored: request.families.iter().cloned().collect(),
-        }),
-        emit: &mut emit,
-    };
+    let capture = GenericCapture::new(CaptureSelection {
+        selected: generic_families,
+        mirrored: request.families.iter().cloned().collect(),
+    });
+    let mut delivery = Delivery::new(&[], capture, &mut emit);
     let mut output = SessionOutput::default();
     let (_, stats) = analyze(
         &selected_request,
@@ -132,9 +101,8 @@ where
         typed_rows(&mut output, families),
         DeferredMode::Memory,
     )?;
-    emit_missing(&mut delivery, request)?;
     Ok(SessionOutput {
-        generic: delivery.generic.rows,
+        generic: delivery.close(&request.families)?.generic,
         stats,
         ..output
     })
@@ -173,20 +141,6 @@ fn typed_rows<'a>(output: &'a mut SessionOutput, families: SessionFamilies<'_>) 
         },
         ..TypedRows::default()
     }
-}
-
-fn emit_missing<Emit>(delivery: &mut Delivery<Emit>, request: &Request) -> Result<(), String>
-where
-    Emit: FnMut(String, Vec<serde_json::Value>) -> Result<(), String>,
-{
-    delivery.mark_empty_generic()?;
-    delivery.flush()?;
-    for family in &request.families {
-        if !delivery.emitted_families.contains(family) {
-            (delivery.emit)(family.clone(), Vec::new())?;
-        }
-    }
-    Ok(())
 }
 
 fn built_families(request: &Request) -> Vec<String> {

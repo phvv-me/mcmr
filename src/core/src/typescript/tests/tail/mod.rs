@@ -11,11 +11,11 @@ fn a_package_this_repository_installs_is_a_dependency_rather_than_a_gap() {
         .iter()
         .filter(|node| {
             matches!(
-                node.kind,
+                node.kind(),
                 NodeKind::ExternalModule | NodeKind::ExternalSymbol
             )
         })
-        .map(|node| (node.id.as_str(), node.qualname.as_str()))
+        .map(|node| (node.id(), node.qualname()))
         .collect();
 
     assert_eq!(
@@ -49,8 +49,8 @@ fn what_cannot_be_settled_stays_visible_rather_than_being_dropped() {
     let gaps: Vec<&str> = graph
         .nodes
         .iter()
-        .filter(|node| node.kind == NodeKind::UnresolvedSymbol)
-        .map(|node| node.qualname.as_str())
+        .filter(|node| node.kind() == NodeKind::UnresolvedSymbol)
+        .map(|node| node.qualname())
         .collect();
 
     assert_eq!(gaps, ["src/main::handler", "src/main::src/Button.svelte"]);
@@ -74,7 +74,7 @@ fn a_type_parameter_is_a_binder_rather_than_a_dependency_on_anything() {
         graph
             .nodes
             .iter()
-            .all(|node| node.kind != NodeKind::UnresolvedSymbol)
+            .all(|node| node.kind() != NodeKind::UnresolvedSymbol)
     );
     assert!(reaching(&graph, EdgeKind::Typed).contains(&(
         "typescript:function:src/box.unwrap",
@@ -91,8 +91,8 @@ fn a_utility_type_the_language_declares_is_outside_this_repository() {
     let outside: Vec<&str> = graph
         .nodes
         .iter()
-        .filter(|node| node.kind == NodeKind::ExternalSymbol)
-        .map(|node| node.qualname.as_str())
+        .filter(|node| node.kind() == NodeKind::ExternalSymbol)
+        .map(|node| node.qualname())
         .collect();
 
     assert_eq!(outside, ["globalThis.Record"]);
@@ -107,8 +107,8 @@ fn a_constructor_parameter_that_carries_a_modifier_declares_a_field_as_well() {
     let held: Vec<(&str, Visibility)> = graph
         .nodes
         .iter()
-        .filter(|node| node.kind == NodeKind::Attribute)
-        .map(|node| (node.qualname.as_str(), node.visibility))
+        .filter(|node| node.kind() == NodeKind::Attribute)
+        .map(|node| (node.qualname(), node.visibility()))
         .collect();
 
     assert_eq!(
@@ -185,8 +185,8 @@ fn a_relative_import_beyond_the_repository_root_stays_unresolved() {
         graph
             .nodes
             .iter()
-            .any(|node| node.kind == NodeKind::UnresolvedSymbol
-                && node.qualname == "src/main::../models")
+            .any(|node| node.kind() == NodeKind::UnresolvedSymbol
+                && node.qualname() == "src/main::../models")
     );
 }
 

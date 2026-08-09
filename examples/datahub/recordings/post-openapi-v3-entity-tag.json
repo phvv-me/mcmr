@@ -1,0 +1,22 @@
+[
+  {
+    "variables": {},
+    "response": [
+      {
+        "urn": "urn:li:tag:mcmr-deterministic",
+        "tagKey": {
+          "value": {
+            "name": "mcmr-deterministic"
+          }
+        },
+        "tagProperties": {
+          "value": {
+            "colorHex": "#38BDF8",
+            "name": "deterministic",
+            "description": "Computed from repository structure, so it answers the same way twice."
+          }
+        }
+      }
+    ]
+  }
+]

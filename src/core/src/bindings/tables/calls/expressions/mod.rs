@@ -38,10 +38,10 @@ fn collect_expressions<'record>(
     call: &'record crate::calls::CallSite,
 ) -> ExpressionCollector<'record> {
     let mut collector = ExpressionCollector::new(call_id);
-    for (ordinal, argument) in call.arguments.iter().enumerate() {
+    for (ordinal, argument) in call.syntax.arguments.iter().enumerate() {
         collector.add(argument, ExpressionPlace::root("argument", ordinal), &[]);
     }
-    if let Some(receiver) = &call.receiver {
+    if let Some(receiver) = &call.syntax.receiver {
         collector.add(receiver, ExpressionPlace::root("receiver", 0), &[]);
     }
     collector

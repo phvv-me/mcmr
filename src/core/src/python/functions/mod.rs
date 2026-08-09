@@ -29,11 +29,11 @@ pub fn function_facts(source: &Source, module: &ModModule) -> Vec<FunctionRecord
     let loads = ReferenceIndex::of(module).loads;
     for fact in &mut facts {
         let called = sites
-            .get(&fact.identity.name)
+            .get(fact.identity.name())
             .map(Vec::as_slice)
             .unwrap_or_default();
         fact.measures.reference_count =
-            loads.get(&fact.identity.name).copied().unwrap_or_default();
+            loads.get(fact.identity.name()).copied().unwrap_or_default();
         fact.presentation.nodes.references = called.iter().map(|site| site.node.clone()).collect();
         fact.semantics.roles.is_first_class_reference =
             fact.measures.reference_count > called.len();
@@ -328,7 +328,7 @@ impl<'a> Callable<'a> {
         let name = self.item.name.to_string();
         let mut fact =
             FunctionRecord::new(self.source.span(statement.range()), "python", name.clone());
-        fact.identity.scope = self.scope.to_string();
+        fact.identity.state_scope(self.scope);
         fact.presentation.visibility = name.visibility_in(self.scope).to_string();
         fact.semantics.roles.is_protocol_name = is_protocol_name(&name);
         fact.semantics.roles.is_async = self.item.is_async;

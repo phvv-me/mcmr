@@ -1,3 +1,4 @@
+use super::entry_kind::EntryKind;
 use ignore::{IncrementalIgnore, WalkBuilder};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -44,37 +45,17 @@ impl Scope {
 
     /// Whether the exclusion set removes one path.
     pub fn excludes(&self, relative: &str) -> bool {
-        if relative.split('/').any(|component| component == ".git") {
-            return true;
-        }
-        let mut matcher = self
-            .ignored
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        matcher
-            .matched(self.contract_path(relative), false)
-            .is_ignore()
+        self.is_ignored(relative, EntryKind::File)
     }
 
     /// Whether the exclusion set removes one directory, which is what lets a walk skip its subtree.
     ///
     /// A pattern that excludes a directory is written for the paths inside it, the way
     /// `**/target/**` is, so the directory is matched as the prefix its own contents carry rather
-    /// than as a bare name that no such pattern would ever hit.
+    /// than as a bare name that no such pattern would ever hit. The scan root itself is never
+    /// excluded, since a walk that skipped it would read nothing at all.
     pub fn excludes_directory(&self, relative: &str) -> bool {
-        if relative.is_empty() {
-            return false;
-        }
-        if relative.split('/').any(|component| component == ".git") {
-            return true;
-        }
-        let mut matcher = self
-            .ignored
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        matcher
-            .matched(self.contract_path(relative), true)
-            .is_ignore()
+        !relative.is_empty() && self.is_ignored(relative, EntryKind::Directory)
     }
 
     /// Whether one repository-relative path is source this request asked to read.
@@ -88,6 +69,20 @@ impl Scope {
 
     fn contract_path(&self, relative: &str) -> PathBuf {
         self.prefix.join(relative)
+    }
+
+    /// Whether one path is excluded, which the Git history always is and the ignore contract may be.
+    fn is_ignored(&self, relative: &str, kind: EntryKind) -> bool {
+        if relative.split('/').any(|component| component == ".git") {
+            return true;
+        }
+        let mut matcher = self
+            .ignored
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        matcher
+            .matched(self.contract_path(relative), kind.is_directory())
+            .is_ignore()
     }
 }
 

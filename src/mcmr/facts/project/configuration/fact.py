@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+from pydantic import Field
+
 from ...foundation import Fact
 
 if TYPE_CHECKING:
@@ -10,5 +12,9 @@ if TYPE_CHECKING:
 class ProjectConfigurationFact(Fact):
     """Describe one project configuration source."""
 
-    assignments: list[ConfigurationAssignment] = []
-    python_target: PythonTargetConfiguration | None = None
+    assignments: list[ConfigurationAssignment] = Field(
+        default=[], description="literal collection assignments this configuration source declares"
+    )
+    python_target: PythonTargetConfiguration | None = Field(
+        default=None, description="Python version target this project and its tools declare"
+    )

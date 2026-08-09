@@ -1,4 +1,4 @@
-use super::super::collections::stated;
+use super::super::collections::{owned, stated};
 use crate::source::Source;
 use crate::walk::{blocks, body_range, children, statements, walk};
 use ruff_python_ast::{Expr, ModModule, Stmt};
@@ -49,24 +49,8 @@ fn nested_tests(body: &[Stmt]) -> Vec<(&ruff_python_ast::StmtFunctionDef, bool)>
         .collect()
 }
 
-/// Return statements one callable owns without entering declarations that start another scope.
-pub(super) fn owned_statements(body: &[Stmt]) -> Vec<&Stmt> {
-    let mut collected = Vec::new();
-    let mut pending: Vec<&Stmt> = body.iter().rev().collect();
-    while let Some(statement) = pending.pop() {
-        collected.push(statement);
-        if matches!(statement, Stmt::FunctionDef(_) | Stmt::ClassDef(_)) {
-            continue;
-        }
-        for block in blocks(statement) {
-            pending.extend(block.iter().rev());
-        }
-    }
-    collected
-}
-
 pub(super) fn conditional_count(body: &[Stmt]) -> usize {
-    owned_statements(body)
+    owned(body)
         .into_iter()
         .filter(|statement| matches!(statement, Stmt::If(_)))
         .count()

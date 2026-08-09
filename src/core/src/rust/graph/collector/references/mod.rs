@@ -20,7 +20,7 @@ impl Collector {
 
     pub(super) fn declare(&mut self, declared: Node, span: Span) {
         let owner = self.owner();
-        let identifier = declared.id.clone();
+        let identifier = declared.id().to_string();
         self.nodes.push(declared);
         self.relate(
             Relation {

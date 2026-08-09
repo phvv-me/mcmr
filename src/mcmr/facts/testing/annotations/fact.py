@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+from pydantic import Field
+
 from ...foundation import Fact
 
 if TYPE_CHECKING:
@@ -9,4 +11,6 @@ if TYPE_CHECKING:
 class TypeAnnotationFact(Fact):
     """Describe one resolved type annotation."""
 
-    annotations: list[TypeAnnotation] = []
+    annotations: list[TypeAnnotation] = Field(
+        default=[], description="resolved annotations this file declares"
+    )

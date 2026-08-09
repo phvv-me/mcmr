@@ -78,8 +78,7 @@ impl<'a> ModuleImports<'a> {
         self.declared
             .get(path)
             .expect("an import edge must name a declared module")
-            .qualname
-            .as_str()
+            .qualname()
     }
 
     /// Return exact import sites and both directions of coupling between file modules.
@@ -122,14 +121,14 @@ impl<'a> ModuleImports<'a> {
         let mut declared = BTreeMap::new();
         let mut holder = BTreeMap::new();
         for node in &graph.nodes {
-            let Some(path) = node.path.as_deref() else {
+            let Some(path) = node.path() else {
                 continue;
             };
-            if node.kind != NodeKind::Module {
+            if node.kind() != NodeKind::Module {
                 continue;
             }
-            holder.insert(node.id.as_str(), path);
-            if files.contains(node.id.as_str()) {
+            holder.insert(node.id(), path);
+            if files.contains(node.id()) {
                 declared.insert(path, node);
             }
         }

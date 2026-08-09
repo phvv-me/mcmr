@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, cast
 from patos import FrozenModel
 
 from mcmr.domain.contracts import RuleContract, RuleSetting, RuleValue
-from mcmr.facts import CallFact, ClassFact, FunctionFact, ImportBindingFact, SyntaxFact
 from mcmr.kernel import Kernel
 from mcmr.plugins import Fact, Table, fact_table
 from mcmr.query import RuleQuery
@@ -20,7 +19,7 @@ from ...contracts.report import Report
 from ...contracts.site import Site
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Mapping
+    from collections.abc import Iterable, Mapping
 
 
 @cache
@@ -49,16 +48,7 @@ def extracted(root: Path, family: type[Fact], *suffixes: str) -> list[Fact]:
 @cache
 def tabled(root: Path, family: type[Fact], *suffixes: str) -> Table[Fact]:
     """Return one native table family built once over the whole repository."""
-    session = AnalysisSession(root, suffixes=suffixes, typed_families=(family,))
-    specialized: dict[type[Fact], Callable[[], Table[Fact]]] = {
-        CallFact: lambda: cast("Table[Fact]", session.call_tables()),
-        ClassFact: lambda: cast("Table[Fact]", session.class_tables()),
-        FunctionFact: lambda: cast("Table[Fact]", session.function_tables()),
-        ImportBindingFact: lambda: cast("Table[Fact]", session.import_binding_tables()),
-        SyntaxFact: lambda: cast("Table[Fact]", session.syntax_tables()),
-    }
-    factory = specialized.get(family)
-    return session.table(family) if factory is None else factory()
+    return AnalysisSession(root, suffixes=suffixes, typed_families=(family,)).table(family)
 
 
 def retained_fact(subject: Fact) -> Table[Fact]:

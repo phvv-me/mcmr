@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from .groups import DependencyRecordFields
 
@@ -11,7 +11,10 @@ if TYPE_CHECKING:
 class DependencyRecord(DependencyRecordFields):
     """Retain exact package and source state from dependency evidence."""
 
-    is_development: bool = False
+    is_development: bool = Field(
+        default=False,
+        description="whether the dependency is a development-only, non-runtime dependency",
+    )
 
     @model_validator(mode="after")
     def latest_release_is_not_older(self) -> Self:

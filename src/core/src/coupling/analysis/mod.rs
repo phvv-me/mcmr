@@ -14,8 +14,8 @@ impl<'repository> Modules<'repository> {
     pub(super) fn of(graph: &'repository Graph) -> Self {
         let mut types: BTreeMap<&str, Vec<&Node>> = BTreeMap::new();
         for node in &graph.nodes {
-            if node.kind == NodeKind::Class
-                && let Some(path) = node.path.as_deref()
+            if node.kind() == NodeKind::Class
+                && let Some(path) = node.path()
             {
                 types.entry(path).or_default().push(node);
             }
@@ -49,16 +49,16 @@ impl<'repository> Modules<'repository> {
     fn fact(&self, path: &str, module: &Node) -> Value {
         let held = self.types.get(path).map(Vec::as_slice).unwrap_or_default();
         json!({
-            "key": format!("coupling:{}", module.qualname),
+            "key": format!("coupling:{}", module.qualname()),
             "span": {"path": path},
             "language": module
-                .language
+                .language()
                 .expect("a declared module must state its language"),
-            "module": module.qualname,
+            "module": module.qualname(),
             "afferent_count": self.imports.importers(path).len(),
             "efferent_count": self.imports.imports(path).len(),
             "declaration_count": held.len(),
-            "abstract_declaration_count": held.iter().filter(|node| node.is_abstract).count(),
+            "abstract_declaration_count": held.iter().filter(|node| node.is_abstract()).count(),
             "dependencies": self.dependencies(path),
         })
     }

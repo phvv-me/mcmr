@@ -173,7 +173,7 @@ fn unresolved_native_calls_keep_the_provider_spelling() {
 
     assert_eq!(
         (
-            typed[0].calls[0].qualified_name.as_str(),
+            typed[0].calls[0].target.qualified_name.as_str(),
             &legacy[0]["calls"][0]["qualified_name"],
         ),
         ("cudaMalloc", &serde_json::json!("cudaMalloc"))
@@ -229,7 +229,9 @@ fn a_spooled_family_drains_in_bounded_ordered_batches() {
     let mut batches = Vec::new();
 
     spools
-        .drain("CallFact", |batch| {
+        .take("CallFact")
+        .expect("the family was opened")
+        .drain(|batch| {
             batches.push(batch);
             Ok(())
         })

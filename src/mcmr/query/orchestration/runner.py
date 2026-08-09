@@ -6,6 +6,7 @@ from anyio.to_thread import run_sync
 
 from ...execution import ClassificationBackend
 from ...execution.queries import ModelQuery, is_model_query
+from ...execution.queries.runtime import ResolvedQuery
 from ..contracts import RuleQuery
 from .planning import ResolvedRule
 from .query import QueryExecution
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
     from ...checking.evaluations import PreparedRule, TableEvaluationReport
-    from ...domain.contracts import RuleDependency
+    from ...domain.contracts import ModelSpend, RuleDependency
     from ...domain.policy import Policy
     from ...table import RepositoryTables
 
@@ -40,10 +41,10 @@ class TableRunner:
             self._judged(query, policies[prepared.path])
             for prepared, query in zip(rules, self._planned(tables, rules, accepted), strict=True)
         ]
-        queries = await asyncio.gather(*(self._resolve(query) for query in planned))
+        answered = await asyncio.gather(*(self._resolve(query) for query in planned))
         resolved = self._resolved(
             rules=rules,
-            queries=queries,
+            queries=[answer.query for answer in answered],
             accepted=accepted,
             policies=policies,
             fix_counts=fix_counts,
@@ -52,6 +53,7 @@ class TableRunner:
             tables=tables,
             rules=resolved,
             failure_limit=failure_limit,
+            spend=self._spend(rules, answered),
         )
         return await run_sync(partial(execution.report))
 
@@ -106,6 +108,18 @@ class TableRunner:
             for prepared, query in zip(rules, queries, strict=True)
         ]
 
+    @staticmethod
+    def _spend(
+        rules: Sequence[PreparedRule],
+        answered: Sequence[ResolvedQuery],
+    ) -> dict[str, dict[str, ModelSpend]]:
+        """Return what each rule paid its backend, at every file that rule read."""
+        return {
+            prepared.path: answer.spend
+            for prepared, answer in zip(rules, answered, strict=True)
+            if answer.spend
+        }
+
     def _planned(
         self,
         tables: RepositoryTables,
@@ -135,8 +149,8 @@ class TableRunner:
             return query
         raise TypeError(f"{prepared.path} returned {type(query).__name__} instead of a query")
 
-    async def _resolve(self, query: RuleQuery | ModelQuery) -> RuleQuery:
+    async def _resolve(self, query: RuleQuery | ModelQuery) -> ResolvedQuery:
         if isinstance(query, RuleQuery):
-            return query
+            return ResolvedQuery(query=query)
         backend = cast("ClassificationBackend", self.dependencies[ClassificationBackend])
-        return await backend.resolve(query)
+        return await backend.answered(query)

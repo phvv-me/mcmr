@@ -125,7 +125,7 @@ def test_comment_length_measures_what_the_file_wrote_about_itself() -> None:
     """Measuring one comment reads tokens, characters, or lines against the ceiling it is given.
 
     One library opened all 206 of its files with the same notice and failed on every one.
-    Measuring it says how long the licence is, so the notice is left out and whatever the file
+    Measuring it says how long the license is, so the notice is left out and whatever the file
     actually wrote about itself is what gets measured.
     """
     group_span = SourceSpan(path="project", start_line=4, end_line=5)

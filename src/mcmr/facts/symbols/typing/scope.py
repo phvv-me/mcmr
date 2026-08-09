@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 from patos import FrozenModel
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from .definition import TypingDefinition
 from .reuse import TypingReuse
@@ -13,9 +13,16 @@ if TYPE_CHECKING:
 class TypingScope(FrozenModel):
     """Retain type declarations and resolved reuse inside one cohesive directory."""
 
-    path: str
-    definitions: list[TypingDefinition] = []
-    reused_definitions: list[TypingReuse] = []
+    path: str = Field(
+        description="directory this scope groups typing declarations and their reuse under"
+    )
+    definitions: list[TypingDefinition] = Field(
+        default=[], description="typing declarations located inside this directory"
+    )
+    reused_definitions: list[TypingReuse] = Field(
+        default=[],
+        description="declarations in this directory imported by at least one other module",
+    )
 
     @model_validator(mode="after")
     def reuse_refers_to_declared_types(self) -> Self:

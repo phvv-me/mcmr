@@ -10,6 +10,120 @@ from ......query import CountQuery, FindingQuery, FixQuery, RuleQuery
 from ......table import CallRelation, Table
 
 
+def _mapping_fields(subject: Table[CallFact], expressions: pl.LazyFrame) -> pl.LazyFrame:
+    """Name the fields one literal mapping states and the constructor keywords they become."""
+    return (
+        subject.lazy(CallRelation.MAPPING_ENTRIES)
+        .join(
+            expressions.select(
+                pl.col("expression_id").alias("value_expression_id"),
+                pl.col("text").alias("value_text"),
+            ),
+            on="value_expression_id",
+            how="inner",
+        )
+        .with_columns(
+            pl.concat_str(pl.lit("`"), pl.col("key"), pl.lit("`")).alias("field_name"),
+            pl.concat_str(pl.col("key"), pl.lit("="), pl.col("value_text")).alias(
+                "constructor_keyword"
+            ),
+        )
+        .group_by("expression_id", maintain_order=True)
+        .agg(
+            pl.col("field_name").sort_by("ordinal").str.join(", ").alias("fields"),
+            pl.col("constructor_keyword")
+            .sort_by("ordinal")
+            .str.join(", ")
+            .alias("constructor_keywords"),
+        )
+    )
+
+
+def _literal_mapping_calls(
+    subject: Table[CallFact], *, facts: pl.LazyFrame, expressions: pl.LazyFrame
+) -> pl.LazyFrame:
+    """Return every `model_validate` call outside tests whose one argument is a literal mapping."""
+    arguments = (
+        expressions.filter((pl.col("root_relation") == "argument") & (pl.col("depth") == 0))
+        .group_by("call_id", maintain_order=True)
+        .agg(
+            pl.len().cast(pl.UInt64).alias("argument_count"),
+            pl.col("expression_id")
+            .filter(pl.col("root_ordinal") == 0)
+            .first()
+            .alias("first_argument_id"),
+            pl.col("literal_kind")
+            .filter(pl.col("root_ordinal") == 0)
+            .first()
+            .alias("first_argument_literal_kind"),
+        )
+    )
+    keyword_calls = subject.lazy(CallRelation.KEYWORDS).select("call_id").unique()
+    return (
+        subject.lazy(CallRelation.CALLS)
+        .join(facts.select("fact_id", "is_test"), on="fact_id", how="inner")
+        .join(arguments, on="call_id", how="inner")
+        .join(
+            _mapping_fields(subject, expressions),
+            left_on="first_argument_id",
+            right_on="expression_id",
+            how="left",
+        )
+        .with_columns(
+            pl.col("fields").fill_null(""),
+            pl.col("constructor_keywords").fill_null(""),
+        )
+        .join(keyword_calls, on="call_id", how="anti")
+        .filter(
+            ~pl.col("is_test")
+            & pl.col("qualified_name").str.ends_with(".model_validate")
+            & (pl.col("argument_count") == 1)
+            & (pl.col("first_argument_literal_kind") == "mapping")
+        )
+    )
+
+
+def _repair_frames(
+    selected: pl.LazyFrame, *, expressions: pl.LazyFrame
+) -> tuple[pl.LazyFrame, pl.LazyFrame]:
+    """Write each selected call as the constructor it is equivalent to, beside the node it is."""
+    receivers = expressions.filter(
+        (pl.col("root_relation") == "receiver") & (pl.col("depth") == 0)
+    ).select("call_id", pl.col("text").alias("receiver_text"))
+    repairable = selected.join(receivers, on="call_id", how="inner")
+    rewrites = repairable.select(
+        "fact_id",
+        pl.col("ordinal").alias("rewrite_order"),
+        pl.lit("replace").alias("kind"),
+        pl.concat_str(
+            pl.col("receiver_text"),
+            pl.lit("("),
+            pl.col("constructor_keywords"),
+            pl.lit(")"),
+        ).alias("source"),
+        pl.lit("").alias("placement"),
+        pl.lit("").alias("name"),
+        pl.lit("").alias("symbol_id"),
+        pl.lit("").alias("symbol_name"),
+        pl.lit(False).alias("references_complete"),
+    )
+    nodes = repairable.select(
+        "fact_id",
+        pl.col("ordinal").alias("rewrite_order"),
+        pl.lit("target").alias("role"),
+        pl.lit(0, dtype=pl.UInt64).alias("ordinal"),
+        pl.col("node_id").alias("id"),
+        pl.col("node_path").alias("path"),
+        pl.col("node_start_line").alias("start_line"),
+        pl.col("node_start_column").alias("start_column"),
+        pl.col("node_end_line").alias("end_line"),
+        pl.col("node_end_column").alias("end_column"),
+        pl.col("node_kind").alias("kind"),
+        pl.col("node_text").alias("text"),
+    )
+    return rewrites, nodes
+
+
 @rule("PY-PYDA0004", fix_safety=FixSafety.SAFE)
 def redundant_model_validate(subject: Table[CallFact]) -> CountQuery:
     """Find `model_validate` calls that already spell out ordinary constructor fields.
@@ -61,67 +175,7 @@ def redundant_model_validate(subject: Table[CallFact]) -> CountQuery:
         .agg(pl.col("signal").sort_by("ordinal").alias("evidence"))
     )
     expressions = subject.lazy(CallRelation.EXPRESSIONS)
-    arguments = (
-        expressions.filter((pl.col("root_relation") == "argument") & (pl.col("depth") == 0))
-        .group_by("call_id", maintain_order=True)
-        .agg(
-            pl.len().cast(pl.UInt64).alias("argument_count"),
-            pl.col("expression_id")
-            .filter(pl.col("root_ordinal") == 0)
-            .first()
-            .alias("first_argument_id"),
-            pl.col("literal_kind")
-            .filter(pl.col("root_ordinal") == 0)
-            .first()
-            .alias("first_argument_literal_kind"),
-        )
-    )
-    entries = (
-        subject.lazy(CallRelation.MAPPING_ENTRIES)
-        .join(
-            expressions.select(
-                pl.col("expression_id").alias("value_expression_id"),
-                pl.col("text").alias("value_text"),
-            ),
-            on="value_expression_id",
-            how="inner",
-        )
-        .with_columns(
-            pl.concat_str(pl.lit("`"), pl.col("key"), pl.lit("`")).alias("field_name"),
-            pl.concat_str(pl.col("key"), pl.lit("="), pl.col("value_text")).alias(
-                "constructor_keyword"
-            ),
-        )
-        .group_by("expression_id", maintain_order=True)
-        .agg(
-            pl.col("field_name").sort_by("ordinal").str.join(", ").alias("fields"),
-            pl.col("constructor_keyword")
-            .sort_by("ordinal")
-            .str.join(", ")
-            .alias("constructor_keywords"),
-        )
-    )
-    receivers = expressions.filter(
-        (pl.col("root_relation") == "receiver") & (pl.col("depth") == 0)
-    ).select("call_id", pl.col("text").alias("receiver_text"))
-    keyword_calls = subject.lazy(CallRelation.KEYWORDS).select("call_id").unique()
-    selected = (
-        subject.lazy(CallRelation.CALLS)
-        .join(facts.select("fact_id", "is_test"), on="fact_id", how="inner")
-        .join(arguments, on="call_id", how="inner")
-        .join(entries, left_on="first_argument_id", right_on="expression_id", how="left")
-        .with_columns(
-            pl.col("fields").fill_null(""),
-            pl.col("constructor_keywords").fill_null(""),
-        )
-        .join(keyword_calls, on="call_id", how="anti")
-        .filter(
-            ~pl.col("is_test")
-            & pl.col("qualified_name").str.ends_with(".model_validate")
-            & (pl.col("argument_count") == 1)
-            & (pl.col("first_argument_literal_kind") == "mapping")
-        )
-    )
+    selected = _literal_mapping_calls(subject, facts=facts, expressions=expressions)
     counts = selected.group_by("fact_id", maintain_order=True).agg(
         pl.len().cast(pl.UInt64).alias("value")
     )
@@ -141,37 +195,7 @@ def redundant_model_validate(subject: Table[CallFact]) -> CountQuery:
         .join(evidence, on="fact_id", how="left")
         .with_columns(pl.col("evidence").fill_null(pl.lit([], dtype=pl.List(pl.String))))
     )
-    repairable = selected.join(receivers, on="call_id", how="inner")
-    rewrites = repairable.select(
-        "fact_id",
-        pl.col("ordinal").alias("rewrite_order"),
-        pl.lit("replace").alias("kind"),
-        pl.concat_str(
-            pl.col("receiver_text"),
-            pl.lit("("),
-            pl.col("constructor_keywords"),
-            pl.lit(")"),
-        ).alias("source"),
-        pl.lit("").alias("placement"),
-        pl.lit("").alias("name"),
-        pl.lit("").alias("symbol_id"),
-        pl.lit("").alias("symbol_name"),
-        pl.lit(False).alias("references_complete"),
-    )
-    nodes = repairable.select(
-        "fact_id",
-        pl.col("ordinal").alias("rewrite_order"),
-        pl.lit("target").alias("role"),
-        pl.lit(0, dtype=pl.UInt64).alias("ordinal"),
-        pl.col("node_id").alias("id"),
-        pl.col("node_path").alias("path"),
-        pl.col("node_start_line").alias("start_line"),
-        pl.col("node_start_column").alias("start_column"),
-        pl.col("node_end_line").alias("end_line"),
-        pl.col("node_end_column").alias("end_column"),
-        pl.col("node_kind").alias("kind"),
-        pl.col("node_text").alias("text"),
-    )
+    rewrites, nodes = _repair_frames(selected, expressions=expressions)
     value = pl.col("value")
     return RuleQuery.integer(
         frame,

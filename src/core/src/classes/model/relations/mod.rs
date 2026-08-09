@@ -3,6 +3,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use super::contracts::{Declared, Identity, Stated};
 
 /// Return the class one base name reaches, through this module's imports or its own body.
+///
+/// A top-level class of that name wins outright, since it is the module-level binding a base is
+/// written against. An import wins over a nested class of that name, because a nested class is only
+/// in scope inside the class holding it. A nested class resolves last, which is what lets a class
+/// inherit the sibling declared beside it in the same container.
 pub(in crate::classes) fn resolve(
     module: &Stated,
     base: &str,
@@ -10,15 +15,15 @@ pub(in crate::classes) fn resolve(
     reexports: &BTreeMap<Identity, Identity>,
 ) -> Option<Identity> {
     let own = (module.module.clone(), base.to_string());
-    if definitions.contains_key(&own) {
+    let declared = definitions.get(&own);
+    if declared.is_some_and(|class| !class.is_nested()) {
         return Some(own);
     }
-    let imported = module
-        .imported
-        .iter()
-        .find(|(_, name)| name == base)
-        .cloned()?;
-    defining_identity(imported, definitions, reexports)
+    let imported = module.imported.iter().find(|(_, name)| name == base);
+    let reached = imported
+        .cloned()
+        .and_then(|held| defining_identity(held, definitions, reexports));
+    reached.or_else(|| declared.map(|_| own))
 }
 
 fn defining_identity(
@@ -85,7 +90,10 @@ pub(in crate::classes) fn coimports(stated: &[Stated]) -> BTreeMap<&str, Vec<(&s
     found
 }
 
-/// Return which ordinary modules import each declared class, keyed by definition.
+/// Return which ordinary modules import each top-level class, keyed by definition.
+///
+/// An import statement binds a module-level name, so a nested class of the same name is never what
+/// the importing module reached and never collects importers of its own.
 pub(in crate::classes) fn importers<'repository>(
     stated: &'repository [Stated],
     definitions: &BTreeMap<Identity, &Declared>,
@@ -96,7 +104,10 @@ pub(in crate::classes) fn importers<'repository>(
             continue;
         }
         for held in &module.imported {
-            if held.0 == module.module || !definitions.contains_key(held) {
+            let reachable = definitions
+                .get(held)
+                .is_some_and(|class| !class.is_nested());
+            if held.0 == module.module || !reachable {
                 continue;
             }
             found

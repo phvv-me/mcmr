@@ -26,6 +26,11 @@ Model judgment, network evidence, and writeback are separate opt-ins.
 
 Install the command line application from PyPI.
 
+MCMR requires Python 3.14 or newer. Its primary runtime target is free-threaded Python `3.14t+`,
+and standard CPython `3.14+` is supported too. Releases include Linux wheels for CPython 3.14 and
+`3.14t`. MCMR itself is developed and rehearsed on `3.14t` with the GIL disabled. An installer may
+build dependencies from source when their projects do not publish free-threaded wheels yet.
+
 ```sh
 pip install mcmr
 mcmr check .

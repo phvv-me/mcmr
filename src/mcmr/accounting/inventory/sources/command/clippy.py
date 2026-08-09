@@ -1,7 +1,7 @@
 import re
 from typing import TYPE_CHECKING
 
-from ...contracts import ToolRule
+from ....contracts import ToolRule
 from ..base import CommandInventory
 
 if TYPE_CHECKING:

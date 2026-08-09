@@ -1,4 +1,4 @@
-from ..inventory.contracts import Inventory, ToolRule
+from ..contracts import Inventory, ToolRule
 from .coverage.account import CoverageEntry, GapAccount
 from .coverage.reports import ToolCoverage
 from .profiles.coverage import Coverage

@@ -1,6 +1,6 @@
 import json
 
-from ...contracts import ToolRule
+from ....contracts import ToolRule
 from ..base import CommandInventory
 
 

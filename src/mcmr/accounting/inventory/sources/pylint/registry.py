@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from pylint import __version__ as pylint_version
 from pylint.lint import PyLinter
 
-from ...contracts import Inventory, ToolRule
+from ....contracts import Inventory, ToolRule
 from ..base import InventorySource
 
 if TYPE_CHECKING:

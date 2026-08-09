@@ -1,6 +1,6 @@
 from patos import FrozenModel
 
-from ....inventory.contracts import ToolRule
+from ....contracts import ToolRule
 from ...profiles.coverage import Coverage
 
 

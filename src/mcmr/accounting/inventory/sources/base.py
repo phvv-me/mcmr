@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from patos import Registry
 
-from ..contracts import Inventory, ToolRule
+from ...contracts import Inventory, ToolRule
 
 if TYPE_CHECKING:
     from typing import ClassVar

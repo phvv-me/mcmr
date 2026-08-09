@@ -1,6 +1,7 @@
 import importlib
 import json
 import runpy
+import subprocess
 import sys
 from pathlib import Path
 
@@ -24,6 +25,22 @@ from mcmr.presentation.reports import CheckFormat
 from mcmr.project import locate
 
 _PACKAGE = Path(__file__).parents[3]
+
+
+def test_cli_import_does_not_load_optional_inventory_tools() -> None:
+    """The installed checker starts without development-only inventory tools."""
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys\nimport mcmr.commands.cli\nassert 'pylint' not in sys.modules\n",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
 
 
 def test_cli_module_invokes_the_registered_application(monkeypatch: pytest.MonkeyPatch) -> None:

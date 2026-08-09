@@ -6,7 +6,7 @@ from .sources import InventorySource
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from .contracts import Inventory
+    from ..contracts import Inventory
 
 
 class FrozenInventories:

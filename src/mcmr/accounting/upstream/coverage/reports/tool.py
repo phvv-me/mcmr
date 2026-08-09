@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from patos import FrozenModel
 from pydantic import InstanceOf
 
-from ....inventory.contracts import Inventory, ToolRule
+from ....contracts import Inventory, ToolRule
 from ...profiles.coverage import Coverage
 from ...profiles.tools import ToolProfile, ToolRegistry
 from ...references import ClaimIndex

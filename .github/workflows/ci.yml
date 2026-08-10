@@ -33,9 +33,8 @@ jobs:
         with:
           python-version: "3.14"
           chefe-version: "==0.0.28"
-          cache-key-files: "{chefe.toml,pyproject.toml}"
+          cache-key-files: "{chefe.toml,pyproject.toml,.chefe/pixi.lock}"
           cache-paths: .chefe/target-kernel
-          resolve: true
       - run: chefe run core-build
       - if: matrix.quality
         run: chefe run core-lint

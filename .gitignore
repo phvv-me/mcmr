@@ -30,7 +30,10 @@ __pycache__/
 htmlcov/
 *.egg-info/
 .benchmarks/
-.chefe/
+.chefe/*
+!.chefe/.resolution-inputs
+!.chefe/pixi.lock
+!.chefe/pixi.toml
 .dist/
 target/
 

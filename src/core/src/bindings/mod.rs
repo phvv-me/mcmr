@@ -53,6 +53,7 @@ mod relations;
 mod rows;
 mod session;
 mod tables;
+mod tokenizer;
 
 #[pymodule(gil_used = false)]
 fn kernel_tables(module: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -75,6 +76,7 @@ fn register_support_classes(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<GenericTables>()?;
     module.add_class::<contextual::GlinerClassifier>()?;
     module.add_class::<SessionStats>()?;
+    module.add_class::<tokenizer::HuggingFaceTokenizer>()?;
     module.add_function(wrap_pyfunction!(fact_tables, module)?)?;
     Ok(())
 }

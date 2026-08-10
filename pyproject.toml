@@ -39,7 +39,6 @@ dependencies = [
   "pydantic>=2.13,<3",
   "rich>=14,<16",
   "sqlglot>=27,<28",
-  "tokenizers>=0.22,<0.23",
   "tron-python>=0.1,<0.2",
 ]
 

@@ -1,13 +1,14 @@
 import json
 from functools import cached_property
-from importlib import import_module
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
+from huggingface_hub import hf_hub_download
 from patos import FrozenModel
+
+from .....kernel_tables import HuggingFaceTokenizer
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-    from typing import Protocol
 
     from pydantic import JsonValue
 
@@ -17,27 +18,16 @@ class RequestTokens(FrozenModel):
 
     model: str
 
-    if TYPE_CHECKING:
-
-        class TokenEncoding(Protocol):
-            ids: list[int]
-
-        class ModelTokenizer(Protocol):
-            def encode(self, sequence: str) -> RequestTokens.TokenEncoding: ...
-
-        class TokenizerFactory(Protocol):
-            @staticmethod
-            def from_pretrained(identifier: str) -> RequestTokens.ModelTokenizer: ...
-
     @cached_property
-    def tokenizer(self) -> ModelTokenizer | None:
+    def tokenizer(self) -> HuggingFaceTokenizer | None:
         """Load the official tokenizer for models whose repository is unambiguous."""
         if self.model.startswith("deepseek/deepseek-v4-flash"):
-            factory = cast(
-                "type[RequestTokens.TokenizerFactory]",
-                import_module("tokenizers").Tokenizer,
+            return HuggingFaceTokenizer(
+                hf_hub_download(
+                    repo_id="deepseek-ai/DeepSeek-V4-Flash",
+                    filename="tokenizer.json",
+                )
             )
-            return factory.from_pretrained("deepseek-ai/DeepSeek-V4-Flash")
         return None
 
     def count(self, request: Mapping[str, JsonValue]) -> int:
@@ -45,7 +35,7 @@ class RequestTokens(FrozenModel):
         source = json.dumps(request, sort_keys=True, separators=(",", ":"))
         if self.tokenizer is None:
             return len(source.encode())
-        return len(self.tokenizer.encode(source).ids)
+        return self.tokenizer.count(source)
 
     def estimate(self, request: Mapping[str, JsonValue]) -> int:
         """Estimate model tokens cheaply before exact final-pack verification."""

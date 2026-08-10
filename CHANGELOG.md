@@ -29,6 +29,8 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 ### Fixed
 
 - Contextual answer citations and candidate order survive shared repository request packing.
+- DeepSeek token counting now uses the bundled Rust extension, so free-threaded macOS does not
+  need an unsupported second native Python package.
 - Missing Git now produces an actionable repository-history diagnostic.
 
 ## 0.0.2 - 2026-08-09

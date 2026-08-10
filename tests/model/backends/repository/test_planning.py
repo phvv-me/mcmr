@@ -1,4 +1,5 @@
-from types import SimpleNamespace
+import json
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import polars as pl
@@ -8,6 +9,7 @@ from mcmr.execution import ModelCandidate, backends
 from mcmr.execution.backends import openrouter
 from mcmr.execution.queries import ModelMode, ModelQuery
 from mcmr.facts import Evidence
+from mcmr.kernel_tables import HuggingFaceTokenizer
 
 from ...backend_values import criteria
 from ...fakes import Category
@@ -260,21 +262,26 @@ def test_request_tokens_uses_the_official_deepseek_tokenizer_when_known(
 ) -> None:
     """DeepSeek requests use model tokens while unknown models use a byte ceiling."""
 
-    def encode(sequence: str) -> SimpleNamespace:
-        assert sequence == '{"input":"hello"}'
-        return SimpleNamespace(ids=[10, 20, 30])
+    class ControlledTokenizer:
+        def __init__(self, path: str) -> None:
+            assert path == "/models/deepseek/tokenizer.json"
 
-    def from_pretrained(identifier: str) -> SimpleNamespace:
-        assert identifier == "deepseek-ai/DeepSeek-V4-Flash"
-        return SimpleNamespace(encode=encode)
+        def count(self, sequence: str) -> int:
+            assert sequence == '{"input":"hello"}'
+            return 3
 
-    def controlled_import(name: str) -> SimpleNamespace:
-        assert name == "tokenizers"
-        return SimpleNamespace(Tokenizer=SimpleNamespace(from_pretrained=from_pretrained))
+    def download(*, repo_id: str, filename: str) -> str:
+        assert repo_id == "deepseek-ai/DeepSeek-V4-Flash"
+        assert filename == "tokenizer.json"
+        return "/models/deepseek/tokenizer.json"
 
     monkeypatch.setattr(
-        "mcmr.execution.backends.openrouter.accounting.tokens.import_module",
-        controlled_import,
+        "mcmr.execution.backends.openrouter.accounting.tokens.HuggingFaceTokenizer",
+        ControlledTokenizer,
+    )
+    monkeypatch.setattr(
+        "mcmr.execution.backends.openrouter.accounting.tokens.hf_hub_download",
+        download,
     )
     request: dict[str, JsonValue] = {"input": "hello"}
 
@@ -282,6 +289,32 @@ def test_request_tokens_uses_the_official_deepseek_tokenizer_when_known(
     assert openrouter.RequestTokens(model="deepseek/deepseek-v4-flash-0731").estimate(request) == 6
     assert openrouter.RequestTokens(model="vendor/model").count(request) == 17
     assert openrouter.RequestTokens(model="vendor/model").estimate(request) == 17
+
+
+def test_native_tokenizer_counts_a_local_hugging_face_vocabulary(tmp_path: Path) -> None:
+    """The bundled Rust bridge reads and applies a Hugging Face tokenizer JSON file."""
+    tokenizer_path = tmp_path / "tokenizer.json"
+    tokenizer_path.write_text(
+        json.dumps(
+            {
+                "version": "1.0",
+                "truncation": None,
+                "padding": None,
+                "added_tokens": [],
+                "normalizer": None,
+                "pre_tokenizer": {"type": "Whitespace"},
+                "post_processor": None,
+                "decoder": None,
+                "model": {
+                    "type": "WordLevel",
+                    "vocab": {"[UNK]": 0, "hello": 1, "world": 2},
+                    "unk_token": "[UNK]",
+                },
+            }
+        )
+    )
+
+    assert HuggingFaceTokenizer(str(tokenizer_path)).count("hello world") == 2
 
 
 def test_exact_verification_overrides_an_optimistic_estimate() -> None:

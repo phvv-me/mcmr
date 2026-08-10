@@ -25,9 +25,7 @@ jobs:
         with:
           python-version: "3.14"
           cache-key-files: "{chefe.toml,pyproject.toml}"
-          cache-paths: |
-            .chefe/target-kernel
-            src/core/target
+          cache-paths: .chefe/target-kernel
           resolve: true
       - run: chefe run core-build
       - if: matrix.quality

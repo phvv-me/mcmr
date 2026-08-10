@@ -29,11 +29,14 @@ jobs:
           # The variation ledger reads the repository's own history as a corpus, so a
           # shallow checkout would observe a different fact shape than a full one.
           fetch-depth: 0
-      - uses: phvv-me/chefe/.github/actions/setup@85f7f358ada2eb419dbf9cdd110d789d9a0137bf # main
+      - uses: phvv-me/chefe/.github/actions/setup@6455b7f5952ccb273cd57d3fd379a224f133c0b1 # main
         with:
           python-version: "3.14"
           chefe-version: "==0.0.28"
-          cache-key-files: "{chefe.toml,pyproject.toml,.chefe/pixi.lock}"
+          cache-key-files: |-
+            chefe.toml
+            pyproject.toml
+            .chefe/pixi.lock
           cache-paths: .chefe/target-kernel
       - run: chefe run core-build
       - if: matrix.quality

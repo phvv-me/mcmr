@@ -67,6 +67,22 @@ class RouterProbe:
             "usage": reported if usage is None else usage,
         }
 
+    @staticmethod
+    def streaming(body: JsonValue | str) -> Response:
+        """Wrap one controlled answer in the current Responses SSE protocol."""
+        if isinstance(body, str):
+            content = f"data: {body}\n\n"
+        else:
+            report = TypeAdapter(dict[str, JsonValue]).validate_python(body)
+            status = report.get("status")
+            event_type = {
+                "failed": "response.failed",
+                "incomplete": "response.incomplete",
+            }.get(status if isinstance(status, str) else "", "response.completed")
+            event = {"type": event_type, "sequence_number": 1, "response": report}
+            content = f"data: {json.dumps(event)}\n\ndata: [DONE]\n\n"
+        return Response(200, headers={"content-type": "text/event-stream"}, text=content)
+
     def authorization(self, index: int = 0) -> str:
         """Read the authorization header one recorded request carried."""
         return self.requests[index].headers.get("authorization", "")
@@ -77,6 +93,8 @@ class RouterProbe:
         self.requests.append(request)
         if self.failure is not None:
             raise self.failure
+        if self.status_code < 300:
+            return self.streaming(self.body)
         if isinstance(self.body, str):
             return Response(self.status_code, text=self.body)
         return Response(self.status_code, json=self.body)

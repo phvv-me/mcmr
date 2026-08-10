@@ -7,12 +7,15 @@ from ..queries.contracts import (
     ModelCandidate,
 )
 from ..queries.runtime import ClassificationBackend
+from .batch import BatchProtocol as BatchProtocol
 from .batched import BatchedBackend
 from .candidate import CandidateProtocol
 from .claude import ClaudeBackend
 from .codex import CodexBackend, CodexHarness
 from .openrouter import OpenRouterBackend
 from .providers.gliner import Gliner2Backend
+from .repository import RepositoryProtocol as RepositoryProtocol
+from .repository import TronDocument as TronDocument
 
 __all__ = [
     "Assessment",

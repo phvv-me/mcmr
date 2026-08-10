@@ -18,7 +18,6 @@ _VALUE_TYPES = {
     "number": "urn:li:dataType:datahub.number",
 }
 
-# What each entity kind is called where a property definition names the kinds it applies to.
 _ENTITY_TYPES = {
     "dataset": "urn:li:entityType:datahub.dataset",
     "dataFlow": "urn:li:entityType:datahub.dataFlow",

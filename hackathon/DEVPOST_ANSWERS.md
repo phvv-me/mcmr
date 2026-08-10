@@ -184,7 +184,7 @@ We recorded the following reproducible cases.
 - Demo source, [https://github.com/phvv-me/mcmr/tree/main/demo](https://github.com/phvv-me/mcmr/tree/main/demo)
 - DataHub recorded example, [https://github.com/phvv-me/mcmr/tree/main/examples/datahub](https://github.com/phvv-me/mcmr/tree/main/examples/datahub)
 - PyPI package, [https://pypi.org/project/mcmr/](https://pypi.org/project/mcmr/)
-- Current version 0.0.2 release, [https://github.com/phvv-me/mcmr/releases/tag/v0.0.2](https://github.com/phvv-me/mcmr/releases/tag/v0.0.2)
+- Current version 0.0.3 release, [https://github.com/phvv-me/mcmr/releases/tag/v0.0.3](https://github.com/phvv-me/mcmr/releases/tag/v0.0.3)
 - Initial version 0.0.1 release, [https://github.com/phvv-me/mcmr/releases/tag/v0.0.1](https://github.com/phvv-me/mcmr/releases/tag/v0.0.1)
 - DataHub Code Guardian contribution, [https://github.com/datahub-project/datahub-skills/pull/112](https://github.com/datahub-project/datahub-skills/pull/112)
 - MCP server issue 192, [https://github.com/acryldata/mcp-server-datahub/issues/192](https://github.com/acryldata/mcp-server-datahub/issues/192)

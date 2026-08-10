@@ -1,19 +1,18 @@
 from typing import TYPE_CHECKING
 
+import httpx
 from pydantic import JsonValue, TypeAdapter
+
+from .exceptions import DataHubRequestError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from types import TracebackType
     from typing import Self
 
-    import httpx
-
     from ..configuration import DataHubSettings
 
-# How many entities one ingestion request carries, which keeps a large repository's fact tables
-# off a single multi-megabyte body without turning each entity into its own round trip.
-_BATCH = 50
+_BATCH = 20
 
 _ENTITIES = TypeAdapter(list[dict[str, JsonValue]])
 
@@ -54,12 +53,26 @@ class DataHubOpenAPI:
     async def ingest(self, entity: str, entities: Sequence[JsonValue]) -> int:
         """Upsert every stated entity of one type and return how many were written."""
         for start in range(0, len(entities), _BATCH):
-            response = await self.client.post(
-                f"openapi/v3/entity/{entity}",
-                params={"async": "false"},
-                json=list(entities[start : start + _BATCH]),
-            )
-            response.raise_for_status()
+            path = f"openapi/v3/entity/{entity}"
+            batch = list(entities[start : start + _BATCH])
+            try:
+                response = await self.client.post(
+                    path,
+                    params={"async": "true"},
+                    json=batch,
+                )
+            except httpx.ReadTimeout:
+                response = await self.client.post(
+                    path,
+                    params={"async": "true"},
+                    json=batch,
+                )
+            if response.is_error:
+                diagnostic = response.text.strip()[-500:] or "no response body"
+                raise DataHubRequestError(
+                    f"DataHub OpenAPI {entity} ingestion failed with "
+                    f"HTTP {response.status_code}. {diagnostic}"
+                )
         return len(entities)
 
     async def read(self, entity: str, urns: Sequence[str]) -> dict[str, dict[str, JsonValue]]:

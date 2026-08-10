@@ -5,9 +5,10 @@
   "private": true,
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build && node scripts/check-pages.mjs",
+    "generate": "node scripts/generate-rules.mjs",
+    "build": "node scripts/generate-rules.mjs && astro build && node scripts/check-pages.mjs",
     "preview": "astro preview",
-    "check": "astro check",
+    "check": "node scripts/generate-rules.mjs && astro check",
     "check:pages": "node scripts/check-pages.mjs"
   },
   "dependencies": {

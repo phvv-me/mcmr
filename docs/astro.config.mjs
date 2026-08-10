@@ -24,9 +24,9 @@ export default defineConfig({
     }),
     svelte(),
     starlight({
-      title: 'mcmr',
+      title: 'My Code, My Rules',
       description: 'Define and enforce the engineering rules that make your code yours.',
-      logo: { src: './src/assets/icon.svg', alt: 'MCMR' },
+      logo: { src: './src/assets/icon.svg', alt: 'My Code, My Rules' },
       favicon: '/favicon.svg',
       customCss: ['./src/styles/docs.css'],
       social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/phvv-me/mcmr' }],
@@ -37,7 +37,8 @@ export default defineConfig({
           items: [
             { label: 'What MCMR is', slug: 'docs/start/what-is-mcmr' },
             { label: 'Install', slug: 'docs/start/install' },
-            { label: 'The demo walkthrough', slug: 'docs/start/demo-walkthrough' },
+            { label: 'Set up contextual rules', slug: 'docs/start/contextual-rules' },
+            { label: 'Run the demo', slug: 'docs/start/demo-walkthrough' },
           ],
         },
         {
@@ -51,11 +52,15 @@ export default defineConfig({
           ],
         },
         {
+          label: 'Rules',
+          items: [{ label: 'Complete rule reference', slug: 'docs/rules' }],
+        },
+        {
           label: 'DataHub',
           items: [
-            { label: 'Why metadata', slug: 'docs/datahub/why-metadata' },
+            { label: 'Why DataHub', slug: 'docs/datahub/why-metadata' },
             { label: 'What gets published', slug: 'docs/datahub/what-gets-published' },
-            { label: 'Reading history back', slug: 'docs/datahub/reading-history' },
+            { label: 'Read history back', slug: 'docs/datahub/reading-history' },
             { label: 'Cost provenance', slug: 'docs/datahub/cost-provenance' },
             { label: 'Incidents and contracts', slug: 'docs/datahub/incidents-and-contracts' },
           ],
@@ -64,7 +69,9 @@ export default defineConfig({
           label: 'Reference',
           items: [
             { label: 'CLI commands', slug: 'docs/reference/cli' },
-            { label: 'Configuration keys', slug: 'docs/reference/configuration' },
+            { label: 'Configuration', slug: 'docs/reference/configuration' },
+            { label: 'Control rules', slug: 'docs/reference/rule-control' },
+            { label: 'Contextual tuning', slug: 'docs/reference/contextual-tuning' },
           ],
         },
       ],

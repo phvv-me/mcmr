@@ -1,6 +1,5 @@
 import re
 
-# The data platform every fact table, flow, and rule job MCMR publishes is attributed to.
 _PLATFORM = "mcmr"
 
 

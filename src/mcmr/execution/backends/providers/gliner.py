@@ -5,7 +5,7 @@ from functools import cached_property, partial
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from pydantic import Field, JsonValue, PositiveInt, TypeAdapter
+from pydantic import JsonValue, PositiveInt, TypeAdapter
 
 from ....domain import primitives
 from ....domain.contracts import Criterion, ModelProvenance
@@ -29,7 +29,6 @@ class Gliner2Backend(ClassificationBackend):
     name: ClassVar[str] = "gliner2"
     model: primitives.NonEmptyStr = "fastino/gliner2-base-v1"
     model_path: Path | None = None
-    minimum_confidence: float = Field(default=0.6, ge=0.0, le=1.0)
     batch_size: PositiveInt = 8
 
     @cached_property

@@ -37,12 +37,12 @@ function punctuation(markdown) {
   for (const line of body.split('\n')) {
     const lead = line.trimStart();
     if (lead.startsWith('|') || lead.startsWith('import ') || lead.startsWith('{') || lead.startsWith('<')) continue;
-    if (line.includes('—')) offenders.push(['em dash', line]);
-    if (line.includes(';')) offenders.push(['semicolon', line]);
     const bare = line
       .replace(/`[^`]*`/g, '')
       .replace(/https?:\/\/\S*/g, '')
       .replace(/\[[^\]]*\]\([^)]*\)/g, '');
+    if (bare.includes('—')) offenders.push(['em dash', line]);
+    if (bare.includes(';')) offenders.push(['semicolon', line]);
     if (/\w:(\s|$)/.test(bare)) offenders.push(['colon', line]);
   }
   return offenders;
@@ -53,6 +53,8 @@ const failures = [];
 for (const path of await walk(content, (name) => name.endsWith('.md') || name.endsWith('.mdx'))) {
   const source = await readFile(path, 'utf8');
   const where = relative(docs, path);
+  const wordCount = source.match(/\S+/g)?.length ?? 0;
+  if (wordCount > 400) failures.push(`${where} has ${wordCount} words, above the 400 word limit.`);
   for (const [kind, line] of punctuation(source)) {
     failures.push(`${where} uses a ${kind} in prose. ${line.trim().slice(0, 80)}`);
   }

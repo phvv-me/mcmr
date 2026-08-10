@@ -19,7 +19,12 @@ pub(super) fn log(root: &Path) -> Result<Option<Vec<Commit>>, String> {
         .arg(root)
         .args(["rev-parse", "--is-inside-work-tree"])
         .output()
-        .map_err(|failure| format!("Git could not inspect {}: {failure}", root.display()))?;
+        .map_err(|failure| {
+            format!(
+                "Git is required to inspect repository history in {}: {failure}",
+                root.display()
+            )
+        })?;
     if !repository.status.success() {
         return Ok(None);
     }

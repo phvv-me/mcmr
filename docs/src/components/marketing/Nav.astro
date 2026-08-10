@@ -11,7 +11,7 @@ const logo = Object.values(logoFiles)[0] as string | undefined;
 <header class="border-base-300 bg-base-100/90 sticky top-0 z-50 border-b-2 backdrop-blur">
   <nav class="navbar mx-auto max-w-6xl px-4">
     <div class="navbar-start">
-      <a href="/mcmr/" class="flex items-center" aria-label="mcmr">
+      <a href="/mcmr/" class="flex items-center" aria-label="My Code, My Rules">
         {
           logo ? (
             <span class="brand-mark h-8" set:html={logo} />
@@ -32,7 +32,7 @@ const logo = Object.values(logoFiles)[0] as string | undefined;
     <div class="navbar-center hidden gap-1 lg:flex">
       <a href="#what" class="btn btn-ghost btn-sm">What it is</a>
       <a href="#demo" class="btn btn-ghost btn-sm">The demo</a>
-      <a href="#datahub" class="btn btn-ghost btn-sm">DataHub</a>
+      <a href="/mcmr/docs/datahub/why-metadata/" class="btn btn-ghost btn-sm">DataHub</a>
       <a href="/mcmr/docs/" class="btn btn-ghost btn-sm">Docs</a>
     </div>
     <div class="navbar-end gap-2">
@@ -40,7 +40,7 @@ const logo = Object.values(logoFiles)[0] as string | undefined;
         href="https://github.com/phvv-me/mcmr"
         class="btn btn-ghost btn-sm"
         rel="noopener"
-        aria-label="mcmr on GitHub"
+        aria-label="My Code, My Rules on GitHub"
       >
         <svg viewBox="0 0 16 16" class="size-4" fill="currentColor" aria-hidden="true">
           <path

@@ -6,6 +6,39 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 
 ## Unreleased
 
+## 0.0.3 - 2026-08-10
+
+### Added
+
+- OpenRouter now groups contextual rules by shared evidence, compacts that evidence once, counts
+  the complete request with a model tokenizer, and streams reasoning and answer progress.
+- The documentation now explains contextual credentials, backend selection, request budgets, lane
+  toggles, selection patterns, per-rule settings, exclusions, and policy overrides.
+- The generated rule reference now covers all 285 built-in rules, including the bundled DataHub
+  plugin, and groups them by scope, lane, and family.
+
+### Changed
+
+- OpenRouter returns sparse details for failed and unresolved judgments so one repository request
+  does not spend output on prose for every passing candidate.
+- DataHub writeback uses smaller asynchronous ingestion batches, one bounded timeout retry, clearer
+  response diagnostics, and a longer default request deadline.
+- The README and public site use a shorter product introduction and the new My Code, My Rules
+  banner.
+
+### Fixed
+
+- Contextual answer citations and candidate order survive shared repository request packing.
+- Missing Git now produces an actionable repository-history diagnostic.
+
+## 0.0.2 - 2026-08-09
+
+### Fixed
+
+- Installed wheels expose the complete command line package layout.
+- Linux release wheels build with the OpenSSL headers required by the native extension.
+- Clean Python 3.14 and Python 3.14t installations run the packaged command successfully.
+
 ## 0.0.1 - 2026-08-09
 
 ### Changed

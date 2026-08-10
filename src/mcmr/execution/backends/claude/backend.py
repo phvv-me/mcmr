@@ -21,7 +21,6 @@ class ClaudeBackend(BatchedBackend):
     binary: primitives.NonEmptyStr = "claude"
     model: primitives.NonEmptyStr = "claude-sonnet-5"
     reasoning_effort: primitives.NonEmptyStr = "none"
-    timeout_seconds: int = Field(default=180, ge=1)
     runner: InstanceOf[CommandRunner] = Field(
         default_factory=SubprocessRunner,
         exclude=True,

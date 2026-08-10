@@ -19,6 +19,6 @@ type NonEmptyStr = Annotated[
 
 type EvidenceIds = Annotated[
     list[NonEmptyStr],
-    Field(min_length=1, max_length=8),
+    Field(min_length=1),
     Predicate(lambda values: len(values) == len(set(values))),
 ]

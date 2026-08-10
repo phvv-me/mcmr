@@ -4,13 +4,18 @@ from httpx import ConnectError, MockTransport, Request, Response
 from pydantic import JsonValue, TypeAdapter
 
 from mcmr.contextual.evaluation import ContextualSweep
-from mcmr.execution import CriterionValue, ModelCandidate, OpenRouterBackend, answer_many
-from mcmr.execution.backends import CandidateProtocol
+from mcmr.execution import (
+    Classification,
+    CriterionValue,
+    ModelCandidate,
+    OpenRouterBackend,
+)
+from mcmr.execution.backends import CandidateProtocol, openrouter
 from mcmr.execution.queries import ModelMode, ModelQuery
 from mcmr.facts import Evidence
 from mcmr.plugins import Fact
 
-from ...backend_values import assessment_payload, candidate, cited, criteria, payload
+from ...backend_values import assessment_payload, candidate, cited, criteria, payload, provenance
 from ...fakes import Category, RouterProbe
 
 
@@ -39,6 +44,11 @@ def assessed(query: ModelQuery[Category]) -> ModelQuery[Category]:
         default=Category.UNCERTAIN,
         uncertain=Category.UNCERTAIN,
     )
+
+
+def test_openrouter_bounds_repository_pack_concurrency() -> None:
+    """OpenRouter starts with a conservative shared request limit."""
+    assert OpenRouterBackend().workers == 4
 
 
 @pytest.mark.anyio
@@ -93,7 +103,10 @@ async def test_one_authorized_request_carries_the_closed_schema() -> None:
         {"effort": "high"},
         4096,
     )
-    assert sent["plugins"] == [{"id": "response-healing"}]
+    assert (sent["plugins"], sent["provider"]) == (
+        [{"id": "response-healing"}],
+        {"require_parameters": True},
+    )
     assert sent["text"] == {
         "format": {
             "type": "json_schema",
@@ -145,56 +158,6 @@ async def test_batches_reach_the_server_once_and_split_their_reported_usage() ->
 
 
 @pytest.mark.anyio
-async def test_repository_rules_share_one_current_response_request() -> None:
-    """Independent contextual rules share one closed repository exchange and its exact cost."""
-    query = ModelQuery.classify(
-        ContextualSweep.table(Fact, "ALL-DEMO2001"),
-        category=Category,
-        instructions="Judge the retained structure.",
-    )
-    identifier = next(
-        iter(ModelCandidate.from_row(query.candidates.collect().to_dicts()[0]).retained)
-    )
-    classified: JsonValue = {"answers": {"0": payload(evidence=(identifier,))}}
-    predicates: JsonValue = {"answers": {"0": assessment_payload(evidence=identifier)}}
-    probe = RouterProbe(RouterProbe.completion({"answers": {"0": classified, "1": predicates}}))
-
-    resolved = await answer_many(
-        OpenRouterBackend(transport=probe.transport),
-        [query, assessed(query)],
-    )
-
-    assert len(probe.requests) == 1
-    assert request_format_name(probe) == "repository_rules"
-    assert sum(spend.tokens for result in resolved for spend in result.spend.values()) == 19
-
-
-@pytest.mark.anyio
-async def test_repository_transport_failure_bisects_before_retrying_rules() -> None:
-    """A failed packed turn retries smaller groups through their isolated rule protocol."""
-    query = ModelQuery.classify(
-        ContextualSweep.table(Fact, "ALL-DEMO2001"),
-        category=Category,
-        instructions="Judge the retained structure.",
-    )
-    requests: list[Request] = []
-
-    def flaky_respond(request: Request) -> Response:
-        requests.append(request)
-        if len(requests) == 1:
-            raise ConnectError("refused")
-        return Response(200, json=RouterProbe.completion(payload()))
-
-    resolved = await OpenRouterBackend(
-        transport=MockTransport(flaky_respond),
-        batch_size=1,
-    ).answered_many([query, query])
-
-    assert len(resolved) == 2
-    assert len(requests) == 5
-
-
-@pytest.mark.anyio
 async def test_empty_repository_rules_never_reach_openrouter() -> None:
     """Collected rules with no candidates resolve locally before packing."""
     query = ModelQuery.classify(
@@ -212,8 +175,8 @@ async def test_empty_repository_rules_never_reach_openrouter() -> None:
 
 
 @pytest.mark.anyio
-async def test_invalid_repository_keys_bisect_and_leave_each_rule_isolated() -> None:
-    """A malformed packed envelope retries only smaller groups through existing isolation."""
+async def test_invalid_repository_keys_fail_once_without_request_fanout() -> None:
+    """A malformed packed envelope reports its contract error without repeating evidence."""
     query = ModelQuery.classify(
         ContextualSweep.table(Fact, "ALL-DEMO2001"),
         category=Category,
@@ -226,10 +189,10 @@ async def test_invalid_repository_keys_bisect_and_leave_each_rule_isolated() -> 
         RouterProbe.completion({"answers": {"unexpected": payload(evidence=(identifier,))}})
     )
 
-    resolved = await OpenRouterBackend(transport=probe.transport).answered_many([query, query])
+    with pytest.raises(ValueError, match="repository answer contract"):
+        await OpenRouterBackend(transport=probe.transport).answered_many([query, query])
 
-    assert len(resolved) == 2
-    assert len(probe.requests) == 5
+    assert len(probe.requests) == 1
 
 
 @pytest.mark.anyio
@@ -255,6 +218,55 @@ async def test_an_oversized_repository_group_bisects_to_isolated_rule_batches() 
     assert len(resolved) == 2
     assert len(probe.requests) == 2
     assert {request_format_name(probe, index) for index in range(2)} == {"classification"}
+
+
+@pytest.mark.anyio
+async def test_an_oversized_assessment_keeps_its_legacy_protocol() -> None:
+    """An irreducible assessment still returns every independent predicate."""
+    classified = ModelQuery.classify(
+        ContextualSweep.table(Fact, "ALL-DEMO2001"),
+        category=Category,
+        instructions="Judge the retained structure.",
+    )
+    probe = RouterProbe(RouterProbe.completion(assessment_payload()))
+
+    resolved = await OpenRouterBackend(
+        transport=probe.transport,
+        prompt_token_budget=1,
+    ).answered_many([assessed(classified)])
+
+    assert len(resolved) == 1
+    assert len(probe.requests) == 1
+    assert request_format_name(probe) == "assessment"
+
+
+@pytest.mark.anyio
+async def test_repository_restoration_rejects_a_lost_candidate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The final relational restoration catches any planner position defect."""
+    query = ModelQuery.classify(
+        ContextualSweep.table(Fact, "ALL-DEMO2001"),
+        category=Category,
+        instructions="Judge the retained structure.",
+    )
+
+    async def lose_candidate(backend: OpenRouterBackend, rules):
+        rule = rules[0]
+        damaged = rule.model_copy(update={"positions": [1]})
+        outcome = Classification(
+            value=Category.SUPPORTED,
+            reasoning="The retained structure supports this classification.",
+            evidence=[next(iter(rule.batch.candidates[0].retained))],
+            confidence=0.75,
+            provenance=provenance(),
+        )
+        return [openrouter.RepositoryAnswer(rule=damaged, outcomes=[outcome])]
+
+    monkeypatch.setattr(OpenRouterBackend, "_planned", lose_candidate)
+
+    with pytest.raises(ValueError, match="lost or duplicated rule candidates"):
+        await OpenRouterBackend().answered_many([query])
 
 
 @pytest.mark.anyio
@@ -300,7 +312,7 @@ async def test_one_answering_batch_keeps_a_dead_one_isolated() -> None:
         requests.append(request)
         if len(requests) == 1:
             raise ConnectError("refused")
-        return Response(200, json=RouterProbe.batched([payload()]))
+        return RouterProbe.streaming(RouterProbe.batched([payload()]))
 
     backend = OpenRouterBackend(transport=MockTransport(flaky_respond), batch_size=1)
 
@@ -347,7 +359,11 @@ async def test_an_assessment_call_where_every_batch_dies_raises_too() -> None:
     [
         (RouterProbe({"error": {"message": "no credits"}}, status_code=402), "402"),
         (RouterProbe("<html>gateway</html>", status_code=503), "gateway"),
-        (RouterProbe("not json at all"), "could not answer"),
+        (RouterProbe("not json at all"), "malformed response JSON"),
+        (
+            RouterProbe({"status": "failed", "error": {"message": "provider timeout"}}),
+            "provider timeout",
+        ),
         (RouterProbe({"output": []}), "no answer"),
         (
             RouterProbe(

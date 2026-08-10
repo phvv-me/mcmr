@@ -11,7 +11,7 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefin
 
 // The social preview image, the brand pack's own banner. `import.meta.glob` never throws on a
 // zero match, so the tag simply does not render until the file lands.
-const bannerFiles = import.meta.glob('../assets/banner.svg', {
+const bannerFiles = import.meta.glob('../assets/banner.png', {
   eager: true,
   query: '?url',
   import: 'default',

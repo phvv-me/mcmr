@@ -7,7 +7,6 @@ from pydantic import JsonValue, TypeAdapter
 
 _exchanges = TypeAdapter(list[dict[str, JsonValue]])
 
-# The one path whose body names its own operation, which every other path spells in its URL.
 _GRAPHQL = "/api/graphql"
 
 

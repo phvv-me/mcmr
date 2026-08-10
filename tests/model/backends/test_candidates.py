@@ -110,14 +110,15 @@ def test_the_output_schema_closes_every_field_and_category() -> None:
     protocol = CandidateProtocol(candidate=candidate(), instructions="Judge the facts.")
     schema = protocol.classification_schema(Category)
     properties = TypeAdapter(dict[str, JsonValue]).validate_python(schema["properties"])
-    rendered = json.dumps(schema, sort_keys=True)
+    evidence = TypeAdapter(dict[str, JsonValue]).validate_python(properties["evidence_ids"])
 
     assert schema["required"] == ["category", "reasoning", "evidence_ids", "confidence"]
     assert schema["additionalProperties"] is False
     assert set(properties) == {"category", "reasoning", "evidence_ids", "confidence"}
+    assert evidence["uniqueItems"] is True
     assert properties["category"] == {"type": "string", "enum": ["supported", "uncertain"]}
     assert all(
-        constraint in rendered
+        constraint in json.dumps(schema, sort_keys=True)
         for constraint in ['"maxLength": 500', '"maxItems": 8', '"maximum": 1.0']
     )
 

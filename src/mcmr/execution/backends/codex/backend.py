@@ -21,7 +21,6 @@ class CodexBackend(BatchedBackend):
     binary: primitives.NonEmptyStr = "codex"
     model: primitives.NonEmptyStr = "gpt-5.6-sol"
     reasoning_effort: primitives.NonEmptyStr = "low"
-    timeout_seconds: int = Field(default=180, ge=1)
     runner: InstanceOf[CommandRunner] = Field(
         default_factory=SubprocessRunner,
         exclude=True,

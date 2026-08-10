@@ -10,6 +10,7 @@
 
 # docs
 /site/
+/docs/src/content/docs/docs/rules/
 
 # generated
 /dist/

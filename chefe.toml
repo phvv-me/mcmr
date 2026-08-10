@@ -17,6 +17,7 @@ annotated-types = ">=0.8,<1"
 anyio = ">=4.14,<5"
 cyclopts = ">=4.21,<5"
 httpx = ">=0.28,<1"
+huggingface-hub = ">=0.34,<1"
 mcmr = { path = ".", editable = true }
 packaging = ">=26,<27"
 patos = ">=0.0.10,<0.1"
@@ -24,6 +25,9 @@ pathspec = ">=1.1,<2"
 pydantic = ">=2.13,<3"
 rich = ">=14,<16"
 sqlglot = ">=27,<28"
+tokenizers = ">=0.22,<0.23"
+tron-python = ">=0.1, <0.2"
+openai = ">=2.53, <3"
 
 [dev.python.deps]
 acryl-datahub = ">=1.6,<1.7"
@@ -89,5 +93,6 @@ test = { run = "python -m pytest", env = { MCMR_F401_CORPUS = "../chefe:../mainb
 floor = "python -m mcmr.commands.cli floor --samples 9 --output .benchmarks/mock-floor.json"
 build = "python -m build --outdir .dist"
 architecture = "python -m mcmr.commands.cli diagram . --kind package --format d2"
+docs-build = "pnpm --dir docs build"
 debug = "python -X dev -m mcmr.commands.cli check . --format full --limit 100 --report-only"
 contribute = { depends = ["lint", "typecheck", "test", "core-lint", "core-test"] }

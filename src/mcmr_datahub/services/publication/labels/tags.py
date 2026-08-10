@@ -16,11 +16,8 @@ _LANES = {
     "external": "Reads current evidence from a system outside the repository.",
 }
 
-# What each lane looks like in a list, so a scan separates them without reading.
 _LANE_COLOURS = {"deterministic": "#38BDF8", "contextual": "#A78BFA", "external": "#FBBF24"}
 
-# What each group of fact tables holds, taken from the directory the fact models already live in
-# so the taxonomy on screen is the taxonomy in the source rather than a second one to maintain.
 _CATEGORIES = {
     "structure": "How a repository is arranged, from directories and classes to calls and CI.",
     "program": "What the program does, from modules and functions to exceptions and lineage.",
@@ -31,7 +28,6 @@ _CATEGORIES = {
     "foundation": "What every other family is built out of, such as spans, evidence, and graphs.",
 }
 
-# What each group of fact tables looks like in a list.
 _CATEGORY_COLOURS = {
     "structure": "#34D399",
     "program": "#60A5FA",
@@ -42,7 +38,6 @@ _CATEGORY_COLOURS = {
     "foundation": "#94A3B8",
 }
 
-# What each rule identifier prefix answers for, which is the one thing a scope tag states.
 _SCOPES = {
     "all": "Answers for every language a repository is written in.",
     "py": "Answers only for Python source.",

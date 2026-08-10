@@ -13,13 +13,10 @@ if TYPE_CHECKING:
     from ..configuration import DataHubPerson
 
 
-# What DataHub calls whoever answers for a thing, beside whoever operates it and whoever curates
-# the judgment behind it, which are three different people even when one of them is a model.
 _BUSINESS = "BUSINESS_OWNER"
 _TECHNICAL = "TECHNICAL_OWNER"
 _STEWARD = "DATA_STEWARD"
 
-# The lane whose answers a model reached, which is the one lane that has a judge to credit.
 _JUDGED = "contextual"
 
 

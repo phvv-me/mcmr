@@ -17,15 +17,11 @@ _SUBTYPES = {
     "rule": "Rule",
     "run": "Policy run",
 }
-# What the UI calls a rule that leads with one known lane, since the lane is the first thing a
-# reader has to know about it. A lane this vocabulary never heard of leaves the plain label.
 _RULE_TYPES = {
     "deterministic": "Deterministic rule",
     "contextual": "Contextual rule",
     "external": "External rule",
 }
-# DataHub's web UI does not consistently render data URI logos. The repository asset is public,
-# stable across documentation hosts, and can be cached like other platform marks.
 _PLATFORM_LOGO = "https://raw.githubusercontent.com/phvv-me/mcmr/main/docs/assets/icon.png"
 
 # The DataHub schema field types each published column domain is stated as.

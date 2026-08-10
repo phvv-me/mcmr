@@ -21,8 +21,6 @@ if TYPE_CHECKING:
 
 _REFERENCE = "python"
 
-# General rules missing from another language are recorded with their reason.
-
 # Family coverage cannot catch a frontend that fills `FunctionFact` but leaves
 # `control_increments` empty. That once scored the same program as 16 in Python and 0 elsewhere.
 

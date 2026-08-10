@@ -4,7 +4,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, cast
 
 from patos import Component
-from pydantic import JsonValue, PositiveInt, TypeAdapter
+from pydantic import Field, JsonValue, PositiveInt, TypeAdapter
 
 from ....domain.contracts import Criterion, ModelProvenance, ModelSpend
 from ....domain.primitives import NonEmptyStr
@@ -35,6 +35,7 @@ class ClassificationBackend(Component, ABC):
     workers: PositiveInt = 8
     model: NonEmptyStr = "unknown"
     reasoning_effort: NonEmptyStr = "none"
+    minimum_confidence: float = Field(default=0.6, ge=0.0, le=1.0)
 
     async def answered[Category: StrEnum](self, query: ModelQuery[Category]) -> ResolvedQuery:
         """Execute one batched backend request and retain its answers beside what they cost."""
@@ -50,10 +51,11 @@ class ClassificationBackend(Component, ABC):
             outcomes = await self.assess_many(
                 candidates, criteria=query.criteria, instructions=query.instructions
             )
-        answers = answer_frame(query, rows=rows, outcomes=outcomes)
+        trusted = [self._trusted(query, outcome) for outcome in outcomes]
+        answers = answer_frame(query, rows=rows, outcomes=trusted)
         return ResolvedQuery(
             query=query.resolved(candidate_frame, answers=answers),
-            spend=self.spend(rows, outcomes),
+            spend=self.spend(rows, trusted),
         )
 
     async def assess_candidate(
@@ -248,3 +250,23 @@ class ClassificationBackend(Component, ABC):
             confidence=0.0,
             provenance=self.unreported_provenance(),
         )
+
+    def _trusted[Category: StrEnum](
+        self,
+        query: ModelQuery[Category],
+        outcome: Classification[StrEnum] | Assessment,
+    ) -> Classification[StrEnum] | Assessment:
+        """Turn answers below the configured confidence floor into uncertainty."""
+        if isinstance(outcome, Assessment):
+            return Assessment(
+                answers=[
+                    answer
+                    if answer.confidence >= self.minimum_confidence
+                    else answer.model_copy(update={"value": CriterionValue.UNKNOWN})
+                    for answer in outcome.answers
+                ]
+            )
+        uncertain = next((value for value in query.category if str(value) == "uncertain"), None)
+        if outcome.confidence >= self.minimum_confidence or uncertain is None:
+            return outcome
+        return outcome.model_copy(update={"value": uncertain})

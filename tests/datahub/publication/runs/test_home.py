@@ -76,6 +76,7 @@ def test_a_project_states_its_writeback_options_flat_and_reads_them_grouped() ->
 
     assert settings.writeback.owner == "pedro"
     assert settings.writeback.publish_runs is True
+    assert settings.timeout_seconds == 120
     assert domain_urn(settings.writeback.domain) == "urn:li:domain:mcmr-repositories"
 
 

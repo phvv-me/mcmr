@@ -4,7 +4,7 @@ from enum import StrEnum
 from functools import cached_property
 from typing import TYPE_CHECKING
 
-from pydantic import JsonValue, PositiveInt
+from pydantic import Field, JsonValue, PositiveInt
 
 from ..queries.runtime import ClassificationBackend
 from .batch import BatchProtocol
@@ -21,6 +21,8 @@ class BatchedBackend(ClassificationBackend, ABC):
     """Answer bounded candidate batches through one schema-constrained model turn each."""
 
     batch_size: PositiveInt = 32
+    workers: PositiveInt = 4
+    timeout_seconds: int = Field(default=180, ge=1)
 
     @cached_property
     def limiter(self) -> asyncio.Semaphore:

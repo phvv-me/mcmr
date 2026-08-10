@@ -1,77 +1,27 @@
----
-const stages = [
-  ['baseline', 'the code as shipped', '3', '188', '50', '81'],
-  ['0001', 'duplication and constants', '3', '190', '40', '60'],
-  ['0002', 'function shapes', '3', '210', '20', '37'],
-  ['0003', 'structure', '13', '449', '4', '4'],
-];
----
-
 <section id="demo" class="border-b-2 border-base-300">
-  <div class="mx-auto max-w-6xl px-4 py-16 lg:py-20">
+  <div class="mx-auto grid max-w-6xl gap-8 px-4 py-16 lg:grid-cols-2 lg:items-center lg:py-20">
     <div class="max-w-2xl space-y-3">
-      <p class="font-mono text-xs tracking-[0.2em] text-primary uppercase">One command</p>
-      <h2 class="font-display text-4xl sm:text-5xl">Point it at code and watch it work</h2>
+      <p class="font-mono text-xs tracking-[0.2em] text-primary uppercase">Run the demo</p>
+      <h2 class="font-display text-4xl sm:text-5xl">Point it at code</h2>
       <p class="text-base-content/70">
-        <code class="font-mono text-sm">demo/</code> is a small Model Context Protocol server, written
-        badly on purpose, that ships in the repository so a fresh checkout has something real to
-        check. <code class="font-mono text-sm">demo/stages/</code> holds the three patches that take
-        it from fifty failures to four.
+        The repository includes a deliberately messy MCP server. A deterministic run is fast,
+        local, and repeatable. It reports findings without changing the demo.
       </p>
+      <div class="flex flex-wrap gap-3 pt-3">
+        <a href="/mcmr/docs/start/demo-walkthrough/" class="btn btn-primary btn-sm">Demo setup</a>
+        <a href="/mcmr/docs/datahub/why-metadata/" class="btn btn-outline btn-sm">Add DataHub</a>
+      </div>
     </div>
 
-    <div class="mt-10 grid gap-8 lg:grid-cols-2 lg:items-start">
-      <div class="border-2 border-base-content bg-neutral text-neutral-content overflow-x-auto">
-        <div class="border-base-300/30 flex items-center gap-2 border-b-2 px-4 py-2">
-          <span class="bg-primary size-2.5 rounded-full"></span>
-          <span class="bg-secondary size-2.5 rounded-full"></span>
-          <span class="size-2.5 rounded-full bg-neutral-content/40"></span>
-          <span class="text-neutral-content/50 ml-2 font-mono text-xs">demo/ · terminal</span>
-        </div>
-        <pre class="p-5 font-mono text-xs leading-relaxed sm:text-sm"><code>{`$ mcmr check demo/ --no-contextual
-
-3 files, 188 facts, 194/211 rules, 17 skipped,
-194 table queries, 2313 observations,
-50 failures, 81 findings, 0 unassessed,
-kernel 140 ms, rules 525 ms`}</code></pre>
+    <div class="border-2 border-base-content bg-neutral text-neutral-content overflow-x-auto">
+      <div class="border-base-300/30 flex items-center gap-2 border-b-2 px-4 py-2">
+        <span class="bg-primary size-2.5 rounded-full"></span>
+        <span class="bg-secondary size-2.5 rounded-full"></span>
+        <span class="size-2.5 rounded-full bg-neutral-content/40"></span>
+        <span class="text-neutral-content/50 ml-2 font-mono text-xs">demo · terminal</span>
       </div>
-
-      <div class="overflow-x-auto">
-        <table class="table-zebra table border-2 border-base-content text-sm">
-          <thead>
-            <tr>
-              <th class="font-mono text-xs font-normal opacity-60">stage</th>
-              <th class="font-mono text-xs font-normal opacity-60">theme</th>
-              <th class="font-mono text-xs font-normal opacity-60">files</th>
-              <th class="font-mono text-xs font-normal opacity-60">facts</th>
-              <th class="font-mono text-xs font-normal opacity-60">failures</th>
-              <th class="font-mono text-xs font-normal opacity-60">findings</th>
-            </tr>
-          </thead>
-          <tbody>
-            {
-              stages.map(([stage, theme, files, facts, failures, findings]) => (
-                <tr>
-                  <th class="font-mono text-xs font-semibold">{stage}</th>
-                  <td class="opacity-80">{theme}</td>
-                  <td class="opacity-70">{files}</td>
-                  <td class="opacity-70">{facts}</td>
-                  <td class="text-primary font-bold">{failures}</td>
-                  <td class="opacity-70">{findings}</td>
-                </tr>
-              ))
-            }
-          </tbody>
-        </table>
-        <p class="text-base-content/60 mt-4 text-sm">
-          Every stage keeps <code class="font-mono text-xs">python demo/smoke.py</code> passing. Four
-          findings survive on purpose, an unbuilt protocol surface, a deliberate dependency trade,
-          and two settings for a test suite this directory does not have yet.
-        </p>
-        <a href="/mcmr/docs/start/demo-walkthrough/" class="btn btn-primary btn-sm mt-4">
-          Walk through all three stages
-        </a>
-      </div>
+      <pre class="p-5 font-mono text-xs leading-relaxed sm:text-sm"><code>{`pip install mcmr
+mcmr check demo/ --no-contextual --format concise --report-only`}</code></pre>
     </div>
   </div>
 </section>

@@ -1,6 +1,5 @@
 from patos import FrozenModel
 
-# What a person a project never named is called, which is nobody rather than a placeholder.
 _ANONYMOUS = ""
 
 

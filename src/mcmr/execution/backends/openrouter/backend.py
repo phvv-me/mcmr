@@ -1,5 +1,4 @@
 import asyncio
-import json
 from functools import cached_property
 from typing import TYPE_CHECKING, ClassVar, cast
 
@@ -7,28 +6,33 @@ from httpx import AsyncBaseTransport
 from pydantic import Field, InstanceOf, JsonValue, PositiveInt
 
 from ....domain import primitives
+from ....domain.contracts import ModelSpend
 from ...queries import ModelQuery, answer_frame
-from ...queries.contracts import ModelCandidate
+from ...queries.contracts import Assessment, Classification, ModelCandidate, ModelMode
 from ...queries.runtime import ResolvedQuery
 from ..batch import BatchProtocol
 from ..batched import BatchedBackend
-from ..repository import RepositoryProtocol
+from .accounting import RequestTokens
+from .answer import RepositoryAnswer
 from .client import OpenRouterClient
+from .planning import RepositoryPack, RepositoryPlanner, RepositoryRule
+from .transport import RepositoryProgress
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
     from enum import StrEnum
 
     from ....domain.contracts import ModelProvenance
+    from .transport import StreamObserver
 
 
 class OpenRouterBackend(BatchedBackend):
-    """Run each contextual rule through one schema-constrained OpenRouter completion."""
+    """Run contextual evidence packs through schema-constrained OpenRouter responses."""
 
     name: ClassVar[str] = "openrouter"
     model: primitives.NonEmptyStr = "anthropic/claude-sonnet-5"
     reasoning_effort: primitives.NonEmptyStr = "none"
-    timeout_seconds: int = Field(default=180, ge=1)
+    candidate_budget: PositiveInt = 512
     prompt_token_budget: PositiveInt = 128_000
     max_output_tokens: PositiveInt | None = None
     transport: InstanceOf[AsyncBaseTransport] | None = Field(
@@ -42,12 +46,137 @@ class OpenRouterBackend(BatchedBackend):
         """Build the configured request client once."""
         return OpenRouterClient.model_validate(self, from_attributes=True)
 
+    @cached_property
+    def planner(self) -> RepositoryPlanner:
+        """Build the dependency-aware evidence pack planner once."""
+        return RepositoryPlanner(
+            client=self.client,
+            counter=self.request_tokens,
+            candidate_budget=self.candidate_budget,
+            prompt_token_budget=self.prompt_token_budget,
+            output_token_budget=self.max_output_tokens,
+        )
+
+    @cached_property
+    def request_tokens(self) -> RequestTokens:
+        """Build the model-aware request counter once."""
+        return RequestTokens(model=self.model)
+
     async def answered_many(
         self,
         queries: Sequence[ModelQuery[StrEnum]],
     ) -> Sequence[ResolvedQuery]:
-        """Pack independent contextual rules, splitting only unsafe or unusable groups."""
-        prepared: list[tuple[ModelQuery[StrEnum], list[dict[str, JsonValue]], BatchProtocol]] = []
+        """Answer normalized packs and restore every query's original candidate order."""
+        prepared, resolved = self._prepared(queries)
+        answered = await self._planned(prepared)
+        by_rule: dict[int, list[tuple[int, Classification[StrEnum] | Assessment]]] = {}
+        paid: dict[int, dict[str, list[ModelSpend]]] = {}
+        for answer in answered:
+            by_rule.setdefault(answer.rule.index, []).extend(
+                zip(answer.rule.positions, answer.outcomes, strict=True)
+            )
+            for path, spend in self.spend(answer.rule.rows, answer.outcomes).items():
+                paid.setdefault(answer.rule.index, {}).setdefault(path, []).append(spend)
+        for rule in prepared:
+            ordered = sorted(by_rule[rule.index], key=lambda item: item[0])
+            if [position for position, _ in ordered] != list(range(len(rule.rows))):
+                raise ValueError("Repository planning lost or duplicated rule candidates")
+            outcomes = [self._trusted(rule.query, outcome) for _, outcome in ordered]
+            resolved[rule.index] = ResolvedQuery(
+                query=rule.query.resolved(
+                    rule.query.candidates.collect(),
+                    answers=answer_frame(rule.query, rows=rule.rows, outcomes=outcomes),
+                ),
+                spend={
+                    path: ModelSpend.of(parts) for path, parts in paid.get(rule.index, {}).items()
+                },
+            )
+        return [resolved[index] for index in range(len(queries))]
+
+    async def turn(
+        self,
+        schema: Mapping[str, JsonValue],
+        *,
+        prompt: str,
+        name: str,
+    ) -> tuple[str, ModelProvenance]:
+        """Run one bounded HTTP completion for an isolated legacy protocol."""
+        return await self.client.invoke(schema, prompt=prompt, name=name)
+
+    async def _answer_pack(
+        self,
+        pack: RepositoryPack,
+        observer: StreamObserver | None = None,
+    ) -> list[RepositoryAnswer]:
+        """Answer one planned pack and fail once on malformed structured content."""
+        protocol = pack.protocol
+        async with self.limiter:
+            source, provenance = await self.client.invoke(
+                protocol.output_schema(pack.queries),
+                cache_key=protocol.cache_key(pack.queries),
+                max_output_tokens=self.planner.output_tokens(pack),
+                prompt=protocol.prompt(pack.queries),
+                name="repository_rules",
+                observer=observer,
+            )
+        try:
+            outcomes = protocol.outcomes(source, pack.queries, provenance)
+        except ValueError as error:
+            raise self._contract_error(source, error) from error
+        return [
+            RepositoryAnswer(rule=rule, outcomes=list(answers))
+            for rule, answers in zip(pack.rules, outcomes, strict=True)
+        ]
+
+    def _contract_error(self, source: str, error: ValueError) -> ValueError:
+        """Describe one malformed grouped answer without repeating its full content."""
+        preview = source.strip().replace("\n", " ")[:300]
+        return ValueError(
+            f"OpenRouter violated the repository answer contract. {error}. "
+            f"Response began with {preview!r} from {type(self).__name__}"
+        )
+
+    async def _legacy(self, rule: RepositoryRule) -> RepositoryAnswer:
+        """Use established bounded candidate batches for one irreducible rule slice."""
+        outcomes: Sequence[Classification[StrEnum] | Assessment]
+        if rule.query.mode is ModelMode.CLASSIFY:
+            outcomes = await self.classify_many(
+                rule.batch.candidates,
+                category=rule.query.category,
+                instructions=rule.query.stated_instructions,
+            )
+        else:
+            outcomes = await self.assess_many(
+                rule.batch.candidates,
+                criteria=rule.query.criteria,
+                instructions=rule.query.stated_instructions,
+            )
+        return RepositoryAnswer(rule=rule, outcomes=list(outcomes))
+
+    async def _planned(self, rules: Sequence[RepositoryRule]) -> list[RepositoryAnswer]:
+        """Plan every nonempty rule or retain legacy batches for an irreducible candidate."""
+        if not rules:
+            return []
+        packs = self.planner.safely_plan(rules)
+        if packs is None:
+            return list(await asyncio.gather(*(self._legacy(rule) for rule in rules)))
+        first, *remaining = packs
+        with RepositoryProgress(len(packs)) as progress:
+            answered = await self._answer_pack(first, progress.observer(0))
+            grouped = await asyncio.gather(
+                *(
+                    self._answer_pack(pack, progress.observer(index))
+                    for index, pack in enumerate(remaining, start=1)
+                )
+            )
+        return [*answered, *(answer for group in grouped for answer in group)]
+
+    def _prepared(
+        self,
+        queries: Sequence[ModelQuery[StrEnum]],
+    ) -> tuple[list[RepositoryRule], dict[int, ResolvedQuery]]:
+        """Collect candidates once and resolve empty relations locally."""
+        prepared: list[RepositoryRule] = []
         resolved: dict[int, ResolvedQuery] = {}
         for index, query in enumerate(queries):
             candidate_frame = query.candidates.collect()
@@ -60,89 +189,19 @@ class OpenRouterBackend(BatchedBackend):
                     )
                 )
                 continue
-            candidates = [ModelCandidate.from_row(row) for row in rows]
             prepared.append(
-                (
-                    query,
-                    rows,
-                    BatchProtocol(candidates=candidates, instructions=query.stated_instructions),
+                RepositoryRule(
+                    index=index,
+                    query=query,
+                    rows=rows,
+                    positions=list(range(len(rows))),
+                    batch=BatchProtocol(
+                        candidates=[ModelCandidate.from_row(row) for row in rows],
+                        instructions=query.stated_instructions,
+                    ),
                 )
             )
-        packed = await self._packed(prepared)
-        resolved.update(
-            dict(
-                zip(
-                    [index for index in range(len(queries)) if index not in resolved],
-                    packed,
-                    strict=True,
-                )
-            )
-        )
-        return [resolved[index] for index in range(len(queries))]
-
-    async def turn(
-        self,
-        schema: Mapping[str, JsonValue],
-        *,
-        prompt: str,
-        name: str,
-    ) -> tuple[str, ModelProvenance]:
-        """Run one bounded HTTP completion for this schema-constrained prompt."""
-        return await self.client.invoke(schema, prompt=prompt, name=name)
-
-    async def _packed(
-        self,
-        prepared: Sequence[tuple[ModelQuery[StrEnum], list[dict[str, JsonValue]], BatchProtocol]],
-    ) -> list[ResolvedQuery]:
-        """Answer one safe packed group or bisect it around transport and validation failures."""
-        if not prepared:
-            return []
-        queries = [item[0] for item in prepared]
-        protocol = RepositoryProtocol(batches=[item[2] for item in prepared])
-        prompt = protocol.prompt(queries)
-        schema = protocol.output_schema(queries)
-        if not self._within_budget(schema, prompt):
-            return await self._split(prepared)
-        try:
-            source, provenance = await self.turn(schema, prompt=prompt, name="repository_rules")
-        except OSError, RuntimeError, ValueError:
-            return await self._split(prepared)
-        try:
-            outcomes = protocol.outcomes(source, queries, provenance)
-        except ValueError:
-            return await self._split(prepared)
-        return [
-            ResolvedQuery(
-                query=query.resolved(
-                    query.candidates.collect(),
-                    answers=answer_frame(query, rows=rows, outcomes=answers),
-                ),
-                spend=self.spend(rows, answers),
-            )
-            for (query, rows, _), answers in zip(prepared, outcomes, strict=True)
-        ]
-
-    async def _split(
-        self,
-        prepared: Sequence[tuple[ModelQuery[StrEnum], list[dict[str, JsonValue]], BatchProtocol]],
-    ) -> list[ResolvedQuery]:
-        """Bisect a packed group and retain the legacy isolated backend as the final fallback."""
-        if len(prepared) == 1:
-            return [await self.answered(prepared[0][0])]
-        middle = len(prepared) // 2
-        left, right = await asyncio.gather(
-            self._packed(prepared[:middle]),
-            self._packed(prepared[middle:]),
-        )
-        return [*left, *right]
-
-    def _within_budget(self, schema: Mapping[str, JsonValue], prompt: str) -> bool:
-        """Bound a packed request conservatively without requiring a model tokenizer."""
-        request = self.client.body(schema, prompt=prompt, name="repository_rules")
-        serialized = json.dumps(request, sort_keys=True, separators=(",", ":"))
-        # JSON escaping makes this ASCII. Its byte length is therefore a strict token-count upper
-        # bound, including the schema and request wrappers, even without a model tokenizer.
-        return len(serialized.encode()) <= self.prompt_token_budget
+        return prepared, resolved
 
 
 OpenRouterBackend.model_rebuild(_types_namespace={"primitives": primitives})

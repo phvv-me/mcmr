@@ -1,72 +1,44 @@
 ---
 title: "Documentation"
-description: "MCMR reads a repository once and reports precise, cited findings. Start here, then go as deep as you need."
+description: "Learn how My Code, My Rules checks repositories, verifies repairs, and records history."
 ---
 
 import { CardGrid, LinkCard } from '@astrojs/starlight/components';
-import Diagram from '../../../components/Diagram.astro';
 
-MCMR is a policy engine for whole repositories. A Rust kernel reads your source tree once into
-typed tables, Python rules query those shared tables, and a rule that can offer a fix only keeps
-it after MCMR proves the fix actually worked. These docs explain the pieces in the order you would
-actually meet them, from a first `mcmr check .` to the DataHub metadata a scheduled run leaves
-behind.
+MCMR reads a repository once, lets typed rules query shared evidence, and keeps a repair only after
+it proves the change worked. Start with the first run, then open the part you need.
 
-Read any page in a few minutes. When a page needs an idea it does not own, it links the page that
-does instead of explaining it twice.
-
-<Diagram
-  title="Configuration and a repository walk become typed tables, one query per rule, a verdict, and an optional repair"
-  nodes={[
-    { id: 'config', label: 'pyproject.toml', col: 0, row: 0 },
-    { id: 'kernel', label: 'Rust kernel', col: 1, row: 0, href: '/mcmr/docs/concepts/fact-tables/' },
-    { id: 'tables', label: 'typed fact tables', col: 2, row: 0, emphasis: true, href: '/mcmr/docs/concepts/fact-tables/' },
-    { id: 'rules', label: 'rules, 3 lanes', col: 3, row: 0, href: '/mcmr/docs/concepts/rules-and-lanes/' },
-    { id: 'report', label: 'report', col: 4, row: -0.6 },
-    { id: 'repair', label: 'verified repair', col: 4, row: 0.6, href: '/mcmr/docs/concepts/verified-repairs/' },
-    { id: 'datahub', label: 'DataHub writeback', col: 3, row: 1.4, href: '/mcmr/docs/datahub/why-metadata/' },
-  ]}
-  edges={[
-    { from: 'config', to: 'kernel' },
-    { from: 'kernel', to: 'tables' },
-    { from: 'tables', to: 'rules' },
-    { from: 'rules', to: 'report' },
-    { from: 'rules', to: 'repair' },
-    { from: 'rules', to: 'datahub', label: 'optional', dashed: true },
-  ]}
-/>
-
-## Start here
+## Start
 
 <CardGrid>
-  <LinkCard title="What MCMR is" href="/mcmr/docs/start/what-is-mcmr/" description="The shortest complete explanation, in plain language." />
-  <LinkCard title="Install" href="/mcmr/docs/start/install/" description="Get the CLI running against your own repository." />
-  <LinkCard title="The demo walkthrough" href="/mcmr/docs/start/demo-walkthrough/" description="Fifty failures to four, in three thematic patches." />
+  <LinkCard title="What MCMR is" href="/mcmr/docs/start/what-is-mcmr/" description="The short product model." />
+  <LinkCard title="Install" href="/mcmr/docs/start/install/" description="Run the CLI on Python 3.14t or newer." />
+  <LinkCard title="Contextual rules" href="/mcmr/docs/start/contextual-rules/" description="Configure OpenRouter, Codex, Claude, or GLiNER2." />
+  <LinkCard title="Run the demo" href="/mcmr/docs/start/demo-walkthrough/" description="Check the bundled MCP server and write history." />
 </CardGrid>
 
-## Concepts
+## Understand the engine
 
 <CardGrid>
-  <LinkCard title="Fact tables" href="/mcmr/docs/concepts/fact-tables/" description="What the Rust kernel extracts, and why rules never loop over objects." />
-  <LinkCard title="Rules and lanes" href="/mcmr/docs/concepts/rules-and-lanes/" description="Deterministic, contextual, and external, and what each one is allowed to cost." />
-  <LinkCard title="Verified repairs" href="/mcmr/docs/concepts/verified-repairs/" description="Why a fix only ships after MCMR proves it worked." />
-  <LinkCard title="The rulebook" href="/mcmr/docs/concepts/rulebook/" description="How 285 rules stay numbered, documented, and searchable." />
-  <LinkCard title="Institutional memory" href="/mcmr/docs/concepts/institutional-memory/" description="What the next agent reads before it changes your code." />
+  <LinkCard title="Fact tables" href="/mcmr/docs/concepts/fact-tables/" description="Shared typed evidence from one repository walk." />
+  <LinkCard title="Rules and lanes" href="/mcmr/docs/concepts/rules-and-lanes/" description="Local checks, model judgment, and external evidence." />
+  <LinkCard title="Verified repairs" href="/mcmr/docs/concepts/verified-repairs/" description="The proof required before an edit stays." />
+  <LinkCard title="Rule reference" href="/mcmr/docs/rules/" description="Every rule generated from its source docstring." />
 </CardGrid>
 
-## DataHub
+## Use DataHub
 
 <CardGrid>
-  <LinkCard title="Why metadata" href="/mcmr/docs/datahub/why-metadata/" description="Why a check writes to a catalog instead of keeping its own cache." />
-  <LinkCard title="What gets published" href="/mcmr/docs/datahub/what-gets-published/" description="Fact datasets, the rulebook flow, assertions, and run instances." />
-  <LinkCard title="Reading history back" href="/mcmr/docs/datahub/reading-history/" description="What `mcmr history` answers before an agent touches a file." />
-  <LinkCard title="Cost provenance" href="/mcmr/docs/datahub/cost-provenance/" description="What a contextual rule cost, kept per verdict rather than averaged away." />
-  <LinkCard title="Incidents and contracts" href="/mcmr/docs/datahub/incidents-and-contracts/" description="What happens when a subject will not stay fixed, and what a table promises." />
+  <LinkCard title="Why DataHub" href="/mcmr/docs/datahub/why-metadata/" description="Keep policy outcomes beside governed assets." />
+  <LinkCard title="Published entities" href="/mcmr/docs/datahub/what-gets-published/" description="Datasets, lineage, rules, assertions, and runs." />
+  <LinkCard title="Read history" href="/mcmr/docs/datahub/reading-history/" description="Reuse what earlier checks already learned." />
 </CardGrid>
 
 ## Reference
 
 <CardGrid>
-  <LinkCard title="CLI commands" href="/mcmr/docs/reference/cli/" description="Every command `mcmr --help` lists, grouped by what it is for." />
-  <LinkCard title="Configuration keys" href="/mcmr/docs/reference/configuration/" description="Every key under `[tool.mcmr]`, read straight from the schema." />
+  <LinkCard title="CLI commands" href="/mcmr/docs/reference/cli/" description="A map of the command line." />
+  <LinkCard title="Configuration" href="/mcmr/docs/reference/configuration/" description="Validated project settings." />
+  <LinkCard title="Control rules" href="/mcmr/docs/reference/rule-control/" description="Select lanes and tune individual rules." />
+  <LinkCard title="Contextual tuning" href="/mcmr/docs/reference/contextual-tuning/" description="Bound model requests, confidence, and tokens." />
 </CardGrid>

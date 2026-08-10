@@ -28,9 +28,6 @@ def query_count[Family: Fact](rule: RuleContract, subject: Table[Family]) -> int
 # One fixture per language states the same program. A family answering for only one is then a
 # frontend gap rather than a fixture difference.
 
-# Each fixture holds comments, prose, a type and method, a branch, a call, and a short local name.
-# It also derives from a base declaring the same method.
-
 # Calls are reached through receivers. Without that shape, `OverrideFact` escaped comparison and
 # a dropped receiver could turn builtin matching into false positives.
 _FIXTURES: dict[str, tuple[str, str]] = {
@@ -196,8 +193,6 @@ __global__ void scale(float* data) { data[0] = data[0] * 2.0f; }
     ),
 }
 
-# Each fixture's member call keeps its language-specific receiver spelling.
-
 # Returning bare `size` for `name.size()` would make builtin rules match unrelated methods. The
 # complete name proves that the receiver survived.
 _RECEIVER_CALLS: dict[str, str] = {
@@ -239,8 +234,6 @@ _REPOSITORY_WIDE = {
     "RepositoryHistoryFact",
     "RouteFact",
 }
-
-# This ledger records every general-rule family missing from another language and why.
 
 # An empty frontend looks exactly like a clean repository, which is worse than no rule. Every gap
 # must therefore be explicit or the coverage test fails.
@@ -308,9 +301,6 @@ _GAPS: dict[str, dict[str, str]] = {
         "cuda": "the same",
     },
 }
-
-# These contracted families still lack repository providers. Each entry states the minimum
-# evidence needed before their rules can run.
 
 # A nearby fact must satisfy the whole contract. This prevents proxy or empty facts from turning
 # unavailable evidence into clean answers.

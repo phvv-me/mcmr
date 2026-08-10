@@ -21,7 +21,6 @@ if TYPE_CHECKING:
 # How many incidents one fact table is read for, which bounds the idempotency check.
 _WINDOW = 50
 
-# What MCMR calls this kind of incident, which is the label an incident list is scanned by.
 _CUSTOM = "Intermittent finding"
 
 # How loudly an on and off subject asks for attention, which is beneath a table that is simply

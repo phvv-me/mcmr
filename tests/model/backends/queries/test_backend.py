@@ -359,3 +359,16 @@ def test_the_controlled_backend_cites_at_most_the_schema_limit() -> None:
         provenance=provenance(),
     )
     assert answer.evidence == [f"claim-{index}" for index in range(8)]
+
+
+def test_an_audited_result_can_retain_every_deterministic_citation() -> None:
+    """Internal evidence is complete even when it exceeds the model selection limit."""
+    answer = Classification(
+        value=Category.SUPPORTED,
+        reasoning="All supplied claims are attached by construction.",
+        evidence=[f"claim-{index}" for index in range(12)],
+        confidence=1.0,
+        provenance=provenance(),
+    )
+
+    assert len(answer.evidence) == 12

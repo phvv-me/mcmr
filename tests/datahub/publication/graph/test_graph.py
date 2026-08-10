@@ -4,6 +4,7 @@ from urllib.parse import quote
 
 import anyio
 import httpx
+import pytest
 from pydantic import JsonValue, TypeAdapter
 
 from mcmr.plugins import (
@@ -12,7 +13,7 @@ from mcmr.plugins import (
     RuleTimeline,
     RunRecord,
 )
-from mcmr_datahub import DataHubOpenAPI, DataHubProvider, DataHubSettings
+from mcmr_datahub import DataHubOpenAPI, DataHubProvider, DataHubRequestError, DataHubSettings
 from mcmr_datahub.services.publication import (
     codebase_urn,
     dataset_urn,
@@ -189,8 +190,9 @@ def test_a_large_repository_is_ingested_in_bounded_requests() -> None:
     sizes: list[int] = []
 
     async def respond(request: httpx.Request) -> httpx.Response:
+        assert request.url.params["async"] == "true"
         sizes.append(len(_ENTITIES.validate_python(json.loads(request.content))))
-        return httpx.Response(200, json=[])
+        return httpx.Response(202, json=[])
 
     async def ingest() -> tuple[int, int]:
         stated = DataHubSettings(server="https://catalog.example")
@@ -200,7 +202,42 @@ def test_a_large_repository_is_ingested_in_bounded_requests() -> None:
             return nothing, await openapi.ingest("datajob", many)
 
     assert anyio.run(ingest) == (0, 120)
-    assert sizes == [50, 50, 20]
+    assert sizes == [20, 20, 20, 20, 20, 20]
+
+
+def test_a_timed_out_idempotent_ingestion_batch_retries_once() -> None:
+    """A slow synchronous upsert gets one safe retry without multiplying later batches."""
+    requests = 0
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        if requests == 1:
+            raise httpx.ReadTimeout("slow ingestion", request=request)
+        return httpx.Response(200, json=[])
+
+    async def ingest() -> int:
+        stated = DataHubSettings(server="https://catalog.example")
+        async with DataHubOpenAPI(stated, httpx.MockTransport(respond)) as openapi:
+            return await openapi.ingest("dataset", [{"urn": "one"}])
+
+    assert anyio.run(ingest) == 1
+    assert requests == 2
+
+
+def test_a_rejected_ingestion_reports_the_server_diagnostic() -> None:
+    """A failed OpenAPI upsert keeps the entity type and server explanation."""
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500, text="invalid dataset aspect")
+
+    async def ingest() -> int:
+        stated = DataHubSettings(server="https://catalog.example")
+        async with DataHubOpenAPI(stated, httpx.MockTransport(respond)) as openapi:
+            return await openapi.ingest("dataset", [{"urn": "one"}])
+
+    with pytest.raises(DataHubRequestError, match="dataset.*invalid dataset aspect"):
+        anyio.run(ingest)
 
 
 def test_a_run_that_consumed_no_table_publishes_no_graph(tmp_path: Path) -> None:

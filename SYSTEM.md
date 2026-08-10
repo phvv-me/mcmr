@@ -43,6 +43,11 @@ The planner groups rules whose table dependencies connect. Each group receives s
 releases them after its queries finish. Polars collects summaries first. Detailed findings and
 repair rows are collected only for retained failures.
 
+The OpenRouter planner also groups contextual rules that read the same retained evidence. It
+normalizes each claim once, packs dependency components under candidate, input, and output limits,
+then restores every answer to its original rule and candidate position. Passing answers carry no
+extra prose. Failed and unresolved answers retain concise reasons and their exact citations.
+
 ## Source layout
 
 One distribution named `mcmr` ships everything, and `src` holds the three trees it is built from.

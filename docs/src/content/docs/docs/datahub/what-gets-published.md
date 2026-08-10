@@ -1,75 +1,42 @@
 ---
 title: "What gets published"
-description: "Fact datasets, the shared rulebook flow, assertions, run instances, and the typed properties a reader filters by."
+description: "The DataHub entities produced by one writeback run."
 ---
 
-A `mcmr check --writeback` publishes six kinds of entity, and every one of them is derived from
-the report the run already produced, nothing is analyzed a second time to state it.
+Writeback derives every entity from the completed report. It never runs the analysis twice.
 
-## Fact datasets and one extraction flow per repository
+## Fact datasets and extraction lineage
 
-One dataset per fact table your run materialized carries `schemaMetadata` flattened from the
-Pydantic fact model as dotted field paths, and a `datasetProfile` stating the rows this run read.
-One `DataFlow` names the repository and holds its extraction `DataJob`, which outputs every fact
-dataset the run built. That is a lineage graph for source code, published into the place a data
-team already reads lineage for everything else.
+Each materialized fact table becomes a dataset with schema metadata and a row profile. One
+repository flow owns an extraction job that outputs those datasets. The result is lineage from a
+codebase to the facts its rules queried.
 
-## One rulebook flow, shared by every codebase
+## A shared rulebook
 
-A rule is one thing, so it is one entity, published once as a `DataJob` under a single canonical
-`mcmr/rulebook` flow for the whole DataHub instance, rather than copied under each repository that
-runs it. Publishing a repository reads what earlier repositories already wrote onto that job and
-merges into it, so a rule's `inputDatasets` become the union of every codebase's fact tables for
-the families it reads. Two repositories publishing at the same moment race, and the later write
-wins.
+Each rule becomes one job under the canonical `mcmr/rulebook` flow. The job collects input datasets
+from every repository that runs it. Structured properties retain the latest result, finding count,
+anchor, and update time per repository, plus cross-repository totals.
 
-The merge also carries what each codebase currently reports, `lastResult.<repo>`,
-`findings.<repo>`, `lastRun.<repo>`, `since.<repo>`, and `anchor.<repo>`, beside `reposFailing`,
-`reposPassing`, and `totalFindings` rollups recomputed from the merged set. A reader following
-lineage lands on the rule and reads what it concluded everywhere without opening anything else,
-and one link per codebase, failing repositories first, points at the fact table its verdicts are
-recorded against.
+## Assertion timelines
 
-## Assertions, the timeline a verdict actually lives on
+Every rule and subject pair becomes one custom assertion. Its stable identity lets later runs add
+results to the same timeline. File and fact identity stay on each result, so one rule can fail in
+two places without collapsing them together.
 
-Each rule and subject pair a run judges becomes one DataHub custom assertion, DataHub's own model
-for a check an external tool owns. The assertion identity is derived from the rule identifier and
-what the verdict is about, so a later run lands on the same assertion instead of creating a
-second one, and each run reports one result against it with the record's own fields as properties.
+## Run instances
 
-## The run itself, as one process instance
+Each invocation becomes one process instance with start and completion events. It records file,
+fact, rule, failure, finding, duration, and lane counts. Contextual runs also record backend, model,
+and tokens.
 
-An assertion timeline answers what one rule keeps concluding, it cannot answer what a single
-invocation did, every verdict in it belongs to a different rule and a different day. Each
-`mcmr check --writeback` mints one run identity, `mcmr-<repository>-<epoch millis>`, stamps it on
-every assertion result it reports as `runId`, and writes that same identity as one
-`DataProcessInstance` under the repository's flow, carrying a `STARTED` and a `COMPLETE` event,
-the second stating `SUCCESS` or `FAILURE` from whether the run had failures.
+## Catalog structure
 
-Its properties say how much the run reached, `files`, `facts`, `failures`, `findings`,
-`rulesExecuted`, `rulesFailing`, one `rules<Lane>` count per lane the run activated,
-`durationMillis`, and, when the contextual lane ran, the backend, the model, and the run's total
-token usage. Reusing the identity already stamped on every verdict is what lets a reader pivot
-from one rule's timeline to the invocation that wrote it and back.
+Rules receive lane tags and family glossary terms. Fact tables receive structured properties such
+as codebase and flap score. Only values reached by a run are published.
 
-## Typed properties and tags a reader actually filters by
+Repository-wide rule verdicts can also become DataHub contract clauses. Repeated state changes can
+raise or resolve incidents. Those behaviors are explained in
+[Incidents and contracts](/mcmr/docs/datahub/incidents-and-contracts/).
 
-| Property | Entity | States |
-|---|---|---|
-| `lane` | rule job | deterministic, contextual, or external |
-| `ruleFamily` | rule job | the family a rule belongs to |
-| `codebase` | dataset, flow, job | the repository whose run published this entity |
-| `findings` | rule job | how many places a rule currently reports, across every codebase |
-| `tokensSpent` | rule job | what every recorded run of a rule has cost its backend |
-| `flapScore` | dataset | how often the noisiest subject in a fact table changed verdict lately |
-
-A custom property left as a bare string is a fact nobody can sort or filter. Declaring it once as
-a structured property makes it a typed facet every codebase shares, so a reader can ask the
-catalog for every contextual rule, or every table that keeps flapping, without knowing which
-repository wrote the value. A rule also carries its lane as a colored tag and its family as a
-glossary term under one `MCMR Rule Families` group, and only the lanes and families a run actually
-reached are published, so no tag exists that nothing carries.
-
-See [Cost provenance](/mcmr/docs/datahub/cost-provenance/) for what `tokensSpent` is built from,
-and [Incidents and contracts](/mcmr/docs/datahub/incidents-and-contracts/) for `flapScore` and the
-data quality contract a fact table receives.
+See [Cost provenance](/mcmr/docs/datahub/cost-provenance/) for contextual usage and
+[Reading history back](/mcmr/docs/datahub/reading-history/) for the read path.

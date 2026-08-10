@@ -158,16 +158,18 @@ class CandidateProtocol(FrozenModel):
 
     def _answer_schema(self, value_name: str, values: list[str]) -> dict[str, JsonValue]:
         allowed: list[JsonValue] = [*values]
+        evidence_schema: dict[str, JsonValue] = {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+            "minItems": 1,
+            "maxItems": 8,
+            "uniqueItems": True,
+        }
         return self._object_schema(
             {
                 value_name: {"type": "string", "enum": allowed},
                 "reasoning": {"type": "string", "minLength": 1, "maxLength": 500},
-                "evidence_ids": {
-                    "type": "array",
-                    "items": {"type": "string", "minLength": 1},
-                    "minItems": 1,
-                    "maxItems": 8,
-                },
+                "evidence_ids": evidence_schema,
                 "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
             }
         )

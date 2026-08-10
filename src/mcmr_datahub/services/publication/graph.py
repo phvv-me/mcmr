@@ -51,26 +51,18 @@ if TYPE_CHECKING:
 
     from ..configuration import DataHubSettings
 
-# What the run itself is called inside the flow, which is the one job that writes the fact tables
-# every rule job then reads.
 _EXTRACTION = "extract"
 
-# What DataHub calls a job somebody else's tool owns, which is what every rule here is.
 _JOB_TYPE = "MCMR"
 
-# What separates a rule's own state from the repository it reached that state in.
 _QUALIFIER = "."
 
-# How many repositories one rule links to its verdicts before the list stops being a list.
 _LINKS = 5
 
-# What the flow holding every rule is called, since it is a catalog rather than a codebase.
 _RULEBOOK = "MCMR Rulebook"
 
-# What a verdict that failed is called, which is the one state a reader scans a job list for.
 _FAILING = "FAILURE"
 
-# What the link from one rule job to its recorded verdicts is called on the job page.
 _MEMORY = "Verdict history"
 
 

@@ -1,7 +1,6 @@
 from .assets import flow_urn
 from .keys import platform_key, slug
 
-# The one flow every rule belongs to, which is what makes a rule a single global entity.
 _RULEBOOK = "rulebook"
 
 

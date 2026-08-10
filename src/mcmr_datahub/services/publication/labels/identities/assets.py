@@ -6,7 +6,6 @@ from .keys import platform_key, slug
 if TYPE_CHECKING:
     from mcmr.plugins import RunRecord
 
-# The environment DataHub keys a dataset and a flow by, which one repository has exactly one of.
 _ENVIRONMENT = "PROD"
 
 # What a subject already owned by another system starts with, which is the one shape a verdict

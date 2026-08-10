@@ -17,17 +17,12 @@ if TYPE_CHECKING:
 # The server a replayed run reports, so a recorded checkout needs no environment at all.
 _RECORDED_SERVER = "http://recorded.invalid"
 
-# The flat option names a project writes, folded into the request they all describe.
 _REQUEST = ("query", "page_size", "max_assets", "since")
 
-# The flat option names a project writes about what a completed run leaves behind.
 _WRITEBACK = ("publish_runs", "owner", "domain", "announce", "frontend", "people")
 
-# Which nested group each of those flat option names belongs under once the settings are read.
 _GROUPS = (("catalog", _REQUEST), ("writeback", _WRITEBACK))
 
-# What a DataHub quickstart serves its front end on when GMS answers on the other one,
-# which is the one pairing a project can be spared from writing down.
 _QUICKSTART = (":8080", ":9002")
 
 # The hosts a placeholder report URL uses. A link nobody can follow is worse than no
@@ -40,7 +35,7 @@ class DataHubSettings(FrozenModel):
 
     server: AnyHttpUrl
     sql_dialect: str = ""
-    timeout_seconds: PositiveFloat = 30.0
+    timeout_seconds: PositiveFloat = 120.0
     recorded: str = ""
     report_url: str = ""
     catalog: DataHubCatalogRequest = DataHubCatalogRequest()

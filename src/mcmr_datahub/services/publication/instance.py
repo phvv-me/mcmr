@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 
     from ..configuration import DataHubSettings
 
-# What DataHub calls a run somebody asked for rather than a schedule, which every check is.
 _KIND = "BATCH_AD_HOC"
 
 # What DataHub is told produced this result, beside its own success or failure vocabulary.
@@ -23,8 +22,6 @@ _NATIVE = "mcmr"
 _STARTED = "STARTED"
 _COMPLETE = "COMPLETE"
 
-# A completed publication says the invocation completed. Policy failures stay in custom properties
-# and assertion results, where they describe the code rather than the health of this process.
 _SUCCESS = "SUCCESS"
 
 

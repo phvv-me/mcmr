@@ -22,11 +22,8 @@ _CATEGORY = "MCMR"
 # The data platform DataHub attributes these assertions to, so they are attributable to a tool.
 _PLATFORM = "mcmr"
 
-# How many assertions and run events one asset lookup reads, which bounds the history request.
 _WINDOW = 50
 
-# How long each attempt waits for DataHub to resolve an assertion its own upsert just created,
-# which measured about a second on DataHub Core and bounds the wait at just under four.
 _SETTLING = (0.25, 0.5, 1.0, 2.0)
 
 # What each recorded verdict is called in the DataHub assertion result contract.
@@ -37,7 +34,6 @@ _RESULT = {
 }
 _STATE = {name: state for state, name in _RESULT.items()}
 
-# What a file-scoped verdict states when the run that closed it no longer reports that file.
 _RESOLVED = "no longer reported"
 
 

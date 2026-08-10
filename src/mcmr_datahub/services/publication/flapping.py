@@ -10,10 +10,8 @@ if TYPE_CHECKING:
 
     from mcmr.plugins import RuleTimeline
 
-# How a verdict reads inside the sentence an incident is written in.
 _WORDS = {RunState.SUCCESS: "passing", RunState.FAILURE: "failing", RunState.ERROR: "unanswered"}
 
-# The moment format a description states a recorded verdict at, which stays readable in prose.
 _MOMENT = "%Y-%m-%d %H%M"
 
 

@@ -20,11 +20,8 @@ _FAMILIES = "MCMR Rule Families"
 # What the group holding the words MCMR uses about its own work is called.
 _VOCABULARY = "MCMR Vocabulary"
 
-# Whose stamp a published term association carries, since nobody attached it by hand.
 _ACTOR = "urn:li:corpuser:datahub"
 
-# The words a reader has to share with MCMR before any of the published graph reads as anything,
-# each defined where the reader already is rather than in a document they would have to find.
 _WORDS = {
     "fact table": (
         "One family of facts the kernel extracted from a repository, held as a dataset whose "
@@ -72,17 +69,12 @@ _WORDS = {
     ),
 }
 
-# What every rule is tagged with beside its family and lanes, which is the finding it reports
-# and the repair it may offer.
 _RULE_WORDS = ("finding", "repair")
 
-# What a fact table is called beside the term for the table itself.
 _TABLE_WORDS = ("fact table", "verdict")
 
-# What the flow of one repository is called, which is the run history a writeback leaves.
 _FLOW_WORDS = ("writeback", "run")
 
-# What the one flow holding every rule is called.
 _RULEBOOK_WORDS = ("rulebook",)
 
 # What a fact table currently reporting an on and off subject is called, beside its usual terms.

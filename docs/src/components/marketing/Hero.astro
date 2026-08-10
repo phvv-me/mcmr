@@ -1,8 +1,8 @@
 ---
 const spec = [
   ['kernel', 'Rust, through PyO3'],
-  ['fact tables', '63 typed families'],
-  ['rules', '285 across 3 lanes'],
+  ['fact tables', 'typed, shared'],
+  ['rules', 'source documented'],
   ['repairs', 'verified only, atomic'],
   ['license', 'Apache-2.0'],
 ];
@@ -10,7 +10,7 @@ const spec = [
 // The brand pack's own poster banner, the real sunburst and corner wedge rather than a CSS
 // approximation. `import.meta.glob` never throws on a zero match, so the fallback rays below
 // still carry the poster energy the moment before the file lands.
-const bannerFiles = import.meta.glob('../../assets/banner.svg', {
+const bannerFiles = import.meta.glob('../../assets/banner.png', {
   eager: true,
   query: '?url',
   import: 'default',
@@ -18,7 +18,7 @@ const bannerFiles = import.meta.glob('../../assets/banner.svg', {
 const banner = Object.values(bannerFiles)[0] as string | undefined;
 ---
 
-<section class="relative overflow-hidden border-b-2 border-base-300">
+<section id="what" class="relative overflow-hidden border-b-2 border-base-300">
   {
     !banner && (
       <div class="pointer-events-none absolute inset-0" aria-hidden="true">
@@ -47,8 +47,8 @@ const banner = Object.values(bannerFiles)[0] as string | undefined;
           Stop Code Slop, put your agent on a leash and know where your code is going.
         </p>
         <p class="mt-5 max-w-xl text-lg text-pretty text-base-content/70">
-          A Rust kernel reads your repository once into 63 typed fact tables. 285 Python rules
-          query those shared tables across three lanes, deterministic, contextual, and external,
+          A Rust kernel reads your repository once into typed fact tables. Python rules query
+          those shared tables across deterministic, contextual, and external lanes,
           and report exact findings with citations. The rules that can offer a fix only keep it
           after MCMR reparses the result and reruns the rule that found it.
         </p>
@@ -61,7 +61,7 @@ const banner = Object.values(bannerFiles)[0] as string | undefined;
       {
         banner && (
           <div class="border-2 border-base-content">
-            <img src={banner} alt="MCMR, define and enforce the engineering rules that make your code yours" width="1200" height="400" class="block w-full" />
+            <img src={banner} alt="My Code, My Rules" width="1800" height="600" class="block w-full" />
           </div>
         )
       }

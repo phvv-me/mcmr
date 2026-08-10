@@ -1,6 +1,6 @@
 # Roadmap
 
-MCMR is preparing its first public release. The current focus is a dependable deterministic core,
+MCMR is in its early public releases. The current focus is a dependable deterministic core,
 an honest opt-in boundary for model and network work, and integrations that preserve useful policy
 history without owning repository state.
 
@@ -17,11 +17,11 @@ history without owning repository state.
 
 ## First public release
 
-- [ ] Finish the public package metadata and publish to PyPI
-- [ ] Publish the documentation site and set its canonical URLs
+- [x] Finish the public package metadata and publish to PyPI
+- [x] Publish the documentation site and set its canonical URLs
 - [ ] Keep the deterministic self-scan free of unexplained failures
 - [ ] Review every contextual rule against a representative quality sample
-- [ ] Document expected model cost and request batching for contextual runs
+- [x] Document expected model cost and request batching for contextual runs
 - [ ] Stabilize scan-level path exclusion
 - [ ] Add release smoke tests from a clean source archive and wheel
 - [ ] Verify installation and the demo on Linux and macOS

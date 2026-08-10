@@ -15,7 +15,7 @@
 
 ## Installation
 
-MCMR requires Git and Python 3.14 or newer. Its main target is free-threaded Python `3.14t+`.
+MCMR requires Git and Python 3.14 or newer. Use standard CPython for the simple PyPI install.
 
 ```sh
 pip install mcmr
@@ -23,6 +23,10 @@ mcmr check .
 ```
 
 Use `uv tool install mcmr` for an isolated command line installation.
+
+MCMR also runs on free-threaded Python `3.14t+`. Polars does not yet publish a compatible PyPI
+runtime wheel, so use the source environment described in the
+[install guide](https://phvv.me/mcmr/docs/start/install/) for that interpreter.
 
 ## What it is
 

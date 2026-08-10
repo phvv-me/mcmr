@@ -6,7 +6,7 @@ description: "Check the deliberately messy MCP server included in the repository
 The repository includes a small Model Context Protocol server under `demo/`. It is intentionally
 messy so a check has real findings. MCMR does not change it unless you request repairs.
 
-Install MCMR and clone the repository in Python `3.14t+`.
+Install MCMR and clone the repository with standard Python `3.14+`.
 
 ```sh
 pip install mcmr

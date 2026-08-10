@@ -4,9 +4,17 @@ on:
   pull_request:
   workflow_call:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -21,9 +29,10 @@ jobs:
           # The variation ledger reads the repository's own history as a corpus, so a
           # shallow checkout would observe a different fact shape than a full one.
           fetch-depth: 0
-      - uses: phvv-me/chefe/.github/actions/setup@a1318916deb34fe178906541b86c30128344ca11 # main
+      - uses: phvv-me/chefe/.github/actions/setup@85f7f358ada2eb419dbf9cdd110d789d9a0137bf # main
         with:
           python-version: "3.14"
+          chefe-version: "==0.0.28"
           cache-key-files: "{chefe.toml,pyproject.toml}"
           cache-paths: .chefe/target-kernel
           resolve: true

@@ -3,8 +3,7 @@ title: "Install"
 description: "Install MCMR on Python 3.14 or newer and run the first check."
 ---
 
-MCMR requires Git and Python 3.14 or newer. Its main runtime target is free-threaded Python
-`3.14t+`. Standard CPython `3.14+` is supported too.
+MCMR requires Git and Python 3.14 or newer. Standard CPython gives the shortest installation.
 
 ```sh
 pip install mcmr
@@ -12,6 +11,22 @@ mcmr check .
 ```
 
 Use `uv tool install mcmr` for an isolated command line installation.
+
+## Free-threaded Python
+
+MCMR runs and is tested on free-threaded Python `3.14t+`. Polars does not currently publish a
+free-threaded runtime wheel on PyPI. A direct `pip install` therefore tries to compile Polars and
+needs a native toolchain.
+
+Use the repository environment to get the compatible conda-forge build without compiling it.
+
+```sh
+git clone https://github.com/phvv-me/mcmr.git
+cd mcmr
+uv tool install chefe
+chefe install --resolve
+chefe run check .
+```
 
 The first command runs deterministic rules only. It reads the repository and prints a report. It
 does not edit source or contact a model.

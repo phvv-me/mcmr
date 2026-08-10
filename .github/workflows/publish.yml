@@ -20,6 +20,7 @@ jobs:
   release:
     needs: ci
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     environment: pypi
     permissions:
       id-token: write # PyPI Trusted Publishing
@@ -59,6 +60,12 @@ jobs:
           manylinux: 2_28
           before-script-linux: dnf install -y openssl-devel
           args: --release --locked --out .dist -i python3.14 -i python3.14t --compatibility pypi
+      - if: steps.tag.outputs.new == 'true'
+        name: Smoke test the standard Python wheel
+        run: |
+          uv venv --python 3.14 /tmp/mcmr-release-smoke
+          uv pip install --python /tmp/mcmr-release-smoke/bin/python .dist/mcmr-*-cp314-cp314-manylinux*.whl
+          /tmp/mcmr-release-smoke/bin/mcmr catalog --output /tmp/mcmr-release-catalog.json
       - if: steps.tag.outputs.new == 'true'
         name: Publish to PyPI
         run: uv publish --trusted-publishing always .dist/*

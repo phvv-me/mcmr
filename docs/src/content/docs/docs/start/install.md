@@ -25,6 +25,7 @@ git clone https://github.com/phvv-me/mcmr.git
 cd mcmr
 uv tool install chefe
 chefe install --resolve
+chefe run setup
 chefe run check .
 ```
 

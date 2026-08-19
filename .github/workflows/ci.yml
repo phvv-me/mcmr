@@ -29,7 +29,7 @@ jobs:
           # The variation ledger reads the repository's own history as a corpus, so a
           # shallow checkout would observe a different fact shape than a full one.
           fetch-depth: 0
-      - uses: phvv-me/chefe/.github/actions/setup@6455b7f5952ccb273cd57d3fd379a224f133c0b1 # main
+      - uses: phvv-me/chefe/.github/actions/setup@6527b711ae022ab99bf489603514b939a5c1a592 # main
         with:
           python-version: "3.14"
           chefe-version: "==0.0.28"

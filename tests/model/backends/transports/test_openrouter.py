@@ -175,8 +175,8 @@ async def test_empty_repository_rules_never_reach_openrouter() -> None:
 
 
 @pytest.mark.anyio
-async def test_invalid_repository_keys_fail_once_without_request_fanout() -> None:
-    """A malformed packed envelope reports its contract error without repeating evidence."""
+async def test_invalid_repository_keys_stop_after_one_contract_retry() -> None:
+    """A malformed packed envelope gets one bounded repair attempt before it fails."""
     query = ModelQuery.classify(
         ContextualSweep.table(Fact, "ALL-DEMO2001"),
         category=Category,
@@ -192,7 +192,7 @@ async def test_invalid_repository_keys_fail_once_without_request_fanout() -> Non
     with pytest.raises(ValueError, match="repository answer contract"):
         await OpenRouterBackend(transport=probe.transport).answered_many([query, query])
 
-    assert len(probe.requests) == 1
+    assert len(probe.requests) == 2
 
 
 @pytest.mark.anyio

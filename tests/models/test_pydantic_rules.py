@@ -136,16 +136,22 @@ class Order(BaseModel):
 
 
 def test_known_mapping_model_validate_cases(tmp_path: Path) -> None:
+    """Only a mapping whose every item names a field is a constructor call spelled out."""
     (tmp_path / "models.py").write_text(
         """from pydantic import BaseModel
 
 class Policy(BaseModel):
     name: str
 
-def build(name, payload):
+def build(name, payload, base, top):
     known = Policy.model_validate({'name': name})
     unknown = Policy.model_validate(payload)
-    return known, unknown
+    merged = Policy.model_validate({**base, **top})
+    layered = Policy.model_validate({**base, 'name': name})
+    aliased = Policy.model_validate({'model-name': name})
+    reserved = Policy.model_validate({'class': name})
+    empty = Policy.model_validate({})
+    return known, unknown, merged, layered, aliased, reserved, empty
 """,
         encoding="utf-8",
     )
@@ -157,8 +163,12 @@ def build(name, payload):
             typed_families=(CallFact,),
         ).call_tables(),
     )
+    query = native_query(table, redundant_model_validate)
+    assert query.fix is not None
+    rewrites = query.fix.rewrites.collect()
 
-    assert scalar(native_query(table, redundant_model_validate)) == 1
+    assert scalar(query) == 1
+    assert rewrites["source"].to_list() == ["Policy(name=name)"]
 
 
 def test_constructor_model_cases() -> None:

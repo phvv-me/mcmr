@@ -62,7 +62,18 @@ class MCMRConfiguration(FrozenModel):
             definition for definition in definitions if self._selected(definition, patterns)
         ]
         if patterns and not matched:
-            raise ValueError("No rules match the selection and enabled execution modes")
+            # A pattern matches by prefix, not by substring, so `PARA0001` misses `ALL-PARA0001`.
+            # Naming the rule the reader clearly meant turns a dead end into the next command.
+            wrapped = sorted(
+                definition.id
+                for definition in definitions
+                for pattern in patterns
+                if pattern and pattern.lower() in definition.id.lower()
+            )
+            hint = f"; did you mean {' or '.join(wrapped)}?" if wrapped else ""
+            raise ValueError(
+                f"No rules match {', '.join(patterns)} and the enabled execution modes{hint}"
+            )
         return matched
 
     def policies(self) -> RulePolicies:

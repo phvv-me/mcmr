@@ -474,6 +474,16 @@ The Python renderer validates retained source and UTF-8 byte spans. It manages r
 anchors. The renderer rejects stale source, overlapping edits, incomplete references, unsupported
 language operations, and syntax failures.
 
+A replacement is also read against the node it overwrites. Reparsing proves the result is Python
+and rerunning the rule proves the finding closed, yet neither proves the new source still means
+what the old source meant, so a rule writing a replacement out of the parts it modeled can drop a
+part it never modeled. The renderer therefore compares what the replaced span supplied against what
+the written span states, and refuses the plan when a value or a `*` or `**` unpacking disappears.
+Names stating what the span calls, imports, or declares as a type are routes a repair may reroute,
+which is why `list(values)` may become `[values]`, while the values those calls consume have to
+survive. Every revised module is checked for import hygiene the same way, so a repair that would
+leave one name imported twice is refused rather than written.
+
 Safe application is transactional. MCMR writes one candidate atomically, reparses it, reruns the
 originating rule, and keeps it only when the precise finding declines. Review repairs are preview
 only.

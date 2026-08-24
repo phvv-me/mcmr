@@ -6,7 +6,9 @@ from .....domain.errors import UnrenderableFix
 from ...contracts import ByteEdit, FixRefusal, RenderedDirectory, RenderedFile, RenderedFix
 from ..documents import SourceDocument
 from ..edits import EditNormalizer
-from .imports import PythonImportRenderer, parse_python
+from .bindings import import_bindings
+from .imports import PythonImportRenderer
+from .parsing import parse_python
 from .rewrites import PythonRewriteRenderer
 
 if TYPE_CHECKING:
@@ -161,11 +163,22 @@ class PythonFixRenderer:
             raise UnrenderableFix(f"{document.path} changed after its fix was rendered")
 
     @staticmethod
+    def _require_import_hygiene(document: SourceDocument, revised: str) -> None:
+        """Refuse a revised module that does not parse or that now imports one name twice."""
+        held = import_bindings(parse_python(document.text, path=document.path))
+        written = import_bindings(parse_python(revised, path=document.path))
+        repeated = sorted(name for name, count in written.items() if count > max(held[name], 1))
+        if repeated:
+            raise UnrenderableFix(
+                f"{document.path} would import {', '.join(repeated)} more than once"
+            )
+
+    @staticmethod
     def _revised(document: SourceDocument, edits: Sequence[ByteEdit]) -> RenderedFile:
-        """Apply one file's edits and parse languages available in this process."""
+        """Apply one file's edits and keep only a result that parses and imports each name once."""
         revised = PythonFixRenderer._apply_edits(document, edits)
         if Path(document.path).suffix in {".py", ".pyi"}:
-            parse_python(revised.decode("utf-8"), path=document.path)
+            PythonFixRenderer._require_import_hygiene(document, revised.decode("utf-8"))
         return RenderedFile(
             path=document.path,
             original=document.original,

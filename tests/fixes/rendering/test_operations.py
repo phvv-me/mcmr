@@ -139,9 +139,9 @@ class Mode(StrEnum):
 
 def test_import_management_refuses_to_shadow_a_module_binding(tmp_path: Path) -> None:
     """Adding an import is unsafe when its local name already means something else."""
-    source = "inspect = adapter\nresult = asyncio.iscoroutinefunction(callback)\n"
+    source = "inspect = adapter\nresult = iscoroutinefunction(callback)\n"
     (tmp_path / "sample.py").write_text(source)
-    callee = node("sample.py", text="asyncio.iscoroutinefunction", start_line=2, start_column=9)
+    callee = node("sample.py", text="iscoroutinefunction", start_line=2, start_column=9)
 
     with pytest.raises(UnrenderableFix, match="already binds 'inspect'"):
         render(

@@ -89,6 +89,40 @@ async def test_repository_rules_share_one_current_response_request() -> None:
 
 
 @pytest.mark.anyio
+async def test_repository_contract_drift_retries_on_a_fresh_session() -> None:
+    """A completed response with wrong identities gets one fresh repair attempt."""
+    requests: list[Request] = []
+
+    def respond(request: Request) -> Response:
+        request.read()
+        requests.append(request)
+        answer = (
+            {"unexpected": payload()}
+            if len(requests) == 1
+            else {
+                "q0": {
+                    "v": [["supported"]],
+                    "p": [0.75],
+                    "d": [],
+                }
+            }
+        )
+        return RouterProbe.streaming(RouterProbe.completion(answer))
+
+    resolved = await OpenRouterBackend(
+        transport=MockTransport(respond),
+    ).answered_many([repository_query()])
+    sessions = [
+        TypeAdapter(dict[str, JsonValue]).validate_json(item.content)["session_id"]
+        for item in requests
+    ]
+
+    assert len(resolved) == 1
+    assert len(requests) == 2
+    assert sessions[1] == f"{sessions[0]}-contract-1"
+
+
+@pytest.mark.anyio
 async def test_repository_transport_failure_stops_without_request_fanout() -> None:
     """A failed packed turn stops once instead of multiplying an unavailable service."""
     requests: list[Request] = []

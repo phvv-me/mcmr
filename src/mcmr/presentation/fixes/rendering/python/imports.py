@@ -5,19 +5,12 @@ from typing import TYPE_CHECKING
 from .....domain.contracts import ImportRequest
 from .....domain.errors import UnrenderableFix
 from ...contracts import ByteEdit
+from .parsing import parse_python
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from ..documents import SourceDocument
-
-
-def parse_python(source: str, *, path: str) -> ast.Module:
-    """Parse Python source and turn syntax failures into an autofix refusal."""
-    try:
-        return ast.parse(source, filename=path)
-    except SyntaxError as error:
-        raise UnrenderableFix(f"{path} does not parse as Python") from error
 
 
 class PythonImportRenderer:

@@ -6,6 +6,22 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 
 ## Unreleased
 
+### Fixed
+
+- A repair that replaces source now has to carry that source's values forward. The renderer
+  compares the values and unpackings the replaced span supplied against the ones its replacement
+  states, and refuses the plan when any of them disappear, so an edit that still parses and still
+  closes its finding can no longer change what the code means in silence.
+- `PY-PYDA0004` no longer offers a constructor for a mapping it cannot state. A literal that
+  unpacks another mapping, spells a key that is not a plain identifier, or reserves a keyword is
+  reported by nobody and repaired by nobody, where before `Model.model_validate({**base, **top})`
+  was rewritten to `Model()`.
+- Call facts now state every item of a literal mapping, including the ones that unpack another
+  mapping, which is what made a dropped `**` invisible to the rules reading them.
+- A repair may no longer leave one module importing the same name twice.
+- `PY-MODU0005` counts a module inside the package as a consumer of its facade, so
+  `from .. import Client` in a sibling module no longer reads as an unused export.
+
 ## 0.0.3 - 2026-08-10
 
 ### Added

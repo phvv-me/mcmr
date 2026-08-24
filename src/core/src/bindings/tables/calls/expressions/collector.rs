@@ -79,6 +79,7 @@ impl<'a> ExpressionCollector<'a> {
                 expression_id: expression_id.to_string(),
                 ordinal: ordinal as u64,
                 key: entry.key.clone(),
+                is_spread: entry.is_spread,
                 value_expression_id: value_id,
             });
         }

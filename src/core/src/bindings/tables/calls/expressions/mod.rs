@@ -117,6 +117,7 @@ fn mapping_frame(rows: &[MappingRow]) -> PolarsResult<DataFrame> {
         "expression_id" => rows.iter().map(|row| row.expression_id.clone()).collect::<Vec<_>>(),
         "ordinal" => rows.iter().map(|row| row.ordinal).collect::<Vec<_>>(),
         "key" => rows.iter().map(|row| row.key.clone()).collect::<Vec<_>>(),
+        "is_spread" => rows.iter().map(|row| row.is_spread).collect::<Vec<_>>(),
         "value_expression_id" => rows.iter().map(|row| row.value_expression_id.clone()).collect::<Vec<_>>(),
     ]
 }

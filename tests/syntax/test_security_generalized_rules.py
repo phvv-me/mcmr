@@ -199,6 +199,13 @@ def separated(ref, statement):
 
 def refused(ref):
     status = subprocess.run("git " + ref, shell=False)
+""",
+            "identity.py": """
+def system():
+    return uuid.uuid5(uuid.NAMESPACE_URL, "system")
+
+def identity():
+    return system()
 """
         },
     )
@@ -218,6 +225,8 @@ def refused(ref):
         "combined": 0,
         "separated": 0,
         "refused": 0,
+        "system": 0,
+        "identity": 0,
     }
     assert extended["house"] == 1
 

@@ -9,6 +9,7 @@ from mcmr.domain.contracts import (
     Finding,
     FixPlan,
     FixSafety,
+    ImportRequest,
     Inline,
     Move,
     Placement,
@@ -67,13 +68,13 @@ def test_renderer_refuses_stale_nodes_overlaps_and_invalid_python(tmp_path: Path
     with pytest.raises(UnrenderableFix, match="expected '2'"):
         render(tmp_path, Replace(target=target, source="3"))
 
-    target = node("sample.py", text="value", start_line=1, start_column=0)
+    held = node("sample.py", text="1", start_line=1, start_column=8)
     whole = node("sample.py", text="value = 1", start_line=1, start_column=0, kind="statement")
     with pytest.raises(UnrenderableFix, match="overlap"):
         render(
             tmp_path,
-            Replace(target=target, source="answer"),
-            Replace(target=whole, source="answer = 1"),
+            Replace(target=held, source="2"),
+            Replace(target=whole, source="value = 2"),
         )
 
     with pytest.raises(UnrenderableFix, match="does not parse"):
@@ -256,12 +257,12 @@ def test_edit_normalization_rejects_invalid_ranges_and_collisions(tmp_path: Path
 
 def availability_case(tmp_path: Path) -> tuple[PythonFixRenderer, CheckReport]:
     """Build a report with duplicate, review-only, and unrenderable repairs."""
-    (tmp_path / "sample.py").write_text("value = 1\n")
-    target = node("sample.py", text="value", start_line=1, start_column=0)
+    (tmp_path / "sample.py").write_text("value = call(1)\n")
+    target = node("sample.py", text="call", start_line=1, start_column=8)
     edit = Edit(
-        plan=FixPlan(summary="Rename value.", rewrites=[Replace(target=target, source="held")])
+        plan=FixPlan(summary="Rename the call.", rewrites=[Replace(target=target, source="held")])
     )
-    number = node("sample.py", text="1", start_line=1, start_column=8)
+    number = node("sample.py", text="1", start_line=1, start_column=13)
     second = Edit(
         plan=FixPlan(summary="Replace value.", rewrites=[Replace(target=number, source="2")])
     )
@@ -301,7 +302,7 @@ def test_available_fixes_deduplicate_plans_and_refusals(tmp_path: Path) -> None:
     merged = renderer.merge(fixes)
 
     assert (len(fixes), len(refusals), "missing.py" in refusals[0].reason) == (2, 1, True)
-    assert (merged[0].revised, len(merged[0].edits)) == (b"held = 2\n", 2)
+    assert (merged[0].revised, len(merged[0].edits)) == (b"value = held(2)\n", 2)
 
 
 def test_available_fixes_respect_limits(tmp_path: Path) -> None:
@@ -338,3 +339,125 @@ def test_merge_refuses_source_changed_after_preview(tmp_path: Path) -> None:
 
     with pytest.raises(UnrenderableFix, match="changed after"):
         renderer.merge(fixes)
+
+
+def test_replacement_refuses_source_that_drops_values_its_target_supplies(
+    tmp_path: Path,
+) -> None:
+    """The rewrite that gutted a manifest merge is refused before it can touch source."""
+    (tmp_path / "sample.py").write_text(
+        """class Loader:
+    def merged(self, base, top):
+        return Manifest.model_validate({**base, **top})
+"""
+    )
+    call = node(
+        "sample.py",
+        text="Manifest.model_validate({**base, **top})",
+        start_line=3,
+        start_column=15,
+        kind="call",
+    )
+
+    with pytest.raises(UnrenderableFix, match="drops the value `base`, `top`"):
+        render(tmp_path, Replace(target=call, source="Manifest()"))
+    with pytest.raises(UnrenderableFix, match="drops the value `top`"):
+        render(tmp_path, Replace(target=call, source="Manifest(**base)"))
+
+
+def test_replacement_refuses_source_that_stops_unpacking_a_value(tmp_path: Path) -> None:
+    """A value the target spreads is still spread by the source that replaces it."""
+    spreading = [
+        ("Manifest.model_validate({**base})", "Manifest(base)"),
+        ("helper(*base)", "helper(base)"),
+        ("helper(**base)", "helper(base)"),
+    ]
+    for call, replacement in spreading:
+        (tmp_path / "sample.py").write_text(f"def run(base):\n    return {call}\n")
+        target = node("sample.py", text=call, start_line=2, start_column=11, kind="call")
+
+        with pytest.raises(UnrenderableFix, match="drops the unpacking `base`"):
+            render(tmp_path, Replace(target=target, source=replacement))
+
+
+def test_replacement_keeps_rerouting_what_a_call_performs(tmp_path: Path) -> None:
+    """What a call performs may be rerouted, so only the values it consumes are carried."""
+    (tmp_path / "sample.py").write_text(
+        """import asyncio
+
+
+def run(job, values):
+    return asyncio.iscoroutinefunction(job), list(values)
+"""
+    )
+    callee = node("sample.py", text="asyncio.iscoroutinefunction", start_line=5, start_column=11)
+    call = node("sample.py", text="list(values)", start_line=5, start_column=45, kind="call")
+
+    revised = render(
+        tmp_path,
+        Replace(target=callee, source="inspect.iscoroutinefunction"),
+        Replace(target=call, source="[values]"),
+    )
+
+    assert revised.endswith("    return inspect.iscoroutinefunction(job), [values]\n")
+
+
+def test_replacement_carries_values_across_the_lines_it_writes(tmp_path: Path) -> None:
+    """A replacement spanning several lines is read where those lines land in source."""
+    (tmp_path / "sample.py").write_text(
+        """def read(path: Path) -> str:
+    try:
+        return path.read_text()
+    except OSError:
+        return None
+"""
+    )
+    guarded = node(
+        "sample.py",
+        text="try:\n        return path.read_text()\n    except OSError:\n        return None",
+        start_line=2,
+        start_column=4,
+        end_line=5,
+        end_column=19,
+        kind="statement",
+    )
+    suppressed = "with suppress(OSError):\n        return path.read_text()\n    return None"
+
+    revised = render(tmp_path, Replace(target=guarded, source=suppressed))
+
+    assert revised == (
+        """def read(path: Path) -> str:
+    with suppress(OSError):
+        return path.read_text()
+    return None
+"""
+    )
+    with pytest.raises(UnrenderableFix, match="drops the value `path`"):
+        render(
+            tmp_path,
+            Replace(target=guarded, source="with suppress(OSError):\n        return None"),
+        )
+
+
+def test_renderer_refuses_a_fix_that_would_import_one_name_twice(tmp_path: Path) -> None:
+    """A repair that needs a guarded name at runtime declines rather than import it again."""
+    (tmp_path / "sample.py").write_text(
+        """from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from enum import auto
+
+value = 0
+"""
+    )
+    target = node("sample.py", text="0", start_line=6, start_column=8)
+
+    with pytest.raises(UnrenderableFix, match="would import auto more than once"):
+        render(
+            tmp_path,
+            Replace(
+                target=target,
+                source="auto()",
+                imports=(ImportRequest(module="enum", name="auto"),),
+            ),
+        )

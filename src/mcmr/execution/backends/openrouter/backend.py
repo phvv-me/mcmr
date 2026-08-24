@@ -16,16 +16,13 @@ from .accounting import RequestTokens
 from .answer import RepositoryAnswer
 from .client import OpenRouterClient
 from .planning import RepositoryPack, RepositoryPlanner, RepositoryRule
-from .transport import RepositoryProgress
+from .transport import RepositoryProgress, StreamObserver
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
     from enum import StrEnum
 
     from ....domain.contracts import ModelProvenance
-    from .transport import StreamObserver
-
-
 class OpenRouterBackend(BatchedBackend):
     """Run contextual evidence packs through schema-constrained OpenRouter responses."""
 
@@ -35,6 +32,7 @@ class OpenRouterBackend(BatchedBackend):
     candidate_budget: PositiveInt = 512
     prompt_token_budget: PositiveInt = 128_000
     max_output_tokens: PositiveInt | None = None
+    contract_attempts: PositiveInt = 2
     transport: InstanceOf[AsyncBaseTransport] | None = Field(
         default=None,
         exclude=True,
@@ -108,25 +106,34 @@ class OpenRouterBackend(BatchedBackend):
         pack: RepositoryPack,
         observer: StreamObserver | None = None,
     ) -> list[RepositoryAnswer]:
-        """Answer one planned pack and fail once on malformed structured content."""
+        """Answer one planned pack with one bounded repair attempt for contract drift."""
         protocol = pack.protocol
+        cache_key = protocol.cache_key(pack.queries)
+        attempt = 0
         async with self.limiter:
-            source, provenance = await self.client.invoke(
-                protocol.output_schema(pack.queries),
-                cache_key=protocol.cache_key(pack.queries),
-                max_output_tokens=self.planner.output_tokens(pack),
-                prompt=protocol.prompt(pack.queries),
-                name="repository_rules",
-                observer=observer,
-            )
-        try:
-            outcomes = protocol.outcomes(source, pack.queries, provenance)
-        except ValueError as error:
-            raise self._contract_error(source, error) from error
-        return [
-            RepositoryAnswer(rule=rule, outcomes=list(answers))
-            for rule, answers in zip(pack.rules, outcomes, strict=True)
-        ]
+            while True:
+                attempt_cache_key = (
+                    cache_key if attempt == 0 else f"{cache_key}-contract-{attempt}"
+                )
+                source, provenance = await self.client.invoke(
+                    protocol.output_schema(pack.queries),
+                    cache_key=attempt_cache_key,
+                    max_output_tokens=self.planner.output_tokens(pack),
+                    prompt=protocol.prompt(pack.queries),
+                    name="repository_rules",
+                    observer=observer,
+                )
+                try:
+                    outcomes = protocol.outcomes(source, pack.queries, provenance)
+                except ValueError as error:
+                    if attempt + 1 == self.contract_attempts:
+                        raise self._contract_error(source, error) from error
+                    attempt += 1
+                    continue
+                return [
+                    RepositoryAnswer(rule=rule, outcomes=list(answers))
+                    for rule, answers in zip(pack.rules, outcomes, strict=True)
+                ]
 
     def _contract_error(self, source: str, error: ValueError) -> ValueError:
         """Describe one malformed grouped answer without repeating its full content."""

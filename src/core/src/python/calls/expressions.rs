@@ -41,14 +41,15 @@ fn mapping_entries(source: &Source, expression: &Expr) -> Vec<MappingEntry<CallE
         Expr::Dict(dict) => dict
             .items
             .iter()
-            .filter_map(|item| {
-                item.key.as_ref().map(|key| MappingEntry {
-                    key: source
+            .map(|item| MappingEntry {
+                key: item.key.as_ref().map_or_else(String::new, |key| {
+                    source
                         .slice(key.range())
                         .trim_matches(['"', '\''])
-                        .to_string(),
-                    value: argument_value(source, &item.value),
-                })
+                        .to_string()
+                }),
+                is_spread: item.key.is_none(),
+                value: argument_value(source, &item.value),
             })
             .collect(),
         _ => Vec::new(),

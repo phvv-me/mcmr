@@ -63,9 +63,9 @@ def test_source_document_preserves_line_boundaries_and_default_ending(tmp_path: 
 
 def test_imports_respect_headers_and_line_endings(tmp_path: Path) -> None:
     """Import insertion preserves executable headers and established line endings."""
-    source = b"#!/usr/bin/env python\r\n# coding: utf-8\r\nvalue = asyncio.run(job)\r\n"
+    source = b"#!/usr/bin/env python\r\n# coding: utf-8\r\nvalue = run(job)\r\n"
     (tmp_path / "sample.py").write_bytes(source)
-    target = node("sample.py", text="asyncio.run", start_line=3, start_column=8)
+    target = node("sample.py", text="run", start_line=3, start_column=8)
     revised = render(
         tmp_path,
         Replace(
@@ -79,8 +79,8 @@ def test_imports_respect_headers_and_line_endings(tmp_path: Path) -> None:
 
 def test_imports_follow_module_docstrings(tmp_path: Path) -> None:
     """A module docstring remains before imports introduced by a repair."""
-    (tmp_path / "sample.py").write_text('"""A module."""\nvalue = old\n')
-    target = node("sample.py", text="old", start_line=2, start_column=8)
+    (tmp_path / "sample.py").write_text('"""A module."""\nvalue = 0\n')
+    target = node("sample.py", text="0", start_line=2, start_column=8)
     revised = render(
         tmp_path,
         Replace(
@@ -138,8 +138,8 @@ def test_type_only_imports_reuse_an_existing_type_checking_binding(tmp_path: Pat
 
 def test_imports_do_not_repeat_existing_bindings(tmp_path: Path) -> None:
     """An exact module or symbol import appears only once after rendering."""
-    (tmp_path / "sample.py").write_text("import inspect\nfrom enum import auto\n\nvalue = old\n")
-    target = node("sample.py", text="old", start_line=4, start_column=8)
+    (tmp_path / "sample.py").write_text("import inspect\nfrom enum import auto\n\nvalue = 0\n")
+    target = node("sample.py", text="0", start_line=4, start_column=8)
     revised = render(
         tmp_path,
         Replace(
@@ -157,8 +157,8 @@ def test_imports_do_not_repeat_existing_bindings(tmp_path: Path) -> None:
 
 def test_first_import_is_separated_from_module_code(tmp_path: Path) -> None:
     """The first introduced import retains one blank line before module code."""
-    (tmp_path / "sample.py").write_text("value = old\n")
-    target = node("sample.py", text="old", start_line=1, start_column=8)
+    (tmp_path / "sample.py").write_text("value = 0\n")
+    target = node("sample.py", text="0", start_line=1, start_column=8)
     revised = render(
         tmp_path,
         Replace(
@@ -172,9 +172,9 @@ def test_first_import_is_separated_from_module_code(tmp_path: Path) -> None:
 
 def test_imports_follow_the_first_ending_in_a_mixed_file(tmp_path: Path) -> None:
     """Import insertion follows the source's established first line ending."""
-    source = b"#!/usr/bin/env python\nvalue = asyncio.run(job)\r\n"
+    source = b"#!/usr/bin/env python\nvalue = run(job)\r\n"
     (tmp_path / "sample.py").write_bytes(source)
-    target = node("sample.py", text="asyncio.run", start_line=2, start_column=8)
+    target = node("sample.py", text="run", start_line=2, start_column=8)
 
     revised = render(
         tmp_path,
@@ -210,8 +210,8 @@ def test_import_binding_index_covers_every_module_scope_declaration(
     import_request: ImportRequest,
 ) -> None:
     """A requested import refuses every ordinary way its binding could already be owned."""
-    (tmp_path / "sample.py").write_text(f"{declaration}\nvalue = old\n")
-    target = node("sample.py", text="old", start_line=2, start_column=8)
+    (tmp_path / "sample.py").write_text(f"{declaration}\nvalue = 0\n")
+    target = node("sample.py", text="0", start_line=2, start_column=8)
 
     with pytest.raises(
         UnrenderableFix,

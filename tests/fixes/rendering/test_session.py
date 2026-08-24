@@ -242,9 +242,9 @@ def test_fix_session_verifies_compatible_plans_in_one_batch(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Independent exact edits share one fresh analysis and one atomic source snapshot."""
-    (module := tmp_path / "sample.py").write_text("value = 1\n")
-    name = node("sample.py", text="value", start_line=1, start_column=0)
-    number = node("sample.py", text="1", start_line=1, start_column=8)
+    (module := tmp_path / "sample.py").write_text("value = call(1)\n")
+    name = node("sample.py", text="call", start_line=1, start_column=8)
+    number = node("sample.py", text="1", start_line=1, start_column=13)
     findings = (
         Finding(
             message="rename value",
@@ -295,7 +295,7 @@ def test_fix_session_verifies_compatible_plans_in_one_batch(
         result.refused,
         module.read_text(),
         ResolvedReportBuilder.calls,
-    ) == (2, [], "held = 2\n", 1)
+    ) == (2, [], "value = held(2)\n", 1)
 
 
 def test_fix_session_restores_an_edit_whose_finding_remains(
@@ -303,10 +303,10 @@ def test_fix_session_restores_an_edit_whose_finding_remains(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Successful parsing is insufficient when the originating rule still objects."""
-    (module := tmp_path / "sample.py").write_text("value = 1\n")
-    target = node("sample.py", text="value", start_line=1, start_column=0)
+    (module := tmp_path / "sample.py").write_text("value = call(1)\n")
+    target = node("sample.py", text="call", start_line=1, start_column=8)
     edit = Edit(
-        plan=FixPlan(summary="Rename value.", rewrites=[Replace(target=target, source="held")])
+        plan=FixPlan(summary="Rename the call.", rewrites=[Replace(target=target, source="held")])
     )
     found = Finding(message="sample needs repair", span=target.span, repair=edit)
     initial = CheckReport(
@@ -341,4 +341,4 @@ def test_fix_session_restores_an_edit_whose_finding_remains(
         result.refused[0].reason.endswith("originating finding remained"),
         module.read_text(),
         FixSession(tmp_path, unchanged_judgment(), maximum_fixes=0).run(initial).report,
-    ) == ([], True, "value = 1\n", initial)
+    ) == ([], True, "value = call(1)\n", initial)

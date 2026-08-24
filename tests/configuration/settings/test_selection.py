@@ -98,6 +98,17 @@ def test_selection_rejects_unknown_or_unmatched_rule_patterns() -> None:
         MCMRConfiguration(select=("NOPE-*",)).selected(catalog.definitions, rules=catalog.rules)
 
 
+def test_an_unanchored_selection_names_the_rule_it_nearly_matched() -> None:
+    """Patterns match by prefix, so the bare tail of a rule id is the mistake worth naming.
+
+    Reading `ALL-FUNC0002` off a report and passing it back without its family prefix selects
+    nothing, and a bare refusal leaves the reader guessing at a rule they are looking straight at.
+    """
+    catalog = built_catalog()
+    with pytest.raises(ValueError, match="did you mean ALL-FUNC0002"):
+        MCMRConfiguration(select=("FUNC0002",)).selected(catalog.definitions, rules=catalog.rules)
+
+
 def test_rule_settings_are_checked_and_coerced_before_execution() -> None:
     """The engine receives values validated against the selected rule's own annotations."""
     catalog = built_catalog()

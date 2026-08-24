@@ -1,6 +1,6 @@
 use crate::graph::contracts::{Export, Reference};
 use bypass::{bypasses, import_graph, preferred_routes, reachable_modules};
-use facade::outside_facade;
+use facade::consumes_route;
 use std::collections::{BTreeMap, BTreeSet};
 
 mod bypass;
@@ -53,7 +53,7 @@ fn record_consumer<'a>(
 ) {
     for route in expression_routes(&reference.expression) {
         for index in routes.get(route).into_iter().flatten() {
-            if outside_facade(&exports[*index], reference) {
+            if consumes_route(&exports[*index], reference) {
                 consumers[*index].insert(reference.location.path.as_str());
             }
         }

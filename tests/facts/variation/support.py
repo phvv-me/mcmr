@@ -32,6 +32,18 @@ _INVARIANT: dict[str, str] = {
     "AttributeAccessFact.accesses[].receiver_type_bases": (
         "derived, and no statically typed receiver in this corpus inherits another local type"
     ),
+    "CallFact.calls[].arguments[].recursive.entries[].is_spread": (
+        "derived, and no mapping nested inside an argument mapping in the corpus unpacks another"
+    ),
+    "CallFact.calls[].arguments[].recursive.entries[].recursive.is_spread": (
+        "derived, and the corpus nests no unpacking two mappings deep inside an argument"
+    ),
+    "CallFact.calls[].receiver.recursive.entries[].is_spread": (
+        "derived, and no mapping expression inside a receiver in the corpus unpacks another"
+    ),
+    "CallFact.calls[].receiver.recursive.entries[].recursive.is_spread": (
+        "derived, and the corpus nests no unpacking two mappings deep inside a receiver"
+    ),
     "CallFact.calls[].receiver.recursive.entries[].recursive.key": (
         "derived, and no nested mapping expression in the corpus states a keyed entry"
     ),

@@ -147,15 +147,29 @@ def command_built_from_a_shell_string(
         "subprocess.run",
     ]
     asks = "shell=true|shell:true|usesshell|/bin/sh|/bin/bash|cmd\\.exe"
+    local_declarations = (
+        facts.select(
+            "path",
+            pl.col("qualname")
+            .str.split(".")
+            .list.last()
+            .str.to_lowercase()
+            .alias("launched"),
+        )
+        .unique(maintain_order=True)
+        .with_columns(pl.lit(True).alias("locally_declared"))
+    )
     reported = (
         calls.join(built, on=["fact_id", "call_ordinal"], how="left")
         .with_columns(pl.col("callee").str.split(".").list.last().alias("launched"))
+        .join(local_declarations, on=["path", "launched"], how="left")
         .filter(
             pl.col("callee").is_in(shell_only)
             | pl.col("launched").is_in(list(also_through_a_shell))
             | (
                 ~pl.col("callee").str.contains(".", literal=True)
                 & pl.col("launched").is_in(without_a_receiver)
+                & ~pl.col("locally_declared").fill_null(False)
             )
             | (
                 pl.col("callee").is_in(launchers)

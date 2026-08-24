@@ -14,6 +14,7 @@ from .....domain.contracts import (
 from .....domain.errors import UnrenderableFix
 from .....facts import MemberKind
 from ...contracts import ByteEdit
+from .guard import ReplacementGuard
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -90,8 +91,9 @@ class PythonRewriteRenderer:
 
     @dispatch.register
     def replace(self, rewrite: Replace) -> list[ByteEdit]:
-        """Replace one exact retained node with encoded source."""
+        """Replace one exact retained node with source proven to carry its values forward."""
         document = self.documents[rewrite.target.span.path]
+        ReplacementGuard(document, rewrite.target, rewrite.source).require_carried()
         return [self._replace_node(rewrite.target, rewrite.source, document)]
 
     @dispatch.register

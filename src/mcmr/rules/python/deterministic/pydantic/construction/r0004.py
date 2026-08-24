@@ -1,3 +1,5 @@
+from keyword import kwlist
+
 import polars as pl
 
 from ...... import rule
@@ -12,6 +14,11 @@ from ......table import CallRelation, Table
 
 def _mapping_fields(subject: Table[CallFact], expressions: pl.LazyFrame) -> pl.LazyFrame:
     """Name the fields one literal mapping states and the constructor keywords they become."""
+    names_a_field = (
+        ~pl.col("is_spread")
+        & pl.col("key").str.contains(r"^[^\W\d]\w*$")
+        & ~pl.col("key").is_in(kwlist)
+    )
     return (
         subject.lazy(CallRelation.MAPPING_ENTRIES)
         .join(
@@ -27,6 +34,7 @@ def _mapping_fields(subject: Table[CallFact], expressions: pl.LazyFrame) -> pl.L
             pl.concat_str(pl.col("key"), pl.lit("="), pl.col("value_text")).alias(
                 "constructor_keyword"
             ),
+            names_a_field.alias("names_a_field"),
         )
         .group_by("expression_id", maintain_order=True)
         .agg(
@@ -35,6 +43,8 @@ def _mapping_fields(subject: Table[CallFact], expressions: pl.LazyFrame) -> pl.L
             .sort_by("ordinal")
             .str.join(", ")
             .alias("constructor_keywords"),
+            pl.col("names_a_field").all().alias("states_only_fields"),
+            pl.len().cast(pl.UInt64).alias("entry_count"),
         )
     )
 
@@ -72,6 +82,8 @@ def _literal_mapping_calls(
         .with_columns(
             pl.col("fields").fill_null(""),
             pl.col("constructor_keywords").fill_null(""),
+            pl.col("states_only_fields").fill_null(False),
+            pl.col("entry_count").fill_null(0),
         )
         .join(keyword_calls, on="call_id", how="anti")
         .filter(
@@ -79,6 +91,8 @@ def _literal_mapping_calls(
             & pl.col("qualified_name").str.ends_with(".model_validate")
             & (pl.col("argument_count") == 1)
             & (pl.col("first_argument_literal_kind") == "mapping")
+            & pl.col("states_only_fields")
+            & (pl.col("entry_count") > 0)
         )
     )
 
@@ -144,8 +158,10 @@ def redundant_model_validate(subject: Table[CallFact]) -> CountQuery:
 
     Exceptions
     ----------
-    Mapping variables, dictionary unpacking, non-identifier aliases, `from_attributes`, strictness,
-    context, and other validation options are excluded. Tests are excluded because literal
+    Mapping variables, dictionary unpacking, keys that are not plain identifiers or that spell a
+    reserved word, `from_attributes`, strictness, context, and other validation options are
+    excluded, because a constructor call cannot state any of them and a repair that dropped one
+    would quietly change what the model receives. Tests are excluded because literal
     mappings there often exercise decoded configuration and invalid input boundaries. A thin
     `from_table` method may reasonably call `cls.model_validate(table)` because the mapping itself
     is the boundary.

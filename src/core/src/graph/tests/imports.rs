@@ -355,3 +355,37 @@ fn a_relative_import_beyond_its_package_never_becomes_an_absolute_one() {
                 && node.qualname().ends_with("::..models.User"))
     );
 }
+
+#[test]
+fn a_sibling_module_consumes_the_package_export_it_imports_through_the_facade() {
+    let graph = build(
+        "repo",
+        &[
+            Document {
+                relative: "pkg/__init__.py".to_string(),
+                source: "from .client import Client\nfrom .engine import Engine\n\n__all__ = [\"Client\", \"Engine\"]\n"
+                    .to_string(),
+            },
+            Document {
+                relative: "pkg/client.py".to_string(),
+                source: "class Client:\n    pass\n".to_string(),
+            },
+            Document {
+                relative: "pkg/engine.py".to_string(),
+                source: "class Engine:\n    pass\n".to_string(),
+            },
+            Document {
+                relative: "pkg/service/reader.py".to_string(),
+                source: "from .. import Client\n\nclient = Client()\n".to_string(),
+            },
+        ],
+    )
+    .expect("the graph builds");
+    let exports: Vec<(&str, usize)> = graph
+        .exports
+        .iter()
+        .map(|export| (export.name.as_str(), export.consumer_count))
+        .collect();
+
+    assert_eq!(exports, [("Client", 1), ("Engine", 0)]);
+}

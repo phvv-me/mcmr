@@ -163,7 +163,6 @@ class CandidateProtocol(FrozenModel):
             "items": {"type": "string", "minLength": 1},
             "minItems": 1,
             "maxItems": 8,
-            "uniqueItems": True,
         }
         return self._object_schema(
             {

@@ -201,6 +201,23 @@ fn calls_resolve_their_name_receiver_and_discarded_result() {
 }
 
 #[test]
+fn a_mapping_argument_states_its_unpacked_items_beside_its_keyed_ones() {
+    let facts = facts_for(
+        "Manifest.model_validate({**base, \"name\": name})\n",
+        FactFamily("CallFact"),
+    );
+    let entries = facts[0]["calls"][0]["arguments"][0]["entries"]
+        .as_array()
+        .expect("the mapping literal states its items");
+
+    assert_eq!(entries.len(), 2);
+    assert_eq!(entries[0]["is_spread"], true);
+    assert_eq!(entries[0]["value"]["text"], "base");
+    assert!(entries[1].get("is_spread").is_none());
+    assert_eq!(entries[1]["key"], "name");
+}
+
+#[test]
 fn constants_carry_the_statements_between_them_and_their_valid_anchor() {
     let facts = facts_for(
         concat!(

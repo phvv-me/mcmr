@@ -1,6 +1,6 @@
 [package]
 name = "mcmr-native"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2024"
 description = "Native analysis and typed Python tables for My Code, My Rules"
 license = "Apache-2.0"

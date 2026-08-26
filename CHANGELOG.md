@@ -6,6 +6,24 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 
 ## Unreleased
 
+### Added
+
+- MCMR reads LaTeX manuscripts. `Manuscript::scan` finds the files that declare a document class,
+  splices each included file into the reading order at the position that included it, and produces
+  one flattened element stream per manuscript. The element variants are markup neutral, so a
+  second markup language joins by producing the same stream rather than by teaching every rule a
+  second spelling.
+- Three fact families come out of that one walk. `ManuscriptFact` holds the skeleton, its
+  sections, statements, floats, labels, references, paragraphs and sentences. `ManuscriptNotationFact`
+  holds the symbols, the places the document appears to introduce one, the phrases it marks as
+  terms, and the rows of its own notation index. `ManuscriptEvidenceFact` holds the numbers it
+  prints, the sources it leans on, and the references a number is read against.
+- Fifteen rules read them. `ALL-MANU0001` to `ALL-MANU0003` answer for reading order, `ALL-MANU0004`
+  to `ALL-MANU0006` for statement structure, `ALL-MANU0007` to `ALL-MANU0009` for notation,
+  `ALL-MANU0010` to `ALL-MANU0012` for prose, and `ALL-MANU0013` to `ALL-MANU0015` for evidence.
+  None of them repairs anything, because a repair to code is proved by reparsing it and rerunning
+  the rule and neither proof exists for prose.
+
 ### Fixed
 
 - A repair that replaces source now has to carry that source's values forward. The renderer

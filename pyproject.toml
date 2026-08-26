@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "mcmr"
-version = "0.0.3"
+version = "0.0.4"
 description = "Define and enforce the engineering rules that make your code yours."
 readme = "README.md"
 requires-python = ">=3.14"

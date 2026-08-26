@@ -19,6 +19,15 @@ _ABSENT = "absent"
 
 _UNFILLED: dict[str, str] = {
     "KernelLaunchFact": ("only a CUDA source states a launch and this corpus holds no CUDA"),
+    "ManuscriptEvidenceFact": (
+        "only a manuscript states numbers and sources this way and this corpus holds no manuscript"
+    ),
+    "ManuscriptFact": (
+        "only a file declaring a document class opens a manuscript and this corpus holds none"
+    ),
+    "ManuscriptNotationFact": (
+        "only a manuscript names symbols and terms this way and this corpus holds no manuscript"
+    ),
 }
 
 # Every fact field this corpus never moves is paired with the missing shape.

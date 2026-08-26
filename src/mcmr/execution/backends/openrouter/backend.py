@@ -23,6 +23,8 @@ if TYPE_CHECKING:
     from enum import StrEnum
 
     from ....domain.contracts import ModelProvenance
+
+
 class OpenRouterBackend(BatchedBackend):
     """Run contextual evidence packs through schema-constrained OpenRouter responses."""
 

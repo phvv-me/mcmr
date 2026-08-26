@@ -423,6 +423,43 @@ The official `datahub` CLI remains useful for setup and diagnostics. DataHub MCP
 agent surface for targeted lineage exploration and verified writeback. It does not become the
 product transport or a hidden MCMR dependency.
 
+## Manuscripts
+
+A paper is a program a reader executes once, from the top, with no way to jump back, and most of
+what a cold reader complains about is that execution needing something it has not been given yet.
+A symbol used before it is defined, a term used before it is introduced, a theorem referenced
+before it is proved, a table met before anything says why it is there, one letter carrying two
+meanings, a number in prose the cited table does not hold. Every one of those is a statement about
+reading order and about where a thing was introduced, so the kernel establishes both once and
+every rule reads that one answer.
+
+`Manuscript::scan` reads every markup file the repository holds, finds the roots that declare a
+document class, and splices each included file into the reading order at the position that
+included it. What comes out is one flattened element stream per manuscript, and the element
+variants are markup neutral. A LaTeX reader and a Typst reader disagree about how a heading or a
+cross reference is spelled and agree about what one is, so the readers differ and the reading
+order, the facts and every rule are written once. The LaTeX reader is lexical rather than a
+parser, because TeX is macro expansion and has no grammar a scanner can settle, and a control
+sequence it does not recognize contributes a word boundary and nothing else.
+
+Three families come out of one walk, because a paragraph, a symbol and a number have to agree
+about which section they were met in or no comparison between them means anything.
+`ManuscriptFact` holds the skeleton, its sections, statements, floats, labels, references,
+paragraphs and sentences. `ManuscriptNotationFact` holds what the document calls things, its
+symbols, the places it appears to introduce one, the phrases it marks as terms, and the rows of
+its own notation index. `ManuscriptEvidenceFact` holds the numbers it prints and the sources it
+leans on, with each number retaining whether it sat in a table cell and which float held it.
+
+Everything retained is an observation. A reference retains where it points rather than a claim
+that it points forwards, a statement retains the order of whatever followed it rather than a claim
+that it is unproved, and a number retains the cell it sits in rather than a claim that the prose
+disagrees. Which of those is a defect is a question about one project's conventions, so it lives
+in a rule and its thresholds are settings.
+
+Nothing in this family repairs anything. A repair to code is proved by reparsing it and rerunning
+the rule, and neither proof exists for prose, where a wrong repair to an argument is far harder to
+see than a wrong repair to a function. The lane reports.
+
 ## Contextual rules
 
 Contextual rules build typed candidates from local tables. The engine batches candidates and calls

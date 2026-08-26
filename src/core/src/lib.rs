@@ -21,6 +21,7 @@ pub mod history;
 pub mod imports;
 pub mod interop;
 pub mod lexical;
+pub mod manuscript;
 pub mod modules;
 pub mod native;
 pub mod organization;

@@ -69,6 +69,25 @@ from .project.configuration.assignment import ConfigurationAssignment
 from .project.configuration.fact import ProjectConfigurationFact
 from .project.configuration.python import PythonTargetConfiguration
 from .project.history import FileHistory, HistoryChange, RepositoryHistoryFact
+from .project.manuscript import (
+    ManuscriptCitation,
+    ManuscriptEntry,
+    ManuscriptEvidenceFact,
+    ManuscriptFact,
+    ManuscriptFloat,
+    ManuscriptLabel,
+    ManuscriptNotationFact,
+    ManuscriptNumber,
+    ManuscriptParagraph,
+    ManuscriptPlace,
+    ManuscriptReference,
+    ManuscriptSection,
+    ManuscriptSentence,
+    ManuscriptStatement,
+    ManuscriptSymbol,
+    ManuscriptSymbolSite,
+    ManuscriptTerm,
+)
 from .project.parameters.fact import ParameterFact
 from .project.parameters.use import ParameterUse
 from .project.performance.budget import PerformanceBudget
@@ -273,6 +292,23 @@ __all__ = [
     "LiteralTestLoop",
     "LocalCollection",
     "MappingEntry",
+    "ManuscriptCitation",
+    "ManuscriptEntry",
+    "ManuscriptEvidenceFact",
+    "ManuscriptFact",
+    "ManuscriptFloat",
+    "ManuscriptLabel",
+    "ManuscriptNotationFact",
+    "ManuscriptNumber",
+    "ManuscriptParagraph",
+    "ManuscriptPlace",
+    "ManuscriptReference",
+    "ManuscriptSection",
+    "ManuscriptSentence",
+    "ManuscriptStatement",
+    "ManuscriptSymbol",
+    "ManuscriptSymbolSite",
+    "ManuscriptTerm",
     "MemberDeclaration",
     "MemberKind",
     "MethodAnalysis",

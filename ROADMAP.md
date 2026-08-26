@@ -26,6 +26,15 @@ history without owning repository state.
 - [ ] Add release smoke tests from a clean source archive and wheel
 - [ ] Verify installation and the demo on Linux and macOS
 
+## Manuscripts
+
+- [x] Assemble one reading order per manuscript across every included file
+- [x] Expose the skeleton, the notation and the evidence of a manuscript as typed fact families
+- [x] Report reading order, statement structure, notation, prose and evidence defects
+- [ ] Read Typst through the same element stream the LaTeX reader produces
+- [ ] Resolve a macro that expands to a symbol so the index can be checked against what prints
+- [ ] Read a bibliography so a citation locator can be checked against the work it names
+
 ## Policy engine
 
 - [ ] Group the wide `CallSite` fact into cohesive typed records while preserving clear rule queries

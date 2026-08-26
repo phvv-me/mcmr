@@ -21,7 +21,7 @@ def test_builtin_catalog_preserves_every_migrated_rule() -> None:
     catalog = Catalog(modules=RuleModuleDiscovery().modules)
     definitions = catalog.definitions
     assert {definition.id for definition in definitions} == expected
-    assert len(definitions) == 285
+    assert len(definitions) == 300
     assert all(definition.policy is not None for definition in definitions)
     assert all(definition.documentation.definition for definition in definitions)
     assert all(definition.documentation.examples for definition in definitions)

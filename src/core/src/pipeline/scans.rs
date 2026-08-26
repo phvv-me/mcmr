@@ -1,6 +1,6 @@
 use crate::delivery::Delivery;
 use crate::protocol::Request;
-use crate::{clones, discovery, history, interop, organization, routes};
+use crate::{clones, discovery, history, interop, manuscript, organization, routes};
 
 /// Build and immediately release each family scanned across the complete repository.
 pub(super) fn deliver_repository_scans<Emit>(
@@ -17,6 +17,7 @@ where
     deliver_clones(request, documents, delivery)?;
     deliver_history(request, root, scope, delivery)?;
     deliver_routes(request, root, scope, delivery)?;
+    deliver_manuscripts(request, root, scope, delivery)?;
     deliver_organization(request, documents, delivery)
 }
 
@@ -84,6 +85,28 @@ where
             "RouteFact".to_string(),
             routes::facts(&routes::scan(root, scope)?),
         )?;
+    }
+    Ok(())
+}
+
+fn deliver_manuscripts<Emit>(
+    request: &Request,
+    root: &std::path::Path,
+    scope: &discovery::Scope,
+    delivery: &mut Delivery<Emit>,
+) -> Result<(), String>
+where
+    Emit: FnMut(String, Vec<serde_json::Value>) -> Result<(), String>,
+{
+    if !manuscript::FAMILIES
+        .iter()
+        .any(|family| request.wants(family))
+    {
+        return Ok(());
+    }
+    let manuscripts = manuscript::Manuscript::scan(root, scope)?;
+    for (family, facts) in manuscript::facts(&manuscripts, |family| request.wants(family)) {
+        delivery.send(family, facts)?;
     }
     Ok(())
 }

@@ -206,7 +206,7 @@ def system():
 
 def identity():
     return system()
-"""
+""",
         },
     )
 

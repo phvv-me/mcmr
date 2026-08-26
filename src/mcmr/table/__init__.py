@@ -7,7 +7,7 @@ from .names import (
     ImportBindingRelation,
     SyntaxRelation,
 )
-from .relations import HistoryRelations
+from .relations import HistoryRelations, ManuscriptRelations
 from .runtime.repository import RepositoryTables
 from .runtime.table import Table
 from .session import AnalysisSession
@@ -20,6 +20,7 @@ __all__ = [
     "GenericRelation",
     "ImportBindingRelation",
     "HistoryRelations",
+    "ManuscriptRelations",
     "RepositoryTables",
     "SyntaxRelation",
     "Table",

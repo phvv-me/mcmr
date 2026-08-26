@@ -150,11 +150,7 @@ def command_built_from_a_shell_string(
     local_declarations = (
         facts.select(
             "path",
-            pl.col("qualname")
-            .str.split(".")
-            .list.last()
-            .str.to_lowercase()
-            .alias("launched"),
+            pl.col("qualname").str.split(".").list.last().str.to_lowercase().alias("launched"),
         )
         .unique(maintain_order=True)
         .with_columns(pl.lit(True).alias("locally_declared"))

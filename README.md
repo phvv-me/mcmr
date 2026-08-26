@@ -39,7 +39,9 @@ tables. Python rules query the shared evidence and report exact findings with so
 - Safe repairs are kept only after MCMR reparses the edit and reruns the rule.
 - Plugins can add rules and evidence providers through public entry points.
 
-MCMR reads Python, Rust, TypeScript, C, C++, and CUDA.
+MCMR reads Python, Rust, TypeScript, C, C++, and CUDA. It also reads LaTeX manuscripts, in the
+order a reader meets them across every included file, and reports defects of reading order,
+statement structure, notation, prose and evidence. That lane never repairs.
 
 ## Usage
 

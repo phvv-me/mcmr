@@ -574,5 +574,9 @@ runtime behavior, marks, or domain meaning are redundant.
 The main contribution gate is the following.
 
 ```sh
-chefe run contribute
+uv run ruff check . && uv run ruff format --check .
+uv run mypy src && uv run pyrefly check && env -u PYTHONPATH uv run ty check --error-on-warning
+uv run pytest
+cargo clippy --manifest-path src/core/Cargo.toml --all-targets -- -D warnings
+cargo test --manifest-path src/core/Cargo.toml
 ```

@@ -681,8 +681,9 @@ what the executable used to, and `main.rs` is twenty lines of reading standard i
 worth having on its own: a benchmark, a future native extension, and any other consumer all need
 the library rather than the process.
 
-`chefe run core-bench` measures each phase over this repository's own Python, in process, so the
-numbers are the work rather than the work plus a process spawn and a six megabyte write to a pipe.
+`cargo bench --manifest-path src/core/Cargo.toml` measures each phase over this repository's own
+Python, in process, so the numbers are the work rather than the work plus a process spawn and a
+six megabyte write to a pipe.
 
 | phase | time |
 | --- | --- |

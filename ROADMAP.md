@@ -67,7 +67,7 @@ history without owning repository state.
 
 ## Release standard
 
-A release is ready when a clean checkout installs through Chefe, all Python and Rust gates pass,
-the deterministic self-scan has no unexplained failures, the demo output matches its documentation,
-the wheel and source archive install cleanly, and every enabled integration states its network and
-write behavior before it runs.
+A release is ready when a clean checkout installs through `uv sync && maturin develop --release`,
+all Python and Rust gates pass, the deterministic self-scan has no unexplained failures, the demo
+output matches its documentation, the wheel and source archive install cleanly, and every enabled
+integration states its network and write behavior before it runs.

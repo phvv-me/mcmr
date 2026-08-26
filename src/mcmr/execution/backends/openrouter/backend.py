@@ -2,7 +2,7 @@ import asyncio
 from functools import cached_property
 from typing import TYPE_CHECKING, ClassVar, cast
 
-from httpx import AsyncBaseTransport
+from httpx2 import AsyncBaseTransport
 from pydantic import Field, InstanceOf, JsonValue, PositiveInt
 
 from ....domain import primitives

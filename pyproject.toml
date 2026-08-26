@@ -31,7 +31,8 @@ dependencies = [
   "cyclopts>=4",
   "huggingface-hub>=0.34,<1",
   "httpx>=0.28,<1",
-  "openai>=2.53,<3",
+  "httpx2>=2.12,<3",
+  "openai>=2.53,<4",
   "packaging>=26,<27",
   "patos>=0.0.10,<0.1",
   "pathspec>=1.1,<2",
@@ -58,6 +59,30 @@ Homepage = "https://phvv.me/mcmr/"
 Documentation = "https://phvv.me/mcmr/docs/"
 Repository = "https://github.com/phvv-me/mcmr"
 Issues = "https://github.com/phvv-me/mcmr/issues"
+
+[dependency-groups]
+# uv installs this group by default, so `uv sync` alone builds the whole gate. The oracle
+# suites shell out to their upstream tools to cross-validate MCMR's own findings, so those
+# tools live here too: a checkout of this repository is all CI gets and nothing outside it
+# supplies them.
+dev = [
+  "build>=1.3,<2",
+  "clang-tidy>=22.1,<23",
+  "cppcheck==1.5.1",
+  "flake8>=7.3,<8",
+  "hypothesis>=6.155,<7",
+  "lizard>=1.23,<2",
+  "mypy>=2.3,<3",
+  "pylint==4.0.7",
+  "pyrefly>=1.1,<2",
+  "pytest>=9.1,<10",
+  "pytest-cov>=7.1,<8",
+  "ruff>=0.15,<0.16",
+  # ty is young and fast-moving enough that a wider floor picks up diagnostics the pinned
+  # release never raised; keep this window narrow and lift it deliberately, not by drift.
+  "ty>=0.0.66,<0.0.68",
+  "vulture>=2.16,<3",
+]
 
 [tool.maturin]
 features = ["extension-module"]
@@ -98,7 +123,6 @@ runtime-evaluated-decorators = [
 project-includes = ["src/mcmr", "src/mcmr_datahub", "tests"]
 search-path = ["src", "."]
 python-version = "3.14"
-python-interpreter-path = ".chefe/.pixi/envs/default/bin/python"
 
 [tool.mypy]
 python_version = "3.14"
@@ -114,7 +138,6 @@ plugins = ["pydantic.mypy"]
 init_typed = true
 
 [tool.ty.environment]
-python = ".chefe/.pixi/envs/default"
 python-version = "3.14"
 root = ["src"]
 

@@ -1,7 +1,7 @@
 import json
 from typing import TYPE_CHECKING
 
-from httpx import HTTPError, MockTransport, Request, Response
+from httpx2 import HTTPError, MockTransport, Request, Response
 from pydantic import JsonValue, TypeAdapter
 
 if TYPE_CHECKING:

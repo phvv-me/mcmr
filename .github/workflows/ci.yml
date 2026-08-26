@@ -2,7 +2,8 @@ name: CI
 
 on:
   pull_request:
-  workflow_call:
+  workflow_call: # publish.yml runs this exact gate on main before publishing
+  workflow_dispatch: # manual runs (e.g. to validate main or dev directly between releases)
 
 permissions:
   contents: read
@@ -29,25 +30,31 @@ jobs:
           # The variation ledger reads the repository's own history as a corpus, so a
           # shallow checkout would observe a different fact shape than a full one.
           fetch-depth: 0
-      - uses: phvv-me/chefe/.github/actions/setup@6455b7f5952ccb273cd57d3fd379a224f133c0b1 # main
+      # A published package stands on its own, so the bootstrap is the official uv action and
+      # the Rust toolchain every GitHub-hosted runner already carries. A shared house action
+      # would make every release depend on another repository's default branch, which is the
+      # coupling this file exists to avoid.
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           python-version: "3.14"
-          chefe-version: "==0.0.28"
-          cache-key-files: |-
-            chefe.toml
-            pyproject.toml
-            .chefe/pixi.lock
-          cache-paths: .chefe/target-kernel
-      - run: chefe run core-build
+          enable-cache: true
+      # `uv sync` installs the default dependency group (every tool the gate below runs,
+      # oracle-comparison linters included) and builds the `kernel_tables` extension module
+      # through maturin's own PEP 517 hook.
+      - run: uv sync
+      - run: cargo build --release --manifest-path src/core/Cargo.toml --no-default-features --bin mcmr-kernel
       - if: matrix.quality
-        run: chefe run core-lint
-      - run: chefe run core-test
+        run: |
+          cargo clippy --manifest-path src/core/Cargo.toml --all-targets --no-default-features -- -D warnings
+          cargo clippy --manifest-path src/core/Cargo.toml --all-targets --features python -- -D warnings
+          cargo fmt --manifest-path src/core/Cargo.toml --check
+      - run: cargo test --manifest-path src/core/Cargo.toml
       # These checks are platform-independent. Running them once keeps macOS as a real
       # installation and behavior gate without duplicating release work.
       - if: matrix.quality
-        run: chefe run lint
+        run: uv run ruff check . && uv run ruff format --check .
       - if: matrix.quality
-        run: chefe run typecheck
-      - run: chefe run test
+        run: uv run mypy src && uv run pyrefly check && env -u PYTHONPATH uv run ty check --error-on-warning
+      - run: uv run pytest
       - if: matrix.quality
-        run: chefe run build
+        run: uv run python -m build --outdir .dist

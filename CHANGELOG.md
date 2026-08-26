@@ -24,6 +24,16 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
   None of them repairs anything, because a repair to code is proved by reparsing it and rerunning
   the rule and neither proof exists for prose.
 
+### Changed
+
+- CI no longer bootstraps through the retired `chefe` action. `ci.yml` now sets up `uv` and the
+  runner's own Rust toolchain directly, `uv sync` installs the whole gate (including the oracle
+  suites' own upstream linters) from a `[dependency-groups] dev` table, and `pyrefly`/`ty` no
+  longer point at a `.chefe` interpreter path that a checkout outside this workspace never has.
+- `openai` moves to `>=2.53,<4`. Its 3.0 release replaced `httpx` with `httpx2` as the client's
+  transport dependency, so the OpenRouter client and backend, and the tests that drive them
+  through a controlled transport, import `httpx2` instead.
+
 ### Fixed
 
 - A repair that replaces source now has to carry that source's values forward. The renderer

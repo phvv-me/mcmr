@@ -1,6 +1,6 @@
 import polars as pl
 import pytest
-from httpx import ConnectError, MockTransport, Request, Response
+from httpx2 import ConnectError, MockTransport, Request, Response
 from pydantic import JsonValue, TypeAdapter
 
 from mcmr.contextual.evaluation import ContextualSweep

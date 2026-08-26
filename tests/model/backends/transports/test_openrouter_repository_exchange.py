@@ -1,5 +1,5 @@
 import pytest
-from httpx import ConnectError, MockTransport, ReadError, Request, Response
+from httpx2 import ConnectError, MockTransport, ReadError, Request, Response
 from pydantic import JsonValue, TypeAdapter
 
 from mcmr.contextual.evaluation import ContextualSweep

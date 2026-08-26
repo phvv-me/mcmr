@@ -2,7 +2,7 @@ import json
 from typing import TYPE_CHECKING
 
 import pytest
-from httpx import MockTransport, Request, Response
+from httpx2 import MockTransport, Request, Response
 from pydantic import JsonValue, TypeAdapter
 
 from mcmr.execution.backends import openrouter

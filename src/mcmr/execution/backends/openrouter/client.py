@@ -2,7 +2,7 @@ import json
 import os
 from typing import TYPE_CHECKING
 
-from httpx import AsyncBaseTransport, AsyncClient, ReadError, ReadTimeout, RemoteProtocolError
+from httpx2 import AsyncBaseTransport, AsyncClient, ReadError, ReadTimeout, RemoteProtocolError
 from openai import APIConnectionError, APIError, APITimeoutError, AsyncOpenAI, omit
 from openai.types.responses import (
     ResponseCompletedEvent,

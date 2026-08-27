@@ -16,7 +16,7 @@ target-version = "py312"
 "shop/legacy.py" = "py311"
 """
     ),
-    "chefe.toml": (
+    "mainboard.toml": (
         """[tasks]
 setup = "sudo apt-get install -y libshop"
 lint = "ruff check ."

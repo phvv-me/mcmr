@@ -116,7 +116,7 @@ fn prose_reads_a_dotted_name_inside_a_code_span_as_one_word() {
             relative: "prose.py".to_string(),
             source: concat!(
                 "def first():\n",
-                "    \"\"\"Read the `index.md` guide first. Keep `chefe.toml` small.\"\"\"\n",
+                "    \"\"\"Read the `index.md` guide first. Keep `mainboard.toml` small.\"\"\"\n",
                 "\n",
                 "class Reader:\n",
                 "    \"\"\"Read ``pyproject.toml`` once. Stop there.\"\"\"\n",

@@ -23,10 +23,10 @@ Use the repository environment to get the compatible conda-forge build without c
 ```sh
 git clone https://github.com/phvv-me/mcmr.git
 cd mcmr
-uv tool install chefe
-chefe install --resolve
-chefe run setup
-chefe run check .
+uv tool install mainboard
+mainboard install --resolve
+mainboard run setup
+mainboard run check .
 ```
 
 The first command runs deterministic rules only. It reads the repository and prints a report. It

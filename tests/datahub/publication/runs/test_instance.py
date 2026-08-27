@@ -22,12 +22,12 @@ from ..support import aspect
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-_RUN = "mcmr-chefe-1786096800000"
+_RUN = "mcmr-mainboard-1786096800000"
 
-_ANCHOR = "chefe/facts/literal_group_fact"
+_ANCHOR = "mainboard/facts/literal_group_fact"
 
 _GRAPH = RunGraph(
-    repository="chefe",
+    repository="mainboard",
     datasets=[
         FactDataset(
             family="LiteralGroupFact",
@@ -98,11 +98,11 @@ def test_a_recorded_run_hangs_under_the_flow_of_the_repository_it_judged() -> No
 
     assert started["urn"] == instance_urn(_RUN) == completed["urn"]
     assert relationships == {
-        "parentTemplate": flow_urn("chefe"),
+        "parentTemplate": flow_urn("mainboard"),
         "upstreamInstances": [],
     }
     assert receipts == [
-        "chefe recorded run mcmr-chefe-1786096800000, "
+        "mainboard recorded run mcmr-mainboard-1786096800000, "
         "17 rules and 2 failures in 1.8s for 34250 tokens"
     ]
 
@@ -117,7 +117,7 @@ def test_a_recorded_run_states_how_many_and_what_kind_of_rules_it_activated() ->
     assert properties["created"] == {"time": 1786179598160, "actor": "urn:li:corpuser:datahub"}
     assert properties["customProperties"] == {
         "runId": _RUN,
-        "repository": "chefe",
+        "repository": "mainboard",
         "files": "42",
         "facts": "310",
         "failures": "2",
@@ -162,7 +162,7 @@ def test_a_recorded_run_opens_before_it_closes_as_a_completed_invocation() -> No
 
 def test_a_run_with_no_published_flow_and_a_run_with_no_identity_record_nothing() -> None:
     """Recording is evidence-driven, so an orphan the catalog cannot show is never written."""
-    assert recorded(graph=RunGraph(repository="chefe")) == ([], [])
+    assert recorded(graph=RunGraph(repository="mainboard")) == ([], [])
     assert recorded(run="") == ([], [])
 
 
@@ -176,5 +176,5 @@ def test_a_run_that_asked_no_model_says_nothing_about_a_model() -> None:
 
     assert "backend" not in properties and "inputTokens" not in properties
     assert receipts == [
-        "chefe recorded run mcmr-chefe-1786096800000, 17 rules and 2 failures in 1.8s"
+        "mainboard recorded run mcmr-mainboard-1786096800000, 17 rules and 2 failures in 1.8s"
     ]

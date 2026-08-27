@@ -20,7 +20,7 @@ _CAST: dict[str, JsonValue] = {
 
 _JUDGED = RuleJob(
     rule="ALL-ARCH1005",
-    tables=RuleTables(primary="chefe/facts/literal_group_fact"),
+    tables=RuleTables(primary="mainboard/facts/literal_group_fact"),
     lanes=["contextual"],
     family="architecture",
     spend={
@@ -90,7 +90,7 @@ def test_a_project_that_names_nobody_still_publishes_under_the_configured_owner(
 
 def test_the_model_that_judged_a_rule_is_credited_as_its_steward() -> None:
     """The judge is whichever backend the run actually asked, so nobody configures its name."""
-    graph = RunGraph(repository="chefe", jobs=[_JUDGED])
+    graph = RunGraph(repository="mainboard", jobs=[_JUDGED])
     stated = directory(graph, people=_CAST)
 
     assert stated.judge.id == "claude-sonnet-5"
@@ -102,7 +102,7 @@ def test_the_model_that_judged_a_rule_is_credited_as_its_steward() -> None:
 
 def test_a_rule_keeps_the_judge_another_codebase_already_credited() -> None:
     """A rule is one entity, so a second codebase adds its judge rather than replacing one."""
-    graph = RunGraph(repository="chefe", jobs=[_JUDGED])
+    graph = RunGraph(repository="mainboard", jobs=[_JUDGED])
     held: dict[str, JsonValue] = {
         "owners": [{"owner": "urn:li:corpuser:gpt", "type": "DATA_STEWARD"}, "broken", {}]
     }
@@ -118,7 +118,7 @@ def test_a_rule_keeps_the_judge_another_codebase_already_credited() -> None:
 def test_a_rule_no_model_judged_and_no_codebase_owned_states_no_ownership() -> None:
     """A deterministic rule has no judge to credit, so the aspect is simply never written."""
     plain = RuleJob(rule="ALL-DUPL0005", lanes=["deterministic"])
-    graph = RunGraph(repository="chefe", jobs=[plain])
+    graph = RunGraph(repository="mainboard", jobs=[plain])
 
     assert directory(graph).stewardship(plain, {}) == {}
     assert directory(graph, people=_CAST).stewardship(plain, {"owners": "broken"}) == {}

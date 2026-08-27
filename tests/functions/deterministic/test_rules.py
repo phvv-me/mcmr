@@ -164,14 +164,14 @@ third = inflection.underscore(other)
 def test_deployment_reproducibility_cases() -> None:
     complete = fact(
         DeploymentFact,
-        locked_inputs=["chefe.lock"],
-        build_command="chefe run build",
+        locked_inputs=["mainboard.lock"],
+        build_command="mainboard run build",
         environment="linux-aarch64",
         artifact_identity="sha256:abc",
         migrations=["migrations/001.sql"],
         configuration_sources=["settings.toml"],
         secrets_boundary="runtime environment",
-        rollback_command="chefe run rollback",
+        rollback_command="mainboard run rollback",
         provenance="attestation.json",
     )
     assert answer(deployment_reproducibility, complete).value == "reproducible"

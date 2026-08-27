@@ -22,5 +22,5 @@ class ManuscriptEvidenceFact(Fact):
     )
     references: list[ManuscriptReference] = Field(
         default=[],
-        description="every cross reference, so a number can be read against what its section cites",
+        description="every cross reference, so a number reads against what its section cites",
     )

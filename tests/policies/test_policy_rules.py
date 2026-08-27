@@ -238,7 +238,7 @@ def test_project_automation_cases() -> None:
         key="automation",
         span=_SPAN,
         tasks=[
-            AutomationTask(capability=name, commands=[f"chefe run {name}"])
+            AutomationTask(capability=name, commands=[f"mainboard run {name}"])
             for name in ("setup", "lint", "typecheck", "test", "build")
         ],
     )
@@ -249,7 +249,7 @@ def test_project_automation_cases() -> None:
                 *complete.tasks[:-1],
                 AutomationTask(
                     capability="build",
-                    commands=["chefe run build", "python -m build"],
+                    commands=["mainboard run build", "python -m build"],
                 ),
             ]
         }
@@ -260,7 +260,7 @@ def test_project_automation_cases() -> None:
                 *complete.tasks[:-1],
                 AutomationTask(
                     capability="build",
-                    commands=["chefe run build"],
+                    commands=["mainboard run build"],
                     is_noninteractive=False,
                 ),
             ]
@@ -311,10 +311,10 @@ def test_onboarding_and_budget_evidence_drives_coverage() -> None:
         tasks=[
             AutomationTask(
                 capability="setup",
-                commands=["chefe run setup"],
+                commands=["mainboard run setup"],
                 guidance_locations=["README.md"],
             ),
-            AutomationTask(capability="test", commands=["chefe run test"]),
+            AutomationTask(capability="test", commands=["mainboard run test"]),
         ],
     )
     assert (
@@ -334,11 +334,11 @@ def test_onboarding_and_budget_evidence_drives_coverage() -> None:
         environment="production-like",
         baseline="main",
         variance_policy="five percent",
-        check_command="chefe run benchmark",
+        check_command="mainboard run benchmark",
         owner="performance",
         last_outcome="passed",
     )
-    partial = PerformanceBudget(name="memory", check_command="chefe run benchmark")
+    partial = PerformanceBudget(name="memory", check_command="mainboard run benchmark")
     budgets = PerformanceDecisionFact(
         key="budgets",
         span=_SPAN,
@@ -374,7 +374,7 @@ def test_raw_policy_coverage_is_all_or_nothing_per_record() -> None:
             RunbookTrigger(
                 name="database outage",
                 owner="database",
-                commands=["chefe run recover"],
+                commands=["mainboard run recover"],
                 verification_age_days=5,
             )
         ],

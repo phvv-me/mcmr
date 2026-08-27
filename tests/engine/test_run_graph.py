@@ -16,10 +16,10 @@ from mcmr.plugins import (
 )
 from mcmr.presentation.reports import CheckReport, RuleFailure, RulePass
 
-_ANCHOR = "chefe/facts/literal_group_fact"
+_ANCHOR = "mainboard/facts/literal_group_fact"
 
 _GRAPH = RunGraph(
-    repository="chefe",
+    repository="mainboard",
     datasets=[
         FactDataset(
             family="LiteralGroupFact",
@@ -48,7 +48,7 @@ def failing(*paths: str) -> CheckReport:
             RuleFailure(
                 rule="ALL-DUPL0005",
                 summary="Find one string literal a single module writes out over and over.",
-                where="src/chefe/manifest.py",
+                where="src/mainboard/manifest.py",
                 span=SourceSpan(path=paths[0]),
                 value=1,
                 allowed="<= 0",
@@ -70,7 +70,7 @@ def test_a_verdict_about_source_anchors_on_the_fact_table_its_rule_read() -> Non
     failures = [record for record in records if record.state is RunState.FAILURE]
     assert {record.subject for record in failures} == {_ANCHOR}
     assert [record.path for record in failures] == ["", "a.py", "b.py"]
-    assert failures[1].identity == "a.py src/chefe/manifest.py"
+    assert failures[1].identity == "a.py src/mainboard/manifest.py"
     assert failures[1].properties["path"] == "a.py"
     assert (failures[0].finding_count, failures[1].finding_count) == (2, 1)
 
@@ -84,7 +84,7 @@ def test_a_passing_rule_states_its_verdict_on_every_subject_it_could_have_named(
     """A pass is a conclusion, so it lands on the assets it judged and on its own fact table."""
     passing = RuleJob(
         rule="ALL-CALL0001",
-        tables=RuleTables(inputs=["chefe/facts/call_fact"], primary="c"),
+        tables=RuleTables(inputs=["mainboard/facts/call_fact"], primary="c"),
     )
     graph = _GRAPH.model_copy(update={"jobs": [*_GRAPH.jobs, passing]})
 
@@ -233,16 +233,16 @@ def test_one_fact_model_flattens_into_the_dotted_columns_a_schema_shows() -> Non
 
 def test_a_fact_family_is_published_under_its_own_readable_name() -> None:
     """An acronym stays one word, which is what keeps `CIConfigurationFact` readable."""
-    builder = RunGraphBuilder(Path("/tmp/chefe"))
+    builder = RunGraphBuilder(Path("/tmp/mainboard"))
 
     assert builder.family_slug(CIConfigurationFact) == "ci_configuration_fact"
-    assert builder.dataset_name(CallFact) == "chefe/facts/call_fact"
-    assert builder.graph().repository == "chefe"
+    assert builder.dataset_name(CallFact) == "mainboard/facts/call_fact"
+    assert builder.graph().repository == "mainboard"
 
 
 def test_a_fact_family_is_grouped_by_the_directory_it_is_already_defined_in() -> None:
     """The taxonomy a reader browses by is where the model lives rather than a second list."""
-    builder = RunGraphBuilder(Path("/tmp/chefe"))
+    builder = RunGraphBuilder(Path("/tmp/mainboard"))
 
     assert builder.family_category(CIConfigurationFact) == "structure"
     assert builder.family_category(RunGraph) == ""

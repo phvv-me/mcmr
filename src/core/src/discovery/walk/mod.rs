@@ -201,7 +201,7 @@ fn is_configuration(relative: &str) -> bool {
     relative.ends_with("Cargo.toml")
         || relative.ends_with("package.json")
         || relative.ends_with("pyproject.toml")
-        || relative.ends_with("chefe.toml")
+        || relative.ends_with("mainboard.toml")
         || relative.ends_with("tsconfig.json")
         || relative.ends_with("jsconfig.json")
 }

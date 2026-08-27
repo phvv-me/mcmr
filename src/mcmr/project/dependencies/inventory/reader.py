@@ -51,7 +51,7 @@ class DependencyInventory(FrozenModel):
         *,
         is_development: bool = False,
     ) -> DependencyDeclaration:
-        """Turn one Chefe key and constraint into a PEP 508 declaration."""
+        """Turn one workspace-manifest key and constraint into a PEP 508 declaration."""
         if isinstance(value, str):
             constraint = "" if value == "*" else value
         else:
@@ -65,9 +65,9 @@ class DependencyInventory(FrozenModel):
         """Validate one nested TOML table before walking it."""
         return cls.table_adapter.validate_python(value)
 
-    def chefe(self) -> list[DependencyDeclaration]:
-        """Read house-manifest Python dependencies without interpreting another ecosystem."""
-        document = self.document(self.root / "chefe.toml")
+    def workspace(self) -> list[DependencyDeclaration]:
+        """Read workspace-manifest Python dependencies without interpreting another ecosystem."""
+        document = self.document(self.root / "mainboard.toml")
         if document is None:
             return []
         runtime = self._dependency_table(document, "python", "deps")
@@ -77,7 +77,7 @@ class DependencyInventory(FrozenModel):
     def declarations(self) -> list[DependencyDeclaration]:
         """Return unique direct requirements with runtime ownership taking precedence."""
         unique: dict[str, DependencyDeclaration] = {}
-        for item in [*self.pyproject(), *self.chefe()]:
+        for item in [*self.pyproject(), *self.workspace()]:
             if item.name not in unique or unique[item.name].is_development:
                 unique[item.name] = item
         return [unique[name] for name in sorted(unique)]
@@ -206,7 +206,7 @@ class DependencyInventory(FrozenModel):
         )
 
     def _names_this_repository(self, value: JsonValue) -> bool:
-        """Whether one Chefe entry installs this repository itself rather than a dependency."""
+        """Whether one manifest entry installs this repository itself rather than a dependency."""
         if isinstance(value, str):
             return False
         path = self.table(value).get("path")
@@ -218,7 +218,7 @@ class DependencyInventory(FrozenModel):
         *,
         is_development: bool = False,
     ) -> list[DependencyDeclaration]:
-        """Normalize every named Chefe constraint that stands for another package."""
+        """Normalize every named manifest constraint that stands for another package."""
         return [
             self.stated(name, value, is_development=is_development)
             for name, value in values.items()

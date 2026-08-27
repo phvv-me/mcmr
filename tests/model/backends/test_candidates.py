@@ -115,7 +115,7 @@ def test_the_output_schema_closes_every_field_and_category() -> None:
     assert schema["required"] == ["category", "reasoning", "evidence_ids", "confidence"]
     assert schema["additionalProperties"] is False
     assert set(properties) == {"category", "reasoning", "evidence_ids", "confidence"}
-    assert evidence["uniqueItems"] is True
+    assert evidence["minItems"] == 1
     assert properties["category"] == {"type": "string", "enum": ["supported", "uncertain"]}
     assert all(
         constraint in json.dumps(schema, sort_keys=True)

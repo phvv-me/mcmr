@@ -36,7 +36,7 @@ def characteristic(**changes: int | str | None) -> ArchitectureCharacteristic:
     values: dict[str, int | str | None] = {
         "name": "latency",
         "objective": "p99 below 200 milliseconds",
-        "check": "chefe run benchmark",
+        "check": "mainboard run benchmark",
         "retained_result": "passed",
         "owner": "performance",
         "scope": "checkout API",

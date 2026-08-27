@@ -96,7 +96,7 @@ async def test_repository_contract_drift_retries_on_a_fresh_session() -> None:
     def respond(request: Request) -> Response:
         request.read()
         requests.append(request)
-        answer = (
+        answer: JsonValue = (
             {"unexpected": payload()}
             if len(requests) == 1
             else {

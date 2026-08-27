@@ -139,7 +139,7 @@ fn a_directory_of_siblings_is_one_fact_saying_how_many_rather_than_one_fact_each
 fn guidance_is_read_separately_without_becoming_a_source_module() {
     let tree = Tree::new("guidance");
     tree.write("src/app.py", "value = 1\n")
-        .write("README.md", "Run `chefe run test`.\n")
+        .write("README.md", "Run `mainboard run test`.\n")
         .write("docs/ignored.txt", "not source\n");
 
     let inventory = tree.walk();

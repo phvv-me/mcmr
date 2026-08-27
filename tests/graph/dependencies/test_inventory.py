@@ -84,7 +84,7 @@ dev = ['Dev>=2']
 requires = ['Build>=1']
 """
     )
-    (tmp_path / "chefe.toml").write_text(
+    (tmp_path / "mainboard.toml").write_text(
         """[python.deps]
 demo = '>=1,<3'
 extra = '*'
@@ -129,7 +129,7 @@ source = { registry = 'pypi' }
     return DependencyInventory(root=tmp_path)
 
 
-def test_inventory_merges_standard_and_chefe_declarations(
+def test_inventory_merges_standard_and_workspace_declarations(
     inventory: DependencyInventory,
 ) -> None:
     """A sibling checkout stays a dependency while the repository's own install does not."""

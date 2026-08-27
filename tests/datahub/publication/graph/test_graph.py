@@ -40,7 +40,7 @@ def test_a_published_fact_dataset_states_its_columns_and_the_rows_this_run_read(
     dataset = entities["dataset"][0]
 
     assert receipts == [
-        "chefe published 1 fact datasets as 28 entities owned by datahub in Codebases"
+        "mainboard published 1 fact datasets as 28 entities owned by datahub in Codebases"
     ]
     assert dataset["urn"] == dataset_urn(_ANCHOR)
     assert aspect(dataset, "datasetProfile")["rowCount"] == 7
@@ -60,14 +60,14 @@ def test_everything_published_carries_the_owner_and_domain_a_reader_browses_by()
     dataset, flow = entities["dataset"][0], entities["dataflow"][0]
     parent, child = entities["domain"]
 
-    assert aspect(dataset, "domains")["domains"] == [codebase_urn("chefe")]
-    assert aspect(flow, "domains")["domains"] == [codebase_urn("chefe")]
+    assert aspect(dataset, "domains")["domains"] == [codebase_urn("mainboard")]
+    assert aspect(flow, "domains")["domains"] == [codebase_urn("mainboard")]
     assert aspect(flow, "ownership")["owners"] == [
         {"owner": "urn:li:corpuser:pedro", "type": "TECHNICAL_OWNER"}
     ]
     assert aspect(parent, "domainProperties")["name"] == "Repositories"
     assert parent["urn"] == domain_urn("Repositories")
-    assert child["urn"] == codebase_urn("chefe")
+    assert child["urn"] == codebase_urn("mainboard")
     assert aspect(child, "domainProperties")["parentDomain"] == domain_urn("Repositories")
 
 
@@ -88,12 +88,12 @@ def test_a_published_rule_job_reads_exactly_the_tables_its_signature_declared() 
     lineage = "dataJobInputOutput"
 
     assert receipts == [
-        "chefe merged into 1 rules of the MCMR Rulebook, 0 passing and 1 failing here"
+        "mainboard merged into 1 rules of the MCMR Rulebook, 0 passing and 1 failing here"
     ]
     assert aspect(extraction, lineage)["outputDatasets"] == [dataset_urn(_ANCHOR)]
     assert aspect(rule_job, lineage)["inputDatasets"] == [dataset_urn(_ANCHOR)]
     assert rule_job["urn"] == rule_urn("ALL-DUPL0005")
-    assert extraction["urn"] == job_urn("chefe", job="extract")
+    assert extraction["urn"] == job_urn("mainboard", job="extract")
 
 
 def test_a_rule_job_states_the_verdict_its_own_timeline_reached() -> None:
@@ -101,10 +101,10 @@ def test_a_rule_job_states_the_verdict_its_own_timeline_reached() -> None:
     entities, _ = emitted("summarize", [timeline("ALL-DUPL0005")])
     stated = properties(entities["datajob"][1])
 
-    assert stated["lastResult.chefe"] == "FAILURE"
-    assert stated["findings.chefe"] == "2"
-    assert stated["since.chefe"] == "2026-08-07T09:34:00+00:00"
-    assert stated["anchor.chefe"] == _ANCHOR
+    assert stated["lastResult.mainboard"] == "FAILURE"
+    assert stated["findings.mainboard"] == "2"
+    assert stated["since.mainboard"] == "2026-08-07T09:34:00+00:00"
+    assert stated["anchor.mainboard"] == _ANCHOR
     assert (stated["reposFailing"], stated["reposPassing"], stated["totalFindings"]) == (
         "1",
         "0",
@@ -118,8 +118,8 @@ def test_a_contextual_rule_job_states_what_it_has_cost_and_what_its_last_run_cos
     entities, _ = emitted("summarize", [timeline("ALL-DUPL0005", billed=billed)])
     stated = properties(entities["datajob"][1])
 
-    assert stated["tokens.chefe"] == "2000"
-    assert stated["lastRunTokens.chefe"] == "1000"
+    assert stated["tokens.mainboard"] == "2000"
+    assert stated["lastRunTokens.mainboard"] == "1000"
     assert stated["totalTokens"] == "2000"
 
 
@@ -127,7 +127,7 @@ def test_a_deterministic_rule_job_grows_no_cost_properties_at_all() -> None:
     """A rule nobody paid for states nothing, so the properties table stays worth reading."""
     stated = properties(emitted("summarize", [timeline("ALL-DUPL0005")])[0]["datajob"][1])
 
-    assert "tokens.chefe" not in stated and "lastRunTokens.chefe" not in stated
+    assert "tokens.mainboard" not in stated and "lastRunTokens.mainboard" not in stated
     assert "totalTokens" not in stated
 
 
@@ -136,7 +136,7 @@ def test_a_rule_is_summarized_by_the_timeline_that_closes_when_the_whole_rule_do
     located = timeline("ALL-DUPL0005", where="src/orders.py", runs=3)
     entities, _ = emitted("summarize", [located, timeline("ALL-DUPL0005")])
 
-    assert properties(entities["datajob"][1])["findings.chefe"] == "2"
+    assert properties(entities["datajob"][1])["findings.mainboard"] == "2"
 
 
 def test_a_rule_job_points_at_the_fact_table_its_verdicts_are_recorded_against() -> None:
@@ -147,7 +147,7 @@ def test_a_rule_job_points_at_the_fact_table_its_verdicts_are_recorded_against()
     assert held == [
         {
             "url": f"https://ui.example/dataset/{_QUOTED}/Validation",
-            "description": "Verdict history.chefe",
+            "description": "Verdict history.mainboard",
             "createStamp": {"time": 0, "actor": "urn:li:corpuser:datahub"},
         }
     ]
@@ -165,7 +165,7 @@ def test_a_timeline_nothing_was_ever_recorded_against_summarizes_nothing() -> No
     entities, receipts = emitted("summarize", [empty])
 
     assert "0 passing and 0 failing" in receipts[0]
-    assert "lastResult.chefe" not in properties(entities["datajob"][1])
+    assert "lastResult.mainboard" not in properties(entities["datajob"][1])
 
 
 def test_the_ingestion_client_owns_its_pool_from_construction() -> None:
@@ -255,7 +255,7 @@ def test_a_run_that_consumed_no_table_publishes_no_graph(tmp_path: Path) -> None
 
     assert not any("published" in receipt for receipt in receipts)
     assert owner_urn("urn:li:corpGroup:data") == "urn:li:corpGroup:data"
-    assert flow_urn("chefe") == "urn:li:dataFlow:(mcmr,chefe,PROD)"
+    assert flow_urn("mainboard") == "urn:li:dataFlow:(mcmr,mainboard,PROD)"
 
 
 def test_a_rule_keeps_every_codebase_that_already_published_it() -> None:
@@ -285,7 +285,7 @@ def test_a_rule_keeps_every_codebase_that_already_published_it() -> None:
         dataset_urn("other/facts/literal_group_fact"),
     ]
     assert stated["lastResult.other"] == "FAILURE"
-    assert stated["lastResult.chefe"] == "FAILURE"
+    assert stated["lastResult.mainboard"] == "FAILURE"
     assert (stated["reposFailing"], stated["totalFindings"]) == ("2", "5")
 
 
@@ -308,6 +308,6 @@ def test_a_rule_links_the_codebases_that_are_failing_it_first() -> None:
 
     assert isinstance(held, list)
     assert [_OBJECT.validate_python(item)["description"] for item in held] == [
-        "Verdict history.chefe",
+        "Verdict history.mainboard",
         "Verdict history.aaa",
     ]

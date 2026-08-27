@@ -19,8 +19,8 @@ pub(super) fn automation(tooling: &Table, guides: &[Document]) -> Value {
         .collect();
     JsonObject::new(
         FactIdentity {
-            key: "automation:chefe",
-            path: "chefe.toml",
+            key: "automation:mainboard",
+            path: "mainboard.toml",
         }
         .base(),
     )
@@ -58,12 +58,12 @@ fn task_value(capability: String, commands: Vec<String>, guides: &[Document]) ->
 }
 
 fn guidance_locations(capability: &str, guides: &[Document]) -> Vec<String> {
-    let invocation = format!("chefe run {capability}");
+    let invocation = format!("mainboard run {capability}");
     guides
         .iter()
         .filter(|guide| {
             guide.source.contains(&invocation)
-                || (capability == "setup" && guide.source.contains("chefe install"))
+                || (capability == "setup" && guide.source.contains("mainboard install"))
         })
         .map(|guide| guide.relative.clone())
         .collect()

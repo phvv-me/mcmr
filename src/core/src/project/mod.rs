@@ -28,7 +28,7 @@ pub fn facts(
     inventory: &Inventory,
 ) -> Result<Vec<(String, Value)>, String> {
     let manifest = read_table(&root.join("pyproject.toml"))?;
-    let tooling = read_table(&root.join("chefe.toml"))?;
+    let tooling = read_table(&root.join("mainboard.toml"))?;
     let mut built = Vec::new();
     let wants = |name: &str| families.iter().any(|family| family == name);
     if let Some(stated) = &manifest {

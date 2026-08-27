@@ -59,8 +59,8 @@ def test_a_fact_table_and_a_flow_state_the_codebase_that_published_them() -> Non
     """A typed facet is what lets a reader ask the catalog for one codebase everywhere."""
     entities, _ = emitted("publish", graph=_LABELLED)
 
-    assert held(entities["dataset"][0]) == {"codebase": [{"string": "chefe"}]}
-    assert held(entities["dataflow"][0]) == {"codebase": [{"string": "chefe"}]}
+    assert held(entities["dataset"][0]) == {"codebase": [{"string": "mainboard"}]}
+    assert held(entities["dataflow"][0]) == {"codebase": [{"string": "mainboard"}]}
 
 
 def test_a_rule_states_its_lane_family_findings_and_cost_as_typed_values() -> None:
@@ -74,14 +74,14 @@ def test_a_rule_states_its_lane_family_findings_and_cost_as_typed_values() -> No
         "findings": [{"double": 2.0}],
         "tokensSpent": [{"double": 2000.0}],
     }
-    assert held(entities["datajob"][0]) == {"codebase": [{"string": "chefe"}]}
+    assert held(entities["datajob"][0]) == {"codebase": [{"string": "mainboard"}]}
 
 
 def test_a_value_outside_what_a_property_accepts_is_never_stated() -> None:
     """DataHub rejects a whole entity over one bad value, so a run states only what it proves."""
     invented = RuleJob(
         rule="ALL-DUPL0005",
-        tables=RuleTables(primary="chefe/facts/x"),
+        tables=RuleTables(primary="mainboard/facts/x"),
         lanes=["invented"],
     )
     graph = _LABELLED.model_copy(update={"jobs": [invented]})
@@ -95,7 +95,7 @@ def test_a_value_outside_what_a_property_accepts_is_never_stated() -> None:
 
 def test_a_rule_nobody_paid_for_and_nothing_reported_states_no_numbers() -> None:
     """A number nobody measured is worse than a blank, so it is simply left out."""
-    graph = RunGraph(repository="chefe", datasets=_LABELLED.datasets, jobs=[_LABELLED.jobs[0]])
+    graph = RunGraph(repository="mainboard", datasets=_LABELLED.datasets, jobs=[_LABELLED.jobs[0]])
 
     entities, _ = emitted("summarize", graph=graph)
     stated = held(entities["datajob"][1])

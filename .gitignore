@@ -45,3 +45,4 @@ target/
 # and still fires everything. The files are tracked with `git add -f demo`, because Git honors the
 # index over this file while the kernel only ever reads the file.
 /demo/
+.chefe/

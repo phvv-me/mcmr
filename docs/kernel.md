@@ -319,7 +319,7 @@ network, or when the program it runs is an absolute path or one under a person's
 absolute path in an argument is deliberately left alone, since a build writing to a scratch
 directory every machine has is still carried by the clone. Noninteractive means nothing in the
 command opens a session, which an interactive flag, an editor, a pager, and a debugger each do. The
-task list is also read from every table chefe supports rather than from `[tasks]` alone, so one
+task list is also read from every table the manifest supports rather than from `[tasks]` alone, so one
 capability two environments declare differently carries both commands and `ALL-LIFE0001` can see
 that neither is canonical, which was a third condition the old provider could never fail either.
 
@@ -681,8 +681,9 @@ what the executable used to, and `main.rs` is twenty lines of reading standard i
 worth having on its own: a benchmark, a future native extension, and any other consumer all need
 the library rather than the process.
 
-`chefe run core-bench` measures each phase over this repository's own Python, in process, so the
-numbers are the work rather than the work plus a process spawn and a six megabyte write to a pipe.
+`cargo bench --manifest-path src/core/Cargo.toml` measures each phase over this repository's own
+Python, in process, so the numbers are the work rather than the work plus a process spawn and a
+six megabyte write to a pipe.
 
 | phase | time |
 | --- | --- |

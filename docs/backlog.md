@@ -134,7 +134,7 @@ hand-written Python, so the field measure reads the resolved declarations in `Sy
 10. **Hand-rolled registry or dispatch table**, a literal mapping of names to callables used for
     selection, where `patos.Registry` or `value_dispatch` exists.
 11. **Task runner bypass**, a repository-owned script or workflow calling `pip`, `pytest`, or
-    `pixi` directly where chefe owns the task.
+    `pixi` directly where the workspace manifest owns the task.
 12. **Prose punctuation policy**, em dash, colon, and semicolon in comments and documentation.
 13. **Defensive import guard**, a `try` around an import with a fallback, where the house policy is
     to assume the dependency is present.

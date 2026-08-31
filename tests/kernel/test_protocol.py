@@ -363,7 +363,7 @@ class TestKernelLocation:
         self, tmp_path: Path
     ) -> None:
         """The standalone kernel stays separate from the Python extension feature cache."""
-        binary = tmp_path / ".chefe/target-kernel/release/mcmr-kernel"
+        binary = tmp_path / ".mainboard/target-kernel/release/mcmr-kernel"
         binary.parent.mkdir(parents=True)
         binary.write_text("")
 

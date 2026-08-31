@@ -1,8 +1,8 @@
 name: Docs
 
 # Builds the Astro and Starlight site under docs/ and publishes it to GitHub Pages, which is what
-# serves https://phvv.me/mcmr. Mirrors the build-then-deploy shape of chefe's own docs workflow,
-# with the pnpm install and Astro build steps the Node toolchain needs instead of a Python one.
+# serves https://phvv.me/mcmr. A plain build-then-deploy workflow, with the pnpm install and Astro
+# build steps the Node toolchain needs instead of a Python one.
 on:
   push:
     branches: [main]

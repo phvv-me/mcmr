@@ -50,7 +50,7 @@ def test_a_published_fact_table_is_held_to_the_rules_that_judged_the_whole_of_it
     """A contract answers what a table promises, which a hundred timelines never say outright."""
     asked, receipts = upserted()
 
-    assert receipts == ["chefe contracted 1 fact tables on 2 rule clauses"]
+    assert receipts == ["mainboard contracted 1 fact tables on 2 rule clauses"]
     assert asked == [
         {
             "entity": dataset_urn(_TABLE),
@@ -74,8 +74,8 @@ def test_a_verdict_about_one_file_stays_out_of_what_the_whole_table_promises() -
 
 def test_the_contract_key_is_the_table_so_a_later_run_updates_the_same_contract() -> None:
     """A second run has to land on the first contract rather than stack another beside it."""
-    assert contract_id(_TABLE) == "mcmr-chefe-facts-literal-group-fact"
-    assert contract_id("chefe/facts/other") != contract_id(_TABLE)
+    assert contract_id(_TABLE) == "mcmr-mainboard-facts-literal-group-fact"
+    assert contract_id("mainboard/facts/other") != contract_id(_TABLE)
 
 
 def test_a_table_no_rule_judged_whole_is_promised_nothing() -> None:
@@ -83,4 +83,4 @@ def test_a_table_no_rule_judged_whole_is_promised_nothing() -> None:
     located = [record for record in _JUDGED if record.path]
 
     assert upserted(records=located) == ([], [])
-    assert upserted(graph=RunGraph(repository="chefe")) == ([], [])
+    assert upserted(graph=RunGraph(repository="mainboard")) == ([], [])

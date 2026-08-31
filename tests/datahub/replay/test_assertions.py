@@ -147,15 +147,15 @@ def test_every_published_entity_is_keyed_by_an_identity_a_later_run_lands_on() -
     the rule, so a second run against the same repository rewrites the graph it already published
     instead of growing a second one beside it.
     """
-    flow = "urn:li:dataFlow:(mcmr,chefe,PROD)"
+    flow = "urn:li:dataFlow:(mcmr,mainboard,PROD)"
     asset = "urn:li:dataset:(urn:li:dataPlatform:snowflake,ecommerce.analytics.orders,PROD)"
 
-    assert dataset_urn("chefe/facts/call_fact") == (
-        "urn:li:dataset:(urn:li:dataPlatform:mcmr,chefe/facts/call_fact,PROD)"
+    assert dataset_urn("mainboard/facts/call_fact") == (
+        "urn:li:dataset:(urn:li:dataPlatform:mcmr,mainboard/facts/call_fact,PROD)"
     )
     extraction = f"urn:li:dataJob:({flow},extract)"
 
-    assert (flow_urn("chefe"), job_urn("chefe", job="extract")) == (flow, extraction)
+    assert (flow_urn("mainboard"), job_urn("mainboard", job="extract")) == (flow, extraction)
     assert subject_urn(asset) == asset
 
 

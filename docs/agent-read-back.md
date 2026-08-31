@@ -35,19 +35,26 @@ mcp-server-datahub = ">=0.6,<0.7"
 ```
 
 ```sh
-chefe run --env datahub-agent mcp-server-datahub --help
+mainboard install datahub-agent --resolve
+mainboard run --env datahub-agent -- mcp-server-datahub --help
 ```
+
+The install provisions the pinned environment and then exits nonzero, because mainboard's Node.js
+second stage is workspace wide and looks for `pnpm` inside whichever environment it just
+provisioned, and this one declares `no-default` so it carries no Node runtime at all. The
+environment it built is complete and the run above works against it, so treat that exit code as
+noise until mainboard scopes the second stage to the environments that declare the toolchain.
 
 ## Connecting an agent to it
 
 Claude Code reads project scoped servers from `.mcp.json` in the repository root. The command runs
-through chefe so the pinned environment is the one that starts.
+through mainboard so the pinned environment is the one that starts.
 
 ```json
 {
   "mcpServers": {
     "datahub": {
-      "command": "chefe",
+      "command": "mainboard",
       "args": ["run", "--env", "datahub-agent", "mcp-server-datahub"],
       "env": {
         "DATAHUB_GMS_URL": "http://localhost:8080"
@@ -244,7 +251,7 @@ asyncio.run(main())
 ```
 
 ```sh
-chefe run --env datahub-agent python list-tools.py
+mainboard run --env datahub-agent -- python list-tools.py
 ```
 
 ## One rough edge worth knowing

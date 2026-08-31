@@ -18,7 +18,7 @@ def locate(root: Path, *, source: Path = Path(__file__)) -> Path:
         candidate
         for base, profile in product(roots, ("release", "debug"))
         for candidate in (
-            base / ".chefe" / "target-kernel" / profile / "mcmr-kernel",
+            base / ".mainboard" / "target-kernel" / profile / "mcmr-kernel",
             base / "src" / "core" / "target" / profile / "mcmr-kernel",
         )
     )

@@ -26,6 +26,15 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 
 ### Changed
 
+- The workspace manifest is `mainboard.toml`. The kernel reads that filename, treats it as
+  configuration during discovery, and keys the fact it derives `automation:mainboard`, and the
+  guidance match that ties a task to the document explaining it looks for `mainboard run <task>`
+  and `mainboard install`. `DependencyInventory.chefe` became `DependencyInventory.workspace` for
+  the same reason, and the standalone kernel binary is looked up under `.mainboard/target-kernel`.
+  One table needed translating rather than renaming, since mainboard spells a runtime's
+  development dependencies `[nodejs.dev]` where the old manifest wrote `[nodejs.dev.deps]`, which
+  mainboard reads as a single dependency named `deps` and refuses to compile into a
+  `package.json`.
 - CI no longer bootstraps through the retired `chefe` action. `ci.yml` now sets up `uv` and the
   runner's own Rust toolchain directly, `uv sync` installs the whole gate (including the oracle
   suites' own upstream linters) from a `[dependency-groups] dev` table, and `pyrefly`/`ty` no

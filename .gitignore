@@ -30,10 +30,9 @@ __pycache__/
 htmlcov/
 *.egg-info/
 .benchmarks/
-.chefe/*
-!.chefe/.resolution-inputs
-!.chefe/pixi.lock
-!.chefe/pixi.toml
+# Dependency state is owned by mainboard.toml. Everything mainboard compiles from it, the pixi
+# manifest, its lock, and the kernel target directory, is generated and never committed.
+.mainboard/
 .dist/
 target/
 
@@ -46,3 +45,4 @@ target/
 # and still fires everything. The files are tracked with `git add -f demo`, because Git honors the
 # index over this file while the kernel only ever reads the file.
 /demo/
+.chefe/

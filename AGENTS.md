@@ -12,14 +12,13 @@ Define and enforce the engineering rules that make your code yours.
 
 ## Commands
 
-The development environment and tasks are owned by `chefe.toml`.
-
-- Install with `chefe install`
-- Lint with `chefe run lint`
-- Typecheck with `chefe run typecheck`
-- Test with `chefe run test`
-- Measure the mock floor with `chefe run floor`
-- Build the core crate with `chefe run core-build`, test it with `chefe run core-test`, and lint it
-  with `chefe run core-lint`
-- Analyze a repository with `chefe run check <path>`
-- Build with `chefe run build`
+- Install with `uv sync && maturin develop --release`
+- Lint with `uv run ruff check . && uv run ruff format --check .`
+- Typecheck with `uv run mypy src && uv run pyrefly check && env -u PYTHONPATH uv run ty check --error-on-warning`
+- Test with `uv run pytest`
+- Measure the mock floor with `uv run python -m mcmr.commands.cli floor --samples 9 --output .benchmarks/mock-floor.json`
+- Build the core crate with `cargo build --manifest-path src/core/Cargo.toml --release`, test it
+  with `cargo test --manifest-path src/core/Cargo.toml`, and lint it with
+  `cargo clippy --manifest-path src/core/Cargo.toml`
+- Analyze a repository with `uv run python -m mcmr.commands.cli check <path>`
+- Build with `uv run python -m build --outdir .dist`

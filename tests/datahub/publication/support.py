@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 _REPORT = "https://example.invalid/run"
 
-_ANCHOR = "chefe/facts/literal_group_fact"
+_ANCHOR = "mainboard/facts/literal_group_fact"
 
 _ENTITIES = TypeAdapter(list[dict[str, JsonValue]])
 _OBJECT = TypeAdapter(dict[str, JsonValue])
@@ -47,7 +47,7 @@ def run_graph(category: str = "") -> RunGraph:
     never quietly reading a tag it never asked for.
     """
     return RunGraph(
-        repository="chefe",
+        repository="mainboard",
         datasets=[
             FactDataset(
                 family="LiteralGroupFact",

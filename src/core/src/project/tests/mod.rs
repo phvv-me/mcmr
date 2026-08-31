@@ -19,7 +19,7 @@ fn a_repository_declaring_no_manifest_states_nothing_about_itself() {
     .expect("an absent manifest is valid");
 
     // Reading a missing manifest as an empty one put a configuration fact at
-    // `pyproject.toml:1:1` and a task fact at `chefe.toml:1:1` into every native repository,
+    // `pyproject.toml:1:1` and a task fact at `mainboard.toml:1:1` into every native repository,
     // and two rules then failed against files nobody could open.
     assert!(built.is_empty());
     crate::test_support::remove_directory(&bare);
@@ -194,11 +194,11 @@ fn tasks_retain_the_guides_that_name_their_public_invocation() {
     let guides = [
         Document {
             relative: "README.md".to_string(),
-            source: "Run `chefe run test` before opening a change.".to_string(),
+            source: "Run `mainboard run test` before opening a change.".to_string(),
         },
         Document {
             relative: "docs/setup.md".to_string(),
-            source: "Start with `chefe install`.".to_string(),
+            source: "Start with `mainboard install`.".to_string(),
         },
     ];
     let tasks = automation(

@@ -9,12 +9,12 @@ from mcmr_datahub import DataHubAnnouncement, DataHubSettings
 from mcmr_datahub.services.publication import domain_urn
 
 _GRAPH = RunGraph(
-    repository="chefe",
-    datasets=[FactDataset(family="LiteralGroupFact", name="chefe/facts/literal_group_fact")],
+    repository="mainboard",
+    datasets=[FactDataset(family="LiteralGroupFact", name="mainboard/facts/literal_group_fact")],
     jobs=[
         RuleJob(
             rule="ALL-DUPL0005",
-            tables=RuleTables(primary="chefe/facts/literal_group_fact"),
+            tables=RuleTables(primary="mainboard/facts/literal_group_fact"),
         )
     ],
 )
@@ -47,15 +47,15 @@ def test_one_repository_keeps_one_home_page_card_across_every_run() -> None:
     posted, receipts = announced(announce=True)
     stated = TypeAdapter(dict[str, JsonValue]).validate_python(posted[0]["postInfo"])
 
-    assert posted[0]["urn"] == "urn:li:post:mcmr-chefe"
-    assert receipts == ["chefe announced on the DataHub home page"]
+    assert posted[0]["urn"] == "urn:li:post:mcmr-mainboard"
+    assert receipts == ["mainboard announced on the DataHub home page"]
     assert stated["value"] == {
         "type": "HOME_PAGE_ANNOUNCEMENT",
         "content": {
             "type": "LINK",
-            "title": "MCMR: chefe code graph and enforcement history",
-            "description": "1 fact tables and 1 rule jobs MCMR published for chefe.",
-            "link": "/pipelines/urn:li:dataFlow:(mcmr,chefe,PROD)",
+            "title": "MCMR: mainboard code graph and enforcement history",
+            "description": "1 fact tables and 1 rule jobs MCMR published for mainboard.",
+            "link": "/pipelines/urn:li:dataFlow:(mcmr,mainboard,PROD)",
         },
         "created": 0,
         "lastModified": 0,

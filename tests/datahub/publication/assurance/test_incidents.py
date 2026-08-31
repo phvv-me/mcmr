@@ -53,7 +53,7 @@ def reconciled(
     records: Sequence[RunRecord] = (),
     open_incidents: Sequence[JsonValue] = (),
     graph: RunGraph = _GRAPH,
-    run: str = "mcmr-chefe-1786096800000",
+    run: str = "mcmr-mainboard-1786096800000",
 ) -> tuple[dict[str, list[JsonValue]], list[dict[str, JsonValue]], list[str]]:
     """Reconcile incidents through a mock transport and return what was asked and ingested."""
     asked: dict[str, list[JsonValue]] = {}
@@ -101,7 +101,7 @@ def test_a_subject_that_fails_passes_and_fails_again_raises_one_incident() -> No
         raised["description"]
     )
     assert "changing verdict 2 times" in str(raised["description"])
-    assert receipts == ["chefe raised 1 intermittent findings and resolved 0"]
+    assert receipts == ["mainboard raised 1 intermittent findings and resolved 0"]
 
 
 def test_an_incident_already_open_for_the_same_subject_is_never_raised_twice() -> None:
@@ -125,11 +125,11 @@ def test_a_subject_that_settled_closes_the_incident_and_names_the_run_that_did()
     assert isinstance(resolved, dict)
     assert resolved["urn"] == "urn:li:incident:held"
     assert resolved["message"] == (
-        "Run mcmr-chefe-1786096800000 recorded ALL-DUPL0005 passing at src/orders.py, so the off "
-        "and on pattern this incident was raised for has stopped."
+        "Run mcmr-mainboard-1786096800000 recorded ALL-DUPL0005 passing at src/orders.py, so "
+        "the off and on pattern this incident was raised for has stopped."
     )
     assert "MCMRRaiseIncident" not in asked
-    assert receipts == ["chefe raised 0 intermittent findings and resolved 1"]
+    assert receipts == ["mainboard raised 0 intermittent findings and resolved 1"]
 
 
 def test_the_run_that_repaired_a_subject_is_the_run_that_closes_its_incident() -> None:
@@ -145,7 +145,7 @@ def test_the_run_that_repaired_a_subject_is_the_run_that_closes_its_incident() -
 
     assert asked["MCMRResolveIncident"]
     assert "MCMRRaiseIncident" not in asked
-    assert receipts == ["chefe raised 0 intermittent findings and resolved 1"]
+    assert receipts == ["mainboard raised 0 intermittent findings and resolved 1"]
     assert aspect(posted[0], "glossaryTerms")["terms"] == [
         {"urn": word_urn("fact table")},
         {"urn": word_urn("verdict")},
@@ -213,7 +213,7 @@ def test_nothing_is_raised_against_a_table_this_writeback_did_not_publish() -> N
     asked, _, receipts = reconciled([elsewhere])
 
     assert "MCMRActiveIncidents" not in asked and receipts == []
-    assert reconciled([timeline()], graph=RunGraph(repository="chefe")) == ({}, [], [])
+    assert reconciled([timeline()], graph=RunGraph(repository="mainboard")) == ({}, [], [])
 
 
 def test_a_verdict_about_the_whole_table_is_not_a_subject_that_can_flap() -> None:

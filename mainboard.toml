@@ -53,12 +53,12 @@ maturin = ">=1.10,<2"
 patchelf = ">=0.17,<1"
 
 [on.linux-64.python.deps]
-mainboard = ">=0.0.8,<0.1"
+mainboard = ">=0.4,<0.5"
 
 [nodejs]
 manager = "pnpm"
 
-[nodejs.dev.deps]
+[nodejs.dev]
 eslint = "^10.8.0"
 typescript-eslint = "^8.65.0"
 
@@ -77,7 +77,7 @@ format = "ruff format . && ruff check --fix ."
 native = { depends = ["core-build"] }
 setup = { depends = ["native", "extension"] }
 extension = "maturin develop --release"
-core-build = "cargo build --release --manifest-path src/core/Cargo.toml --target-dir .chefe/target-kernel --no-default-features --bin mcmr-kernel"
+core-build = "cargo build --release --manifest-path src/core/Cargo.toml --target-dir .mainboard/target-kernel --no-default-features --bin mcmr-kernel"
 core-format = "cargo fmt --manifest-path src/core/Cargo.toml"
 core-test = "cargo test --manifest-path src/core/Cargo.toml"
 core-bench = "cargo bench --manifest-path src/core/Cargo.toml"
@@ -88,7 +88,7 @@ full-check = "python -m mcmr.commands.cli check . --contextual --format concise 
 model-sweep = "python -m mcmr.commands.cli model-sweep ."
 lint = "ruff check . && ruff format --check ."
 typecheck = "mypy src && pyrefly check && env -u PYTHONPATH ty check --error-on-warning"
-test = { run = "python -m pytest", env = { MCMR_F401_CORPUS = "../chefe:../mainboard" } }
+test = { run = "python -m pytest", env = { MCMR_F401_CORPUS = "../mainboard" } }
 floor = "python -m mcmr.commands.cli floor --samples 9 --output .benchmarks/mock-floor.json"
 build = "python -m build --outdir .dist"
 architecture = "python -m mcmr.commands.cli diagram . --kind package --format d2"

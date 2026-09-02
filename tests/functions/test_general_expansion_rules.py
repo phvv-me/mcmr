@@ -15,7 +15,9 @@ from mcmr.facts import (
     ParameterFact,
     ParameterUse,
     SourceSpan,
+    SyntaxFact,
 )
+from mcmr.plugins import RepositoryTables
 from mcmr.query import RuleQuery, scalar_frame_value
 from mcmr.rules.cuda import (
     default_stream_kernel_launch,
@@ -26,14 +28,17 @@ from mcmr.rules.general import (
     cognitive_complexity,
     commented_out_code,
     configuration_object_parameter,
+    deeply_nested_body,
+    function_conditional_count,
     nesting_depth,
     required_parameter_count,
     swappable_parameter_pair,
     unbounded_blocking_call,
     unchecked_result_call,
+    uninformative_local_name,
     value_dispatch_candidate,
 )
-from mcmr.table import AnalysisSession, FunctionRelation
+from mcmr.table import AnalysisSession, FunctionRelation, SyntaxRelation
 
 from ..support import retained_query
 
@@ -172,6 +177,92 @@ def untyped(left, right):
     assert scalar(query, function_id(table, "risky")) == 1
     assert scalar(query, function_id(table, "typed")) == 0
     assert scalar(query, function_id(table, "untyped")) == 0
+
+
+_CUDA_KERNEL_BODY = """\
+def {name}(
+    a: float32, b: float32, c: float32, d: float32, e: float32, f: float32, g: float32, h: float32
+):
+    lo = 0
+    hi = 1
+    if a:
+        if b:
+            if c:
+                if d:
+                    if e:
+                        pass
+                    elif f:
+                        pass
+                elif g:
+                    pass
+            elif h:
+                pass
+        elif lo:
+            pass
+    elif hi:
+        pass
+"""
+
+
+def test_numba_cuda_device_kernels_are_excluded_from_five_shape_rules(tmp_path: Path) -> None:
+    """Eight same-typed parameters and deep nesting report nothing for a kernel, plenty plain."""
+    table = function_table(
+        tmp_path,
+        "from numba import cuda, float32\n\n\n"
+        + "@cuda.jit\n"
+        + _CUDA_KERNEL_BODY.format(name="kernel_add")
+        + "\n\n"
+        + _CUDA_KERNEL_BODY.format(name="plain_add"),
+    )
+    kernel = function_id(table, "kernel_add")
+    plain = function_id(table, "plain_add")
+
+    for rule in (
+        swappable_parameter_pair,
+        required_parameter_count,
+        function_conditional_count,
+        cognitive_complexity,
+        nesting_depth,
+    ):
+        query = native_query(table, rule)
+
+        assert scalar(query, kernel) == 0, rule.id
+        assert scalar(query, plain) != 0, rule.id
+
+
+def test_numba_cuda_device_kernels_are_excluded_from_naming_and_nesting_rules(
+    tmp_path: Path,
+) -> None:
+    """The same kernel and plain twin report nothing and something for the two SyntaxFact rules."""
+    (tmp_path / "subject.py").write_text(
+        "from numba import cuda, float32\n\n\n"
+        + "@cuda.jit\n"
+        + _CUDA_KERNEL_BODY.format(name="kernel_add")
+        + "\n\n"
+        + _CUDA_KERNEL_BODY.format(name="plain_add"),
+        encoding="utf-8",
+    )
+    session = AnalysisSession(
+        tmp_path, suffixes=(".py",), typed_families=(FunctionFact, SyntaxFact)
+    )
+    functions = session.function_tables()
+    syntax = session.syntax_tables()
+    tables = RepositoryTables()
+    tables.add(functions)
+    tables.add(syntax)
+    facts = syntax.frame(SyntaxRelation.FACTS)
+    kernel = facts.filter(facts["qualname"] == "kernel_add").item(0, "fact_id")
+    plain = facts.filter(facts["qualname"] == "plain_add").item(0, "fact_id")
+
+    names = cast(
+        "RuleQuery", uninformative_local_name.invoke(tables, settings={}, dependencies={})
+    )
+    nesting = cast("RuleQuery", deeply_nested_body.invoke(tables, settings={}, dependencies={}))
+
+    assert scalar(names, kernel) == 0
+    assert scalar(names, plain) != 0
+    assert scalar(nesting, kernel) is False
+    assert scalar(nesting, plain) is True
 
 
 def test_configuration_object_parameter_counts_attribute_only_inputs() -> None:

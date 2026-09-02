@@ -75,7 +75,7 @@ def configuration_object_parameter(
             & (pl.col("operations.length") == 0)
             & (pl.col("attribute_count") >= minimum_reads)
             & pl.col("annotation").str.contains_any(
-                configuration_markers,
+                list(configuration_markers),
                 ascii_case_insensitive=True,
             )
         )

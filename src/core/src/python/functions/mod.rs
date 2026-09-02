@@ -106,6 +106,20 @@ impl<'a> Callable<'a> {
         }
     }
 
+    /// Whether Numba's CUDA JIT compiles this callable as a kernel or a device function.
+    ///
+    /// `cuda.jit` and `numba.cuda.jit` are read as literal dotted paths, with or without the call
+    /// that carries `device=True`, because the launch contract is the same either way. A bare
+    /// `jit` only counts when this file imported it from `numba.cuda`, since the same short name
+    /// binds an unrelated JIT in `numba` itself and in other libraries.
+    fn is_device_kernel(&self) -> bool {
+        self.decorators.iter().any(|decorator| {
+            let applied = decorator.split('(').next().unwrap_or(decorator).trim();
+            matches!(applied, "cuda.jit" | "numba.cuda.jit")
+                || (applied == "jit" && self.context.import_origin("jit") == Some("numba.cuda"))
+        })
+    }
+
     /// Return the cache this callable is stored in, when a decorator puts it in one.
     fn cache_decorator(&self) -> &'static str {
         ["cached_property", "cache", "lru_cache"]
@@ -267,6 +281,7 @@ impl<'a> Callable<'a> {
         fact.semantics.roles.is_abstract = self.wears(&["abstractmethod", "abstractproperty"]);
         fact.semantics.outcomes.is_overload = self.wears(&["overload"]);
         fact.semantics.outcomes.is_polymorphic = self.wears(&["override"]);
+        fact.semantics.outcomes.is_device_kernel = self.is_device_kernel();
         fact.validation.input.is_pydantic_validator = self.wears(VALIDATOR_DECORATORS);
         fact.presentation.cache_decorator = self.cache_decorator().to_string();
         fact.semantics.outcomes.is_protocol_member =

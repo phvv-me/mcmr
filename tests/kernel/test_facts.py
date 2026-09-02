@@ -146,6 +146,39 @@ def run() -> None:
 
 
 @needs_kernel
+def test_a_cuda_jit_decorator_marks_a_kernel_or_a_device_function(tmp_path: Path) -> None:
+    """A launched kernel and a called device function both read as one, plain functions do not."""
+    (tmp_path / "kernel.py").write_text(
+        """from numba import cuda
+
+
+@cuda.jit
+def add(x, y, out):
+    position = cuda.grid(1)
+    out[position] = x[position] + y[position]
+
+
+@cuda.jit(device=True)
+def scale(value, factor):
+    return value * factor
+
+
+def plain(value):
+    return value
+"""
+    )
+
+    workspace = Kernel(binary=_BINARY, root=tmp_path).build(
+        [FunctionFact.__name__], {FunctionFact.__name__: FunctionFact}
+    )
+    functions = {function.name: function for function in workspace.stream(FunctionFact)}
+
+    assert functions["add"].is_device_kernel
+    assert functions["scale"].is_device_kernel
+    assert not functions["plain"].is_device_kernel
+
+
+@needs_kernel
 def test_the_unused_import_rule_agrees_with_ruff(repository: Path) -> None:
     """The kernel and Ruff name the same unused imports in the same file.
 

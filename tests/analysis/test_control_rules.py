@@ -3,7 +3,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from mcmr.domain.contracts import RuleContract, RuleSetting, RuleValue
-from mcmr.facts import SyntaxFact
+from mcmr.facts import FunctionFact, SyntaxFact
+from mcmr.plugins import RepositoryTables
 from mcmr.query import RuleQuery, scalar_frame_value
 from mcmr.rules.general import (
     debug_artifact_left_behind,
@@ -17,8 +18,6 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
 
-    from mcmr.plugins import Table
-
 
 def written(root: Path, sources: Mapping[str, str]) -> Path:
     """Write one native syntax-provider corpus."""
@@ -29,22 +28,19 @@ def written(root: Path, sources: Mapping[str, str]) -> Path:
     return root
 
 
-def table(root: Path) -> Table[SyntaxFact]:
-    """Parse declarations into specialized syntax relations."""
-    return AnalysisSession(
-        root,
-        suffixes=[".py"],
-        typed_families=[SyntaxFact],
-    ).syntax_tables()
+def table(root: Path) -> RepositoryTables:
+    """Parse declarations into specialized syntax and function relations."""
+    session = AnalysisSession(root, suffixes=[".py"], typed_families=[SyntaxFact, FunctionFact])
+    return RepositoryTables().add(session.syntax_tables()).add(session.function_tables())
 
 
 def query(
     rule: RuleContract,
-    subject: Table[SyntaxFact],
+    subject: RepositoryTables,
     **settings: RuleSetting,
 ) -> RuleQuery:
     """Invoke one control rule exactly once over every declaration."""
-    result = rule.invoke_table(
+    result = rule.invoke(
         subject,
         settings=settings,
         dependencies={},
@@ -56,17 +52,17 @@ def query(
 
 def value(
     rule: RuleContract,
-    subject: Table[SyntaxFact],
+    subject: RepositoryTables,
     qualname: str,
     **settings: RuleSetting,
 ) -> RuleValue:
     """Return one declaration's scalar after one repository-wide query."""
-    facts = subject.frame(SyntaxRelation.FACTS).select("fact_id", "qualname")
+    facts = subject[SyntaxFact].frame(SyntaxRelation.FACTS).select("fact_id", "qualname")
     values = query(rule, subject, **settings).values.collect().join(facts, on="fact_id")
     return scalar_frame_value(values.filter(values["qualname"] == qualname))
 
 
-def findings(rule: RuleContract, subject: Table[SyntaxFact]) -> list[dict[str, str | int]]:
+def findings(rule: RuleContract, subject: RepositoryTables) -> list[dict[str, str | int]]:
     """Return ordered finding rows with exact source locations and messages."""
     held = query(rule, subject).findings
     if held is None:
@@ -74,7 +70,7 @@ def findings(rule: RuleContract, subject: Table[SyntaxFact]) -> list[dict[str, s
     return held.rows.collect().select("message", "path", "start_line").to_dicts()
 
 
-def core_repository(root: Path) -> Table[SyntaxFact]:
+def core_repository(root: Path) -> RepositoryTables:
     """Build the shared control-flow corpus once per test."""
     return table(
         written(

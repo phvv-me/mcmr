@@ -179,6 +179,7 @@ class FunctionRelation(StrEnum):
                 "is_abstract",
                 "is_async",
                 "is_declarative_body",
+                "is_device_kernel",
                 "is_first_class_reference",
                 "is_framework_hook",
                 "is_model_method",

@@ -30,7 +30,11 @@ def function_conditional_count(
     Generated and vendored code may be excluded through globs. Guard clauses, `elif` branches,
     and nested conditionals all count because several independent decisions in one callable are
     still several reasons for it to change. Pattern matching and conditional expressions are not
-    `if` statements and remain outside this rule.
+    `if` statements and remain outside this rule. A Numba CUDA kernel or device function is
+    excluded too, because its branches are the algorithm the kernel exists to run, and moving them
+    into a device function to lower this count spends registers a launch already rations. The
+    measurement falls instead on the host launcher that wraps the kernel, which is an ordinary
+    Python function this rule already reads.
 
     Examples
     --------
@@ -57,7 +61,11 @@ def function_conditional_count(
     Cites "Object-Oriented Software Construction", Open Closed Principle
     """
     frame = subject.lazy(FunctionRelation.FUNCTIONS)
-    value = pl.col("conditional_count")
+    value = (
+        pl.when(pl.col("is_device_kernel"))
+        .then(pl.lit(0, dtype=pl.UInt64))
+        .otherwise(pl.col("conditional_count"))
+    )
     return RuleQuery.integer(
         frame,
         value,

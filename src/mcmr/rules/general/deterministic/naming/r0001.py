@@ -3,14 +3,17 @@ from pydantic import NonNegativeInt
 
 from ..... import rule
 from .....domain.contracts import Unit
-from .....facts import SyntaxFact
+from .....facts import FunctionFact, SyntaxFact
 from .....query import FindingQuery, RuleQuery
-from .....table import SyntaxRelation, Table
+from .....table import FunctionRelation, SyntaxRelation, Table
 
 
 @rule("ALL-NAMI0001")
 def uninformative_local_name(
-    subject: Table[SyntaxFact], *, minimum_length: NonNegativeInt = 3
+    subject: Table[SyntaxFact],
+    *,
+    functions: Table[FunctionFact],
+    minimum_length: NonNegativeInt = 3,
 ) -> RuleQuery[int]:
     """Count local names too short to say what they hold.
 
@@ -38,7 +41,10 @@ def uninformative_local_name(
     A single-letter index in a comprehension or a short loop is a convention older than the code
     and reads fine, so `i`, `j`, `k`, `n`, and `x` through `z` are left alone. A field declared on
     a type is not a local and is not judged. A name whose scope is one line is arguably fine too,
-    which is why the ceiling is a setting rather than a rule.
+    which is why the ceiling is a setting rather than a rule. A binding inside a Numba CUDA kernel
+    or device function is excluded too, because index arithmetic there names lanes, offsets, and
+    bounds the way the CUDA literature itself spells them, so `i`, `lo`, `hi`, and `pos` read as
+    the domain's own vocabulary rather than as an author who ran out of words.
 
     Examples
     --------
@@ -85,8 +91,20 @@ def uninformative_local_name(
     counts = brief.group_by("fact_id", maintain_order=True).agg(
         pl.len().cast(pl.UInt64).alias("value")
     )
-    values = facts.join(counts, on="fact_id", how="left").with_columns(
-        pl.col("value").fill_null(0)
+    kernel_declarations = (
+        functions.lazy(FunctionRelation.FUNCTIONS)
+        .filter(pl.col("is_device_kernel"))
+        .select("path", pl.col("name").alias("qualname"), "is_device_kernel")
+    )
+    values = (
+        facts.join(counts, on="fact_id", how="left")
+        .join(kernel_declarations, on=["path", "qualname"], how="left")
+        .with_columns(
+            pl.when(pl.col("is_device_kernel").fill_null(False))
+            .then(pl.lit(0, dtype=pl.UInt64))
+            .otherwise(pl.col("value").fill_null(0))
+            .alias("value")
+        )
     )
     findings = FindingQuery.build(
         brief,

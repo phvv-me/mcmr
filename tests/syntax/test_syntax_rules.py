@@ -1,46 +1,45 @@
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import cast
 
 import pytest
 
 from mcmr.domain.contracts import RuleContract, RuleSetting, RuleValue
-from mcmr.facts import SourceSpan, SyntaxFact, SyntaxNode
+from mcmr.facts import FunctionFact, SourceSpan, SyntaxFact, SyntaxNode
+from mcmr.plugins import RepositoryTables
 from mcmr.query import RuleQuery, scalar_row_value
 from mcmr.rules.general import uninformative_local_name
 from mcmr.table import AnalysisSession, SyntaxRelation
 
 from ..support import written
 
-if TYPE_CHECKING:
-    from mcmr.plugins import Fact, Table
-
 _SPAN = SourceSpan(path="src/loader.py")
 
 
-def syntax_table(root: Path, sources: dict[str, str]) -> Table[SyntaxFact]:
-    """Parse one source corpus into specialized native syntax relations."""
-    return AnalysisSession(
+def syntax_table(root: Path, sources: dict[str, str]) -> RepositoryTables:
+    """Parse one source corpus into specialized native syntax and function relations."""
+    session = AnalysisSession(
         written(root, sources),
         suffixes=sorted({Path(name).suffix for name in sources}),
-        typed_families=(SyntaxFact,),
-    ).syntax_tables()
+        typed_families=(SyntaxFact, FunctionFact),
+    )
+    return RepositoryTables().add(session.syntax_tables()).add(session.function_tables())
 
 
-def query[Family: Fact](
+def query(
     rule: RuleContract,
-    subject: Table[Family],
+    subject: RepositoryTables,
     **settings: RuleSetting,
 ) -> RuleQuery:
     """Invoke one rule once over the complete specialized table."""
-    result = rule.invoke_table(subject, settings=settings, dependencies={})
+    result = rule.invoke(subject, settings=settings, dependencies={})
     if not isinstance(result, RuleQuery):
         raise TypeError("a deterministic syntax test rule returned a model query")
     return result
 
 
-def syntax_values(result: RuleQuery, subject: Table[SyntaxFact]) -> dict[str, RuleValue]:
+def syntax_values(result: RuleQuery, subject: RepositoryTables) -> dict[str, RuleValue]:
     """Return every syntax answer by qualified declaration name."""
-    facts = subject.frame(SyntaxRelation.FACTS).select("fact_id", "qualname")
+    facts = subject[SyntaxFact].frame(SyntaxRelation.FACTS).select("fact_id", "qualname")
     rows = result.values.collect().join(facts, on="fact_id")
     return {
         cast("str", row["qualname"]): scalar_row_value(row) for row in rows.iter_rows(named=True)
@@ -101,7 +100,7 @@ def load():
         },
     )
     result = query(uninformative_local_name, subject)
-    facts = subject.frame(SyntaxRelation.FACTS).select("fact_id", "kind", "qualname")
+    facts = subject[SyntaxFact].frame(SyntaxRelation.FACTS).select("fact_id", "kind", "qualname")
     rows = result.values.collect().join(facts, on="fact_id")
 
     assert rows.filter(rows["kind"] != "callable").get_column("integer_value").sum() == 0

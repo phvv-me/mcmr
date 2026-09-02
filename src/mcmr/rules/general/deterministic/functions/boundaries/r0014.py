@@ -30,7 +30,11 @@ def required_parameter_count(subject: Table[FunctionFact]) -> CountQuery:
     ----------
     A constructor that assembles a value from its parts, a mathematical function over independent
     scalars, and a framework entry point with a fixed contract all legitimately take several
-    inputs. The count is a measurement and the policy owns the ceiling.
+    inputs. The count is a measurement and the policy owns the ceiling. A Numba CUDA kernel or
+    device function is excluded outright, because it cannot take a parameter object, a dataclass,
+    or a keyword-only default at all, so every device array and scalar the body reads has to
+    arrive as its own positional argument. A wide signature there states the kernel's data rather
+    than a bundling opportunity a repair could act on.
 
     Examples
     --------
@@ -65,7 +69,10 @@ def required_parameter_count(subject: Table[FunctionFact]) -> CountQuery:
         .join(required, left_on="entity_id", right_on="function_id", how="left")
         .with_columns(
             pl.col("parameter_count").fill_null(0),
-            pl.col("required_count").fill_null(0),
+            pl.when(pl.col("is_device_kernel"))
+            .then(pl.lit(0, dtype=pl.UInt64))
+            .otherwise(pl.col("required_count").fill_null(0))
+            .alias("required_count"),
         )
     )
     value = pl.col("required_count")

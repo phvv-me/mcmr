@@ -4,6 +4,7 @@ import pytest
 
 from mcmr.domain.contracts import RuleLane, RuleScope
 from mcmr.facts import buildable
+from mcmr.plugins import RepositoryTables
 from mcmr.query import RuleQuery
 from mcmr.table import AnalysisSession
 
@@ -15,7 +16,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from mcmr.domain.contracts import RuleContract
-    from mcmr.plugins import Fact, Table
     from mcmr.rulebook.catalog import Catalog
 
 
@@ -81,17 +81,13 @@ def findings(catalog: Catalog, root: Path, language: str) -> set[str]:
         suffixes=language_suffixes()[language],
         typed_families=sorted(selected, key=lambda family: family.__name__),
     )
-    tables: dict[str, Table[Fact]] = {
-        name: session.table(family) for name, family in families.items() if family in selected
-    }
-    return {
-        rule_id for rule_id, family, rule in general(catalog) if has_findings(rule, tables[family])
-    }
+    tables = RepositoryTables({family: session.table(family) for family in selected})
+    return {rule_id for rule_id, _, rule in general(catalog) if has_findings(rule, tables)}
 
 
-def has_findings(rule: RuleContract, table: Table[Fact]) -> bool:
-    """Invoke one general rule once and report whether a numeric scalar is positive."""
-    result = rule.invoke_table(table, settings={}, dependencies={})
+def has_findings(rule: RuleContract, tables: RepositoryTables) -> bool:
+    """Invoke one general rule once, over every table it declares, and report a positive scalar."""
+    result = rule.invoke(tables, settings={}, dependencies={})
     if not isinstance(result, RuleQuery):
         raise TypeError("a deterministic parity rule returned a model query")
     values = result.values.collect()

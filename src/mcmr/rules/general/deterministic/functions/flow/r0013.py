@@ -28,7 +28,10 @@ def nesting_depth(subject: Table[FunctionFact]) -> CountQuery:
     ----------
     A callable with no resolved control structure has depth zero. Guard clauses that return early
     keep depth low by construction and are the usual repair, so the measurement rewards them
-    without naming them.
+    without naming them. A Numba CUDA kernel or device function has depth zero outright, because
+    its nesting is the algorithm the kernel exists to run, and flattening it into a guard clause
+    or a device function spends registers a launch already rations. Depth is measured instead on
+    the host launcher that wraps the kernel.
 
     Examples
     --------
@@ -61,7 +64,11 @@ def nesting_depth(subject: Table[FunctionFact]) -> CountQuery:
         )
         .with_columns(pl.col("nesting_depth").fill_null(0))
     )
-    value = pl.col("nesting_depth")
+    value = (
+        pl.when(pl.col("is_device_kernel"))
+        .then(pl.lit(0, dtype=pl.UInt64))
+        .otherwise(pl.col("nesting_depth"))
+    )
     return RuleQuery.integer(
         frame,
         value,

@@ -115,6 +115,9 @@ _INVARIANT: dict[str, str] = {
     "FunctionFact.has_tensor_shape_semantics": (
         "derived, and no signature in the corpus annotates a tensor"
     ),
+    "FunctionFact.is_device_kernel": (
+        "derived, and no callable in the corpus wears a cuda.jit decorator"
+    ),
     "FunctionFact.is_overload": (
         "derived, and no Python callable in the corpus wears the overload decorator"
     ),

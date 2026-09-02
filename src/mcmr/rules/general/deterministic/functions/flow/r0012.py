@@ -43,7 +43,10 @@ def cognitive_complexity(
     ----------
     A callable whose structures a provider could not resolve scores zero rather than a guess. The
     score is a measurement and a project policy decides the acceptable ceiling, which differs
-    between a parser, a request handler, and a test.
+    between a parser, a request handler, and a test. A Numba CUDA kernel or device function scores
+    zero outright, because its structures are the algorithm the kernel exists to run, and lowering
+    the score by moving structure into a device function spends registers a launch already
+    rations. The score falls instead on the host launcher that wraps the kernel.
 
     Examples
     --------
@@ -85,7 +88,11 @@ def cognitive_complexity(
             pl.col("nesting_sum").fill_null(0),
         )
     )
-    value = pl.col("control_count") + pl.col("nesting_sum") * nesting_penalty
+    value = (
+        pl.when(pl.col("is_device_kernel"))
+        .then(pl.lit(0, dtype=pl.UInt64))
+        .otherwise(pl.col("control_count") + pl.col("nesting_sum") * nesting_penalty)
+    )
     return RuleQuery.integer(
         frame,
         value,

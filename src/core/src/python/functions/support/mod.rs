@@ -23,15 +23,20 @@ use vocabulary::{TensorOrigins, is_tensor_library, tensor_origins};
 /// What the file around a callable already answered, read once rather than once per callable.
 pub(super) struct ModuleContext {
     pub(super) asyncio: Asyncio,
-    tensor_origins: TensorOrigins,
+    import_origins: TensorOrigins,
 }
 
 impl ModuleContext {
     pub(super) fn of(module: &ModModule) -> Self {
         Self {
             asyncio: Asyncio::of(module),
-            tensor_origins: tensor_origins(module),
+            import_origins: tensor_origins(module),
         }
+    }
+
+    /// Return the module one bare name in this file was imported from, when it was imported.
+    pub(super) fn import_origin(&self, name: &str) -> Option<&str> {
+        self.import_origins.get(name).map(String::as_str)
     }
 
     /// Whether one annotation names a value carrying a shape and an element type.
@@ -40,7 +45,7 @@ impl ModuleContext {
         descend(annotation, &mut held);
         held.iter().any(|expression| {
             TENSOR_TYPES.contains(&annotation_name(expression).as_str())
-                && is_tensor_library(&self.tensor_origins, expression)
+                && is_tensor_library(&self.import_origins, expression)
         }) || self.tensor_wrapper(annotation).is_some()
     }
 
@@ -57,7 +62,7 @@ impl ModuleContext {
             .any(|inner| matches!(inner, Expr::StringLiteral(_)));
         (TENSOR_ANNOTATIONS.contains(&named.as_str())
             && states_dimensions
-            && is_tensor_library(&self.tensor_origins, &item.value))
+            && is_tensor_library(&self.import_origins, &item.value))
         .then_some(named)
     }
 }

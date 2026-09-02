@@ -2,8 +2,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from mcmr.facts import CommentFact, SyntaxFact
+from mcmr.facts import CommentFact, FunctionFact, SyntaxFact
 from mcmr.kernel import Kernel
+from mcmr.plugins import RepositoryTables
+from mcmr.query import RuleQuery
 from mcmr.rules.general import uninformative_local_name, unresolved_work_marker
 from mcmr.table import AnalysisSession
 
@@ -103,13 +105,18 @@ def test_the_naming_rule_reads_a_body_in_every_language_the_syntax_family_covers
     """Each fixture binds exactly one local named `d`, which is the hand-computed answer."""
     if language in gap_reasons().get("SyntaxFact", {}):
         pytest.skip(f"no syntax family for {language} yet")
-    subject = AnalysisSession(
+    session = AnalysisSession(
         repositories[language],
         suffixes=language_suffixes()[language],
-        typed_families=[SyntaxFact],
-    ).syntax_tables()
+        typed_families=[SyntaxFact, FunctionFact],
+    )
+    tables = RepositoryTables().add(session.syntax_tables()).add(session.function_tables())
+    result = uninformative_local_name.invoke(tables, settings={}, dependencies={})
+    if not isinstance(result, RuleQuery):
+        raise TypeError("a deterministic language rule returned a model query")
+    total = result.values.collect().get_column("integer_value").drop_nulls().sum()
 
-    assert query_count(uninformative_local_name, subject) == 1
+    assert total == 1
 
 
 @needs_kernel

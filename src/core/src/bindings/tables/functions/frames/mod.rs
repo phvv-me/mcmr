@@ -111,6 +111,7 @@ fn function_contract_flag_frame(records: &[FunctionRecord]) -> PolarsResult<Data
         "is_property" => records.iter().map(|row| row.semantics.outcomes.is_property).collect::<Vec<_>>(),
         "is_framework_hook" => records.iter().map(|row| row.semantics.outcomes.is_framework_hook).collect::<Vec<_>>(),
         "is_declarative_body" => records.iter().map(|row| row.semantics.outcomes.is_declarative_body).collect::<Vec<_>>(),
+        "is_device_kernel" => records.iter().map(|row| row.semantics.outcomes.is_device_kernel).collect::<Vec<_>>(),
         "is_polymorphic" => records.iter().map(|row| row.semantics.outcomes.is_polymorphic).collect::<Vec<_>>(),
         "is_pass_body" => records.iter().map(|row| row.semantics.outcomes.is_pass_body).collect::<Vec<_>>(),
         "is_raise_body" => records.iter().map(|row| row.validation.output.is_raise_body).collect::<Vec<_>>(),

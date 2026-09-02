@@ -9,4 +9,5 @@ pub struct FunctionOutcomes {
     pub is_declarative_body: bool,
     pub is_polymorphic: bool,
     pub is_pass_body: bool,
+    pub is_device_kernel: bool,
 }

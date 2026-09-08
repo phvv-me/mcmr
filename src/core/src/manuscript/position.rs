@@ -14,6 +14,7 @@ pub struct Position {
     pub in_cells: bool,
     pub in_math: bool,
     pub in_proof: bool,
+    pub in_bibliography: bool,
 }
 
 impl Position {
@@ -28,6 +29,7 @@ impl Position {
             in_cells: false,
             in_math: false,
             in_proof: false,
+            in_bibliography: false,
         }
     }
 }

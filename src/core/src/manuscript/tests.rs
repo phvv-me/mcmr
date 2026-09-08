@@ -34,6 +34,12 @@ fn a_comment_contributes_nothing_a_reader_reads() {
         .collect();
     assert!(prose.contains("visible"));
     assert!(!prose.contains("hidden"));
+    let paragraphs = read("First paragraph.\n% provenance\n\nSecond paragraph.");
+    assert!(
+        paragraphs
+            .iter()
+            .any(|located| located.element == Element::ParagraphBreak)
+    );
 }
 
 #[test]
@@ -50,6 +56,13 @@ fn a_display_environment_is_one_math_span_and_keeps_its_label() {
             .iter()
             .any(|located| matches!(&located.element, Element::Math { display: true, .. }))
     );
+    let manuscript = assembled(
+        "\\documentclass{article}\\begin{document}The models are \\begin{equation}\
+         \\begin{gathered}x=1.\\end{gathered}\\label{eq:models}\\end{equation}\
+         The next model differs.\\end{document}",
+    );
+    let skeleton = super::skeleton::Skeleton::build(&manuscript, &Walk::of(&manuscript));
+    assert_eq!(skeleton["sentences"].as_array().unwrap().len(), 2);
 }
 
 #[test]
@@ -137,8 +150,90 @@ fn a_label_inside_a_statement_names_the_statement_and_one_inside_a_display_does_
 #[test]
 fn a_text_mode_command_holds_words_rather_than_symbols() {
     assert_eq!(symbols::named("\\mathrm{fl}(x)"), vec!["x".to_string()]);
-    assert_eq!(symbols::named("\\mathcal{V}"), vec!["V".to_string()]);
-    assert_eq!(symbols::named("f_\\theta"), vec!["f_\\theta".to_string()]);
+    assert_eq!(
+        symbols::named("\\mathcal{V}"),
+        vec!["\\mathcal{V}".to_string()]
+    );
+    assert_eq!(symbols::named("f_\\theta"), vec!["f_{\\theta}".to_string()]);
+    assert_eq!(symbols::named("f_\\theta"), symbols::named("f_{\\theta}"));
+    assert_eq!(symbols::named("A^\\star_{rk}"), vec!["A_{rk}"]);
+    assert_eq!(symbols::named("x^{m}_i"), vec!["x_i", "m"]);
+    assert_eq!(
+        symbols::named("\\mathbf{A}^{\\mathsf{T}}"),
+        vec!["\\mathbf{A}"]
+    );
+    assert_eq!(symbols::defined("f(x)=x+z"), Some("f".to_string()));
+    assert_eq!(
+        symbols::bound("\\sum_{k=0}^{n-1}x_k"),
+        std::collections::BTreeSet::from(["k".to_string()])
+    );
+    assert_eq!(
+        symbols::bound("\\forall i,j\\in N"),
+        std::collections::BTreeSet::from(["i".to_string(), "j".to_string()])
+    );
+    assert_eq!(
+        symbols::bound("f(x)=x+z"),
+        std::collections::BTreeSet::from(["x".to_string()])
+    );
+    assert_eq!(
+        symbols::named("\\mathcal V"),
+        symbols::named("\\mathcal{V}")
+    );
+}
+
+#[test]
+fn markup_is_not_notation_and_different_fonts_name_different_symbols() {
+    assert_eq!(
+        symbols::named(
+            "\\begin{aligned} \\mathbb{A}_{k} = \\boldsymbol{x}_k + \\textcolor{red}{\\beta} \\end{aligned}"
+        ),
+        vec!["\\mathbb{A}_k", "\\boldsymbol{x}_k", "\\beta"]
+    );
+    let elements =
+        read("\\renewcommand\\section{\\section{Not a heading}}\\newcommand{\\number}{123}");
+    assert!(
+        !elements
+            .iter()
+            .any(|located| matches!(located.element, Element::Section { .. } | Element::Text(_)))
+    );
+}
+
+#[test]
+fn custom_statements_and_adjacent_proofs_keep_their_boundaries() {
+    let manuscript = assembled(
+        "\\documentclass{article}\\newtheoremstyle{custom}{0pt}{0pt}{\\itshape}{}{\\bfseries}{.}{ }{}\
+         \\theoremstyle{custom}\\newmdtheoremenv[style=box]{lemma}{Lemma}\
+         \\newcommand{\\notationtitle}{\\chapter{Notation Index}}\
+         \\begin{document}\\begin{lemma}\\label{lem:first}First claim. Let $\\alpha_k$ denote variance.\\end{lemma}\
+         \\begin{proof}First proof.\\end{proof}\\begin{proof}Second proof.\\end{proof}\
+         \\notationtitle\\begin{description}\\item[$\\mathcal N$] The node set. Entries use $x_i$.\\end{description}\
+         \\chapter{Appendix}\\begin{proof}[Proof of \\Cref{lem:first}] Named proof $\\sum_j\\alpha_j$.\\end{proof}\\end{document}",
+    );
+    let walk = Walk::of(&manuscript);
+    let skeleton = super::skeleton::Skeleton::build(&manuscript, &walk);
+    assert_eq!(walk.statements.len(), 1);
+    assert_eq!(walk.statements[0]["owes_proof"], true);
+    assert_eq!(walk.labels[0]["kind"], "lemma");
+    assert_eq!(walk.sections[0]["title"], "Notation Index");
+    assert_eq!(skeleton["paragraphs"].as_array().unwrap().len(), 5);
+    assert_eq!(skeleton["statements"][0]["has_proof"], true);
+    let notation = super::notation::Notation::build(&manuscript, &walk);
+    assert_eq!(notation["entries"][0]["symbol"], "\\mathcal{N}");
+    assert!(
+        notation["entries"][0]["meaning"]
+            .as_str()
+            .unwrap()
+            .starts_with("The node set.")
+    );
+    assert_eq!(notation["entries"][1]["symbol"], "x_i");
+    let alpha = notation["symbols"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|symbol| symbol["name"] == "\\alpha_j")
+        .unwrap();
+    assert_eq!(alpha["use_count"], 1);
+    assert_eq!(alpha["free_use_count"], 0);
 }
 
 #[test]
@@ -148,7 +243,142 @@ fn a_display_defines_the_symbol_standing_alone_on_its_left() {
         Some("\\nu".to_string())
     );
     assert_eq!(symbols::defined("a + b = c"), None);
+    assert_eq!(
+        symbols::definitions(
+            "b_e=0,\\qquad v_e=\\frac{h_e^2}{12},\\qquad h_e=\\operatorname{ulp}(s_e)"
+        ),
+        vec!["b_e", "v_e", "h_e"]
+    );
+    assert_eq!(
+        symbols::named("\\bar{\\mathsf{s}}_{t+1}"),
+        vec!["\\bar{\\mathsf{s}}_{t+1}"]
+    );
+    assert_eq!(
+        symbols::definitions("\\begin{aligned}(\\mathbf z_t,\\bar{\\mathsf s}_{t+1}) &= f(s_t)"),
+        vec!["\\mathbf{z}_t", "\\bar{\\mathsf{s}}_{t+1}"]
+    );
+    assert!(
+        symbols::bound("\\left\\{\\mathsf{z}:f(\\mathsf{z})=0\\right\\}").contains("\\mathsf{z}")
+    );
     assert_eq!(symbols::defined("no relation here"), None);
+    let manuscript = assembled(
+        "\\documentclass{article}\\begin{document}\
+         The unit roundoff is $u_F=1/2$.\
+         For smooth reference maps $f_j$ and implemented maps $g_j$ in decoded coordinates, define the two trajectories by \\begin{equation*}h_{j+1}=f_j(h_j).\\end{equation*}\n\n\
+         The \\emph{vocabulary} $\\mathcal V$ contains tokens.\n\n\
+         For left operand $x_L$ and right operand $x_R$, the sum is evaluated.\n\n\
+         An invalid reading makes recovery return $\\bot$ for the cell.\n\n\
+         Let two nodes compute $a=A+x$ and $b=B+x$.\n\n\
+         At a node, use $v_1,v_2$ for its children. Every typed domain $\\mathcal D$ has a decoder.\n\n\
+         Let $\\alpha_v=1$. A bound sum is $\\sum_j\\alpha_j$; an unbound use is $\\alpha_j$.\
+         \\DeclareMathOperator{\\rz}{rz}The operator is $\\rz(x)$.\n\n\
+         \\section{Notation}\\begin{description}\\item[$u$] Unit roundoff. A format subscript is used when needed.\
+         \\item[$w$] Weight. No format subscript is used.\\end{description}\
+         \\section{Use}Now $u_{\\mathbb F}$ and $w_{\\mathbb F}$ appear.\\end{document}",
+    );
+    let notation = super::notation::Notation::build(&manuscript, &Walk::of(&manuscript));
+    let sites = notation["sites"].as_array().unwrap();
+    assert!(sites.iter().any(|site| site["symbol"] == "u_F"));
+    assert!(sites.iter().any(|site| site["symbol"] == "h_j"));
+    assert!(sites.iter().any(|site| site["symbol"] == "\\mathcal{V}"));
+    assert!(sites.iter().any(|site| site["symbol"] == "x_L"));
+    assert!(sites.iter().any(|site| site["symbol"] == "x_R"));
+    assert!(!sites.iter().any(|site| site["symbol"] == "\\bot"));
+    assert!(sites.iter().any(|site| site["symbol"] == "A"));
+    assert!(sites.iter().any(|site| site["symbol"] == "B"));
+    assert!(sites.iter().any(|site| site["symbol"] == "v_1"));
+    assert!(sites.iter().any(|site| site["symbol"] == "\\mathcal{D}"));
+    let names = notation["symbols"].as_array().unwrap();
+    assert!(!names.iter().any(|symbol| symbol["name"] == "z"));
+    let alpha = names
+        .iter()
+        .find(|symbol| symbol["name"] == "\\alpha_j")
+        .unwrap();
+    assert_eq!(alpha["use_count"], 2);
+    assert_eq!(alpha["free_use_count"], 1);
+    assert!(
+        notation["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|entry| entry["symbol"] == "u_{\\mathbb{F}}")
+    );
+    assert!(
+        !notation["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|entry| entry["symbol"] == "w_{\\mathbb{F}}")
+    );
+}
+
+#[test]
+fn explicit_component_bindings_do_not_export_unrelated_variants() {
+    assert_eq!(
+        symbols::infix("x_0\\oplus x_1"),
+        Some("\\oplus".to_string())
+    );
+    assert!(symbols::infix("x_0\\beta x_1").is_none());
+    assert!(symbols::listed("x_0,\\ldots,y_m").is_empty());
+    assert!(symbols::vectors("\\mathcal a\\in\\mathbb R^m").is_empty());
+    assert!(symbols::vectors("\\mathbf a+\\mathbf b\\in\\mathbb R^m").is_empty());
+    assert_eq!(
+        symbols::tuple_components("\\mathbf x=(x_0,\\ldots,x_{m-1})"),
+        vec!["x_0", "x_{m-1}"]
+    );
+    assert!(symbols::tuple_components("\\mathbf y=(x_0,\\ldots,x_{m-1})").is_empty());
+    assert!(symbols::tuple_components("\\mathbf x=(2x_0,\\ldots,2x_{m-1})").is_empty());
+    assert_eq!(
+        symbols::lower_components("\\sum_{k=0}^{p-1}d_k\\beta^{-k} + z_k"),
+        vec![("d_k".to_string(), "d_0".to_string())]
+    );
+    assert!(symbols::lower_components("\\sum_{k=a}^{p-1}d_k").is_empty());
+    assert!(symbols::lower_components("\\sum_{k=0}^{p-1}c + z_k").is_empty());
+    let manuscript = assembled(
+        "\\documentclass{article}\\newtheorem{definition}{Definition}\\begin{document}\
+         \\begin{definition}The value is $m=\\sum_{k=0}^{p-1}d_k2^{-k}$, where $d_k\\in\\{0,1\\}$.\\end{definition}\
+         Now $d_0$ and $d_9$ appear. The sum $\\sum_{k=0}^{p-1}q_k$ does not declare $q_0$.\n\n\
+         \\begin{definition}An input primitive $\\oplus_m(x_0,\\ldots,x_{m-1})$ consumes values.\
+         A block receives $\\mathbf a,\\mathbf b\\in\\mathbb R^m$, giving $x_j=a_jb_j$.\
+         Let $\\mathcal C_i$ denote a group. For distinct groups $i,j\\in[K]$, compare $\\mathcal C_j$.\
+         For every list of values $\\omega a_1,\\ldots,\\omega a_m$, where each $a_j$ is an integer, use $v_1,\\ldots,v_m$ for its children.\
+         This uses $a_m$, $x_0$, and $v_1$.\\end{definition}\
+         Outside, $a_j$, $a_m$, $x_0$, $v_1$, and $\\mathcal C_j$ remain free.\
+         \\section{Notation}\\begin{description}\
+         \\item[$\\mathbf x$] A vector with scalar entries $x_k$.\
+         \\item[$\\mathbf w$] A vector with scalar entries $z_k$.\
+         \\end{description}\\section{Other}Variants $x_j$ and $w_j$ occur.\\end{document}",
+    );
+    let notation = super::notation::Notation::build(&manuscript, &Walk::of(&manuscript));
+    let sites = notation["sites"].as_array().unwrap();
+    assert!(
+        sites
+            .iter()
+            .any(|site| site["symbol"] == "d_0" && site["is_local"] == false)
+    );
+    assert!(
+        !sites
+            .iter()
+            .any(|site| site["symbol"] == "d_9" || site["symbol"] == "q_0")
+    );
+    for name in ["a_j", "a_m", "x_0", "v_1", "\\mathcal{C}_j"] {
+        let symbol = notation["symbols"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|symbol| symbol["name"] == name)
+            .unwrap();
+        assert_eq!(symbol["free_use_count"], 1, "{name}");
+        assert!(
+            !sites
+                .iter()
+                .any(|site| site["symbol"] == name && site["is_local"] == false),
+            "{name}"
+        );
+    }
+    let entries = notation["entries"].as_array().unwrap();
+    assert!(entries.iter().any(|entry| entry["symbol"] == "x_j"));
+    assert!(!entries.iter().any(|entry| entry["symbol"] == "w_j"));
 }
 
 #[test]
@@ -162,4 +392,47 @@ fn a_dot_inside_a_number_or_an_abbreviation_never_ends_a_sentence() {
         vec!["0.042668", "15,997"]
     );
     assert_eq!(text::words("three short words"), 3);
+    let manuscript = assembled(
+        "\\documentclass{article}\\begin{document}\
+         The measured ratio is $0.1456$, from $2.5844$ against $15.9974$. \
+         The 95 percent confidence bound is $0.108$. \
+         The base-128 expansion agrees \\cite{source}.\\end{document}",
+    );
+    let evidence = super::evidence::Evidence::build(&manuscript, &Walk::of(&manuscript));
+    let numbers = evidence["numbers"].as_array().unwrap();
+    assert_eq!(numbers.len(), 6);
+    assert_eq!(numbers[0]["names_ratio"], true);
+    assert_eq!(numbers[0]["sentence_number_count"], 3);
+    assert_eq!(numbers[4]["names_ratio"], false);
+    assert_eq!(numbers[5]["is_mathematical"], true);
+}
+
+#[test]
+fn typst_uses_its_ast_and_refuses_unresolved_generated_content() {
+    let root = tempfile::tempdir().expect("a temporary manuscript must open");
+    std::fs::write(root.path().join("paper.typ"),
+        "#let unused = [= Hidden heading]\n= Setup <setup>\nLet $alpha$ denote an angle.\n\n#include \"part.typ\"\n")
+        .expect("the root must be writable");
+    std::fs::write(root.path().join("part.typ"),
+        "= Calculation\n$ bb(A)_k = alpha $ <identity>\nThe result in @identity uses @setup.\n\n= Notation\n/ $alpha$: The angle.\n")
+        .expect("the part must be writable");
+    let scope = crate::discovery::Scope::of(root.path(), &[".typ".to_string()]);
+    let found = Manuscript::scan(root.path(), &scope).expect("literal Typst is supported");
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].language, "typst");
+    let walk = Walk::of(&found[0]);
+    assert_eq!(walk.sections.len(), 3);
+    assert_eq!(walk.sections[0]["title"], "Setup");
+    assert_eq!(walk.labels[0]["name"], "setup");
+    assert_eq!(walk.labels[1]["kind"], "equation");
+    assert_eq!(
+        super::typst::named("bb(A)_k + alpha"),
+        vec!["bb(A)_k", "alpha"]
+    );
+    let dynamic = super::typst::TypstReader::read(&CorpusFile {
+        path: "dynamic.typ".to_string(),
+        text: "#show: document => document".to_string(),
+    })
+    .expect_err("runtime transformation must not silently pass");
+    assert!(dynamic.contains("unresolved Typst"));
 }

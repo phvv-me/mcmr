@@ -39,9 +39,18 @@ tables. Python rules query the shared evidence and report exact findings with so
 - Safe repairs are kept only after MCMR reparses the edit and reruns the rule.
 - Plugins can add rules and evidence providers through public entry points.
 
+Structural limits are configurable: `ALL-CLAS0004`, for example, allows up to 64 declared
+fields per class by default. Project policies can set a different ceiling.
+
+Expected queue absence is not an ignored error. `ALL-ERRO0001` distinguishes a resolved
+`queue.Empty` catch around a single queue read from mixed catches or unrelated failed work.
+Unresolved wrappers remain findings; there is no exception-name allowlist.
+
 MCMR reads Python, Rust, TypeScript, C, C++, and CUDA. It also reads LaTeX manuscripts, in the
 order a reader meets them across every included file, and reports defects of reading order,
 statement structure, notation, prose and evidence. That lane never repairs.
+Explicit local operand lists and numerical-vector entries retain their local scope. Unsupported
+indexed notation still needs review rather than automatic renaming.
 
 ## Usage
 
@@ -49,8 +58,14 @@ statement structure, notation, prose and evidence. That lane never repairs.
 mcmr check . --format concise
 mcmr check . --repair preview
 mcmr check . --repair apply
+mcmr check . --repair apply --repair-paths src/changed.py --repair-paths tests/test_changed.py
 mcmr check . --contextual --external
 ```
+
+`--repair-paths` is repeatable. Analysis still sees the whole repository, but every source and
+destination of an applied repair must stay inside the named files or directories. A cross-file
+plan is refused as a whole when any part falls outside that scope. The usual safe-plan and
+post-repair verification requirements still apply; other findings remain visible.
 
 Write every verdict to DataHub, then read the history before the next agent changes the code.
 

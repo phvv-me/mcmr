@@ -26,7 +26,18 @@ pub enum Element {
     /// Text the author marked, and the command that marked it.
     Emphasis { command: String, marked: String },
     /// A macro this document declares, naming a symbol the reader will meet spelled that way.
-    Macro(String),
+    Macro { name: String, replacement: String },
+    /// A zero-argument alias for a heading, kept until the manuscript is assembled.
+    HeadingMacro {
+        name: String,
+        level: u8,
+        title: String,
+        replace: bool,
+    },
+    /// A control sequence whose meaning may be supplied by the document preamble.
+    MacroUse(String),
+    /// A description-list term; its following text supplies the meaning.
+    ItemLabel(String),
     /// An environment declared as a numbered statement, and whether it owes the reader a proof.
     StatementKind { name: String, owes_proof: bool },
     /// Ordinary running text.

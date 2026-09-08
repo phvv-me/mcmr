@@ -5,6 +5,7 @@ use super::element::Element;
 use super::located::Located;
 use super::role::Role;
 use crate::lexical::CorpusFile;
+use std::collections::BTreeMap;
 
 /// Environments whose opening takes mandatory arguments, and how many they take.
 ///
@@ -32,6 +33,7 @@ pub struct LatexReader {
     text: String,
     text_line: usize,
     plain_style: bool,
+    theorem_styles: BTreeMap<String, bool>,
 }
 
 impl LatexReader {
@@ -43,6 +45,7 @@ impl LatexReader {
             text: String::new(),
             text_line: 1,
             plain_style: true,
+            theorem_styles: BTreeMap::from([("plain".to_string(), true)]),
         };
         let mut cursor = Cursor::new(&file.text);
         while !cursor.done() {
@@ -108,7 +111,8 @@ impl LatexReader {
     fn control(&mut self, cursor: &mut Cursor<'_>) {
         let line = cursor.line();
         cursor.bump();
-        let name = cursor.take_while(|character| character.is_ascii_alphabetic());
+        let name =
+            cursor.take_while(|character| character.is_ascii_alphabetic() || character == '@');
         if name.is_empty() {
             self.escape(cursor, line);
             return;
@@ -130,15 +134,46 @@ impl LatexReader {
             Command::Caption => self.caption(cursor, line),
             Command::StatementKind => self.statement_kind(cursor, line),
             Command::StatementStyle => self.statement_style(cursor),
-            Command::Macro => self.macro_name(cursor, line),
+            Command::Macro => self.macro_name(name, cursor, line),
+            Command::EnvironmentKind => self.environment_kind(cursor),
+            Command::TheoremStyleKind => self.theorem_style_kind(cursor),
+            Command::ParagraphBreak => self.push(Element::ParagraphBreak, line),
+            Command::Item => {
+                self.push(Element::ParagraphBreak, line);
+                if let Some(label) = BRACKET.read(cursor) {
+                    self.push(Element::ItemLabel(label), line);
+                }
+            }
+            Command::BibliographyItem => {
+                self.push(Element::ParagraphBreak, line);
+                drop(BRACKET.read(cursor));
+                drop(BRACE.read(cursor));
+            }
             Command::Emphasis => self.emphasis(name, cursor, line),
-            Command::Discarded => drop(BRACE.read(cursor)),
-            Command::Plain => self.text.push(' '),
+            Command::Discarded => self.discarded(name, cursor),
+            Command::Plain => {
+                self.push(Element::MacroUse(name.to_string()), line);
+                self.text.push(' ');
+            }
+        }
+    }
+
+    /// Consume layout and metadata arguments while leaving any actual text body to the reader.
+    fn discarded(&mut self, name: &str, cursor: &mut Cursor<'_>) {
+        while BRACKET.read(cursor).is_some() {}
+        let count = match name {
+            "addcontentsline" | "definecolor" => 3,
+            "addtolength" | "setcounter" | "setlength" | "pdfbookmark" => 2,
+            _ => 1,
+        };
+        for _ in 0..count {
+            drop(BRACE.read(cursor));
         }
     }
 
     /// Emit one math span set on its own, which ends the prose run around it.
     fn display_math(&mut self, body: String, line: usize) {
+        let punctuation = Self::terminal_punctuation(&body);
         self.push(
             Element::Math {
                 text: body,
@@ -146,6 +181,38 @@ impl LatexReader {
             },
             line,
         );
+        self.text.push_str(" · ");
+        if let Some(punctuation) = punctuation {
+            self.text.push(punctuation);
+            self.text.push(' ');
+        }
+    }
+
+    /// Keep rendered terminal punctuation, not formula tokens or environment/label metadata.
+    fn terminal_punctuation(body: &str) -> Option<char> {
+        let mut cursor = Cursor::new(body);
+        let mut terminal = None;
+        while let Some(character) = cursor.bump() {
+            match character {
+                '%' => drop(cursor.take_until("\n")),
+                '\\' => {
+                    let name = cursor.take_while(|character| character.is_ascii_alphabetic());
+                    match name.as_str() {
+                        "end" | "label" | "tag" => drop(BRACE.read(&mut cursor)),
+                        "quad" | "qquad" | "notag" | "nonumber" => {}
+                        "right" | "left" if cursor.eat(".") => {}
+                        "" => {
+                            cursor.bump();
+                        }
+                        _ => terminal = None,
+                    }
+                }
+                '}' => {}
+                character if character.is_whitespace() => {}
+                character => terminal = ".!?;,:".contains(character).then_some(character),
+            }
+        }
+        terminal
     }
 
     /// Read one dollar-delimited math span, inline or display.
@@ -252,13 +319,91 @@ impl LatexReader {
     }
 
     /// Emit the name of a macro this document declares.
-    fn macro_name(&mut self, cursor: &mut Cursor<'_>, line: usize) {
-        let Some(declared) = BRACE.read(cursor) else {
+    fn macro_name(&mut self, command: &str, cursor: &mut Cursor<'_>, line: usize) {
+        drop(cursor.take_while(char::is_whitespace));
+        let declared = BRACE.read(cursor).unwrap_or_else(|| {
+            cursor.eat("\\");
+            cursor.take_while(|character| character.is_ascii_alphabetic() || character == '@')
+        });
+        let name = declared.trim().trim_start_matches('\\').to_string();
+        drop(cursor.take_while(char::is_whitespace));
+        let mut has_arguments = false;
+        while BRACKET.read(cursor).is_some() {
+            has_arguments = true;
+            drop(cursor.take_while(char::is_whitespace));
+        }
+        let body = BRACE.read(cursor).unwrap_or_default();
+        let textual = ["\\text", "\\textrm", "\\textnormal", "\\texttt", "\\mbox"]
+            .iter()
+            .any(|prefix| {
+                body.trim_start()
+                    .strip_prefix(prefix)
+                    .is_some_and(|rest| rest.starts_with('{'))
+            });
+        if !name.is_empty() && (!has_arguments || textual) {
+            self.push(
+                Element::Macro {
+                    name: name.clone(),
+                    replacement: if has_arguments {
+                        "\\text".to_string()
+                    } else if command == "DeclareMathOperator" {
+                        format!("\\operatorname{{{body}}}")
+                    } else {
+                        body.clone()
+                    },
+                },
+                line,
+            );
+        }
+        if !has_arguments {
+            self.heading_alias(&name, &body, command != "providecommand", line);
+        }
+    }
+
+    /// Resolve simple heading aliases without executing arbitrary TeX or assuming macro names.
+    fn heading_alias(&mut self, name: &str, body: &str, replace: bool, line: usize) {
+        let mut cursor = Cursor::new(body.trim());
+        if !cursor.eat("\\") {
+            return;
+        }
+        let command = cursor.take_while(|character| character.is_ascii_alphabetic());
+        let Command::Section(level) = Command::of(&command) else {
             return;
         };
-        let name = declared.trim().trim_start_matches('\\').to_string();
-        if !name.is_empty() {
-            self.push(Element::Macro(name), line);
+        cursor.eat("*");
+        drop(BRACKET.read(&mut cursor));
+        if let Some(title) = BRACE.read(&mut cursor) {
+            self.push(
+                Element::HeadingMacro {
+                    name: name.to_string(),
+                    level,
+                    title,
+                    replace,
+                },
+                line,
+            );
+        }
+    }
+
+    /// Consume an environment's two implementation groups without executing their commands.
+    fn environment_kind(&mut self, cursor: &mut Cursor<'_>) {
+        drop(BRACE.read(cursor));
+        while BRACKET.read(cursor).is_some() {}
+        drop(BRACE.read(cursor));
+        drop(BRACE.read(cursor));
+    }
+
+    /// Record the body style a theorem declaration actually uses, including custom styles.
+    fn theorem_style_kind(&mut self, cursor: &mut Cursor<'_>) {
+        let Some(name) = BRACE.read(cursor) else {
+            return;
+        };
+        let arguments: Vec<String> = (0..8).filter_map(|_| BRACE.read(cursor)).collect();
+        if let Some(font) = arguments.get(2) {
+            self.theorem_styles.insert(
+                name,
+                font.contains("\\itshape") || font.contains("\\slshape"),
+            );
         }
     }
 
@@ -362,6 +507,7 @@ impl LatexReader {
     /// obligation, because a plain-style environment asserts something and a definition-style one
     /// introduces a name, and only the first of those can be left unproved.
     fn statement_kind(&mut self, cursor: &mut Cursor<'_>, line: usize) {
+        drop(BRACKET.read(cursor));
         let Some(name) = BRACE.read(cursor) else {
             return;
         };
@@ -380,7 +526,11 @@ impl LatexReader {
     /// Remember whether the declarations that follow assert something or introduce a name.
     fn statement_style(&mut self, cursor: &mut Cursor<'_>) {
         let style = BRACE.read(cursor).unwrap_or_default();
-        self.plain_style = style.trim() == "plain";
+        self.plain_style = self
+            .theorem_styles
+            .get(style.trim())
+            .copied()
+            .unwrap_or(false);
     }
 
     /// End one table row, closing whatever cell text was open when it ended.
@@ -391,7 +541,14 @@ impl LatexReader {
     /// Read whatever sits at the cursor, which is one of six things.
     fn step(&mut self, cursor: &mut Cursor<'_>) {
         match cursor.peek() {
-            Some('%') => drop(cursor.take_until("\n")),
+            Some('%') => {
+                drop(cursor.take_until("\n"));
+                let mut following = cursor.clone();
+                drop(following.take_while(|character| matches!(character, ' ' | '\t' | '\r')));
+                if following.peek() == Some('\n') {
+                    self.push(Element::ParagraphBreak, cursor.line());
+                }
+            }
             Some('\\') => self.control(cursor),
             Some('$') => self.dollar(cursor),
             Some('\n') => self.newline(cursor),
@@ -402,7 +559,7 @@ impl LatexReader {
 
     /// Take the run of ordinary characters up to the next thing the scanner reacts to.
     fn word(&mut self, cursor: &mut Cursor<'_>) {
-        if self.text.is_empty() {
+        if self.text.trim().is_empty() {
             self.text_line = cursor.line();
         }
         self.text

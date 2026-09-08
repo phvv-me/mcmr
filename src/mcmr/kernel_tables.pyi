@@ -3,6 +3,9 @@ from pathlib import Path
 
 from polars import DataFrame
 
+class AnalysisError(RuntimeError):
+    """The requested source or configuration could not be analyzed."""
+
 class FunctionTables:
     @property
     def controls(self) -> DataFrame: ...

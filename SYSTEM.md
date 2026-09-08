@@ -119,6 +119,16 @@ Required parameters are injected tables or explicit services. Keyword-only param
 defaults are user settings. A rule returns one Boolean, count, percentage, category, or contextual
 query. Policy belongs to the decorator and can be overridden by project configuration.
 
+The declared-field rule `ALL-CLAS0004` defaults to `Numeric(maximum=64)`. This changes the
+acceptance ceiling, not field counting or explicit project overrides.
+
+`TryBlockFact` retains an imported exception identity and the qualified target of a sole
+protected call. The existing native Python AST supplies this evidence; rule code does not parse
+Python again. Literal constructor bindings and parameter annotations establish receiver types.
+Repeated bindings, shadowed imports, and compound calls remain unresolved. `ALL-ERRO0001` uses
+these facts to recognize standard-library queue absence, not to exempt exceptions by spelling.
+This is bounded lexical analysis, not intermodule exception inference or proof of runtime types.
+
 Rule documentation is part of the contract. It states a summary, definition, evidence,
 exceptions, examples, and references. Catalog tests validate the format and upstream references.
 
@@ -450,6 +460,13 @@ symbols, the places it appears to introduce one, the phrases it marks as terms, 
 its own notation index. `ManuscriptEvidenceFact` holds the numbers it prints and the sources it
 leans on, with each number retaining whether it sat in a table cell and which float held it.
 
+Within a statement, explicit primitive parameter lists, quantified lists, and numerical-vector
+declarations bind their operands locally. A numerical reduction lower bound can specialize a
+component family when that family is declared in the same statement. Only the literal lower
+endpoint is inferred. Neither an unrelated free index nor an undeclared family is covered.
+Literal coordinate tuples and explicit vector/entry pairs in the index retain their family
+relationship. Index coverage does not prove that an index is in range.
+
 Everything retained is an observation. A reference retains where it points rather than a claim
 that it points forwards, a statement retains the order of whatever followed it rather than a claim
 that it is unproved, and a number retains the cell it sits in rather than a claim that the prose
@@ -510,6 +527,11 @@ The Python renderer validates retained source and UTF-8 byte spans. It manages r
 `TYPE_CHECKING`, and relative imports. Cross-file moves must name an existing destination and exact
 anchors. The renderer rejects stale source, overlapping edits, incomplete references, unsupported
 language operations, and syntax failures.
+
+The command's repeatable `--repair-paths` supplies repository-relative files or directories to
+that renderer. Every rewrite source and destination must resolve within the requested scope;
+otherwise the complete plan is refused before rendering or writing. This never narrows the
+analysis, and findings elsewhere still contribute to the exit status.
 
 A replacement is also read against the node it overwrites. Reparsing proves the result is Python
 and rerunning the rule proves the finding closed, yet neither proves the new source still means

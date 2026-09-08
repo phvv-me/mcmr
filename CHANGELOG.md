@@ -8,6 +8,10 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 
 ### Added
 
+- Repeatable `check --repair-paths` restricts all repair sources and destinations to requested
+  files or directories without narrowing analysis or hiding findings elsewhere. A repair that
+  crosses the boundary is refused in full, including cross-file moves.
+
 - MCMR reads LaTeX manuscripts. `Manuscript::scan` finds the files that declare a document class,
   splices each included file into the reading order at the position that included it, and produces
   one flattened element stream per manuscript. The element variants are markup neutral, so a
@@ -26,6 +30,8 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 
 ### Changed
 
+- Raise the default `ALL-CLAS0004` declared-field limit from 7 to 64. Explicit project
+  overrides and the underlying field measurement are unchanged.
 - The workspace manifest is `mainboard.toml`. The kernel reads that filename, treats it as
   configuration during discovery, and keys the fact it derives `automation:mainboard`, and the
   guidance match that ties a task to the document explaining it looks for `mainboard run <task>`
@@ -45,6 +51,19 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 
 ### Fixed
 
+- Manuscript facts retain the local scope of explicit operand lists and entries of typed numerical
+  vectors. A declared indexed family can name the literal lower endpoint of a reduction bound in
+  the same statement. Undeclared families, unbound variants, and uses outside the statement remain
+  distinct; no manuscript thresholds changed.
+  Literal coordinate tuples introduce their entries, and explicit vector/entry pairs in the
+  notation index cover simple component indices without dropping arbitrary subscripts.
+  Explicit infix declarations target the operator, and clause-leading definition verbs retain
+  their reach across descriptive phrases and displayed-math openings.
+- `ALL-ERRO0001` recognizes a sole imported `queue.Empty` handler around a sole queue retrieval
+  as expected absence. Aliases work; shadowing, mixed handlers, compound operations, and
+  unresolved wrappers are not exempted. Python handlers belong to their own guard rather than
+  being counted again inside enclosing guards. This change follows the author's explicit approval
+  of expected queue-wait control flow; ignored failures still produce findings.
 - A repair that replaces source now has to carry that source's values forward. The renderer
   compares the values and unpackings the replaced span supplied against the ones its replacement
   states, and refuses the plan when any of them disappear, so an edit that still parses and still

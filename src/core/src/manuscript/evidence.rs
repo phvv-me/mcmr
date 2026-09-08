@@ -37,6 +37,9 @@ pub struct Evidence {
     citations: Vec<Value>,
     references: Vec<Value>,
     tail: String,
+    pending: Vec<(usize, usize)>,
+    sentence_order: usize,
+    ratio_basis: bool,
 }
 
 impl Evidence {
@@ -47,6 +50,9 @@ impl Evidence {
             citations: Vec::new(),
             references: Vec::new(),
             tail: String::new(),
+            pending: Vec::new(),
+            sentence_order: 0,
+            ratio_basis: false,
         };
         for (order, located) in manuscript.elements.iter().enumerate() {
             let position = walk.positions[order];
@@ -54,6 +60,7 @@ impl Evidence {
                 evidence.element(located, &position, walk);
             }
         }
+        evidence.finish();
         json!({
             "root": manuscript.root,
             "numbers": evidence.numbers,
@@ -84,7 +91,14 @@ impl Evidence {
     /// Whether a run of text names a quantity that is derived from two others.
     fn names_ratio(body: &str) -> bool {
         let lowered = body.to_lowercase();
-        RATIO_WORDS.iter().any(|word| lowered.contains(word))
+        RATIO_WORDS.iter().any(|word| {
+            lowered.match_indices(word).any(|(at, _)| {
+                let before = lowered[..at].chars().next_back();
+                let after = lowered[at + word.len()..].chars().next();
+                !before.is_some_and(char::is_alphanumeric)
+                    && !after.is_some_and(char::is_alphanumeric)
+            })
+        })
     }
 
     /// Record one citation and the locator it pins its source to.
@@ -99,6 +113,7 @@ impl Evidence {
             "path": located.path,
             "line": located.line,
             "section_number": Self::numbered(position.section),
+            "sentence_order": self.sentence_order,
         }));
     }
 
@@ -112,6 +127,7 @@ impl Evidence {
             "path": located.path,
             "line": located.line,
             "section_number": Self::numbered(position.section),
+            "sentence_order": self.sentence_order,
         }));
     }
 
@@ -119,14 +135,27 @@ impl Evidence {
     fn element(&mut self, located: &Located, position: &Position, walk: &Walk) {
         match &located.element {
             Element::Text(body) => {
-                self.tail = text::sentences(body).pop().unwrap_or_default();
-                self.written(body, located, (position, walk));
+                self.written(body, located, (position, walk), false);
             }
-            Element::Caption(body) => self.written(&stripped(body), located, (position, walk)),
+            Element::Caption(body) => {
+                self.written(&stripped(body), located, (position, walk), false)
+            }
             Element::Math { text, .. } => self.computed(text, located, (position, walk)),
             Element::Citation { .. } => self.citation(located, position),
             Element::Reference { target, command } => {
                 self.reference(located, (position, target, command));
+                self.ratio_basis |= walk
+                    .labels
+                    .iter()
+                    .any(|label| label["name"] == *target && label["kind"] == "table");
+            }
+            Element::ParagraphBreak
+            | Element::RowBreak
+            | Element::Section { .. }
+            | Element::EnvironmentOpen(_)
+            | Element::EnvironmentClose(_) => {
+                self.finish();
+                self.ratio_basis = false;
             }
             _ => {}
         }
@@ -148,17 +177,48 @@ impl Evidence {
         if reported.is_empty() {
             return;
         }
-        let sentence = format!("{} {reported}", self.tail);
-        self.written(&sentence, located, context);
+        let (position, _) = context;
+        let empirical = [
+            "measured",
+            "observed",
+            "reported",
+            "empirical",
+            "median",
+            "percent",
+            "rate",
+        ]
+        .iter()
+        .any(|word| self.tail.to_lowercase().contains(word));
+        let mathematical = position.in_proof
+            || (!empirical && math.chars().any(|character| "=^<>".contains(character)));
+        self.ratio_basis |= Self::names_ratio(&self.tail)
+            && (math.contains("\\frac{") || math.contains("\\tfrac{"));
+        self.written(&reported, located, context, mathematical);
     }
 
     /// Record every number one run of text states, with the company it kept.
-    fn written(&mut self, body: &str, located: &Located, context: (&Position, &Walk)) {
+    fn written(
+        &mut self,
+        body: &str,
+        located: &Located,
+        context: (&Position, &Walk),
+        mathematical: bool,
+    ) {
         let (position, walk) = context;
         let float = Self::float_label(position, walk);
         for sentence in text::sentences(body) {
             let stated = text::numbers(&sentence);
+            let start = self.tail.len();
+            self.tail.push_str(&sentence);
+            let mut offset = 0;
             for literal in &stated {
+                let found = sentence[offset..]
+                    .find(literal)
+                    .map_or(offset, |at| offset + at);
+                offset = found + literal.len();
+                let before = sentence[..found].trim_end_matches('-').trim_end();
+                let constant = before.ends_with("base") || before.ends_with("radix");
+                self.pending.push((self.numbers.len(), start + found));
                 self.numbers.push(json!({
                     "literal": literal,
                     "reading_order": position.order,
@@ -167,10 +227,57 @@ impl Evidence {
                     "section_number": Self::numbered(position.section),
                     "in_cells": position.in_cells,
                     "float_label": float,
-                    "names_ratio": Self::names_ratio(&sentence),
-                    "sentence_number_count": stated.len(),
+                    "names_ratio": false,
+                    "sentence_number_count": 0,
+                    "sentence_order": self.sentence_order,
+                    "is_mathematical": mathematical || constant,
+                    "has_ratio_basis": false,
                 }));
             }
+            if sentence.trim_end().ends_with(['.', '!', '?']) {
+                self.finish();
+            } else {
+                self.tail.push(' ');
+            }
         }
+    }
+
+    /// Join text and inline mathematics before deciding which statistic a number reports.
+    fn finish(&mut self) {
+        let lower = self.tail.to_lowercase();
+        self.ratio_basis |= Self::names_ratio(&lower)
+            && [
+                "ratio of",
+                "divided by",
+                "defined as",
+                "numerator",
+                "denominator",
+            ]
+            .iter()
+            .any(|phrase| lower.contains(phrase));
+        let count = self.pending.len();
+        for (index, at) in std::mem::take(&mut self.pending) {
+            let literal = self.numbers[index]["literal"].as_str().unwrap_or_default();
+            let before = &self.tail[..at];
+            let context = before
+                .split_whitespace()
+                .rev()
+                .take(6)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect::<Vec<_>>()
+                .join(" ");
+            let after = self.tail[at + literal.len()..].trim_start();
+            let ratio = Self::names_ratio(&context) && !context.contains("confidence")
+                || after.starts_with('%')
+                || after.starts_with("percent")
+                || after.starts_with("per cent");
+            self.numbers[index]["names_ratio"] = json!(ratio);
+            self.numbers[index]["sentence_number_count"] = json!(count);
+            self.numbers[index]["has_ratio_basis"] = json!(self.ratio_basis);
+        }
+        self.tail.clear();
+        self.sentence_order += 1;
     }
 }

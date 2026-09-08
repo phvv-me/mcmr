@@ -16,6 +16,9 @@ class ProtectedRegion(FrozenModel):
     protected_statements: list[NodeRef] = Field(
         default=[], description="syntax nodes of the statements the try block guards"
     )
+    protected_call_qualified_name: str = Field(
+        default="", description="import or literal receiver type of the sole guarded call"
+    )
     leading_literal_assignment_count: NonNegativeInt = Field(
         default=0, description="how many leading assignments the try block carries"
     )

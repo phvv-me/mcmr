@@ -10,3 +10,6 @@ class ManuscriptParagraph(ManuscriptPlace):
     sentence_count: NonNegativeInt = Field(default=0, description="sentences the paragraph holds")
     in_cells: bool = Field(default=False, description="whether the prose sits inside table cells")
     in_float: bool = Field(default=False, description="whether the prose sits inside a float")
+    in_bibliography: bool = Field(
+        default=False, description="source metadata rather than narrative"
+    )

@@ -23,7 +23,11 @@ impl Include<'_> {
                 true => named.to_string(),
                 false => format!("{base}/{named}"),
             };
-            for candidate in [joined.clone(), format!("{joined}.tex")] {
+            for candidate in [
+                joined.clone(),
+                format!("{joined}.tex"),
+                format!("{joined}.typ"),
+            ] {
                 if read.contains_key(&candidate) {
                     return Some(candidate);
                 }

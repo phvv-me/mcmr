@@ -8,7 +8,7 @@ from ......table import Table
 from ...reach.relations import ReachTables
 
 
-@rule("ALL-CLAS0004", policy=Numeric(maximum=7))
+@rule("ALL-CLAS0004", policy=Numeric(maximum=64))
 def declared_field_count(subject: Table[SymbolReachFact]) -> CountQuery:
     """Measure the widest data surface one type in this module declares.
 
@@ -39,7 +39,7 @@ def declared_field_count(subject: Table[SymbolReachFact]) -> CountQuery:
     Callables are counted by the neighboring public-method rule, because a wide record and a wide
     interface are two different defects. A module declaring no type at all measures zero. The count
     is a measurement, and a project policy owns the ceiling, since a serialized message and a
-    service object tolerate very different widths.
+    service object tolerate very different widths. The default ceiling is 64 declared fields.
 
     Examples
     --------

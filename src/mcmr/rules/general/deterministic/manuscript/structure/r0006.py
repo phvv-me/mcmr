@@ -8,41 +8,36 @@ from ......table import ManuscriptRelations, Table
 
 
 @rule("ALL-MANU0006", policy=Numeric(maximum=0))
-def float_the_reader_meets_before_anything_names_it(
+def float_without_a_text_reference(
     subject: Table[ManuscriptFact],
 ) -> CountQuery:
-    """Count figures and tables a reader meets before the text points at them.
+    """Count labeled figures and tables that the text never references.
 
     Definition
     ----------
-    A float is placed where it fits on the page, so the only thing that tells a reader why it is
-    there is the sentence that references it. Report a figure or table whose label no reference
-    names at all, and one whose first reference comes later in reading order than the float
-    itself. Both shapes leave a reader looking at evidence with nothing to read it against.
+    Report a labeled figure or table that no text references. The object may appear before its
+    numbered discussion; it does not need a forward reference to announce it. Reading order is
+    checked separately by ALL-MANU0001.
 
     Evidence
     --------
-    Each finding names the float kind, its label, and whether nothing references it or the first
-    reference arrives after it. The value is the number of floats in either shape.
+    Each finding names the float kind and its label. The value is the number of unreferenced
+    labeled floats.
 
     Exceptions
     ----------
-    An unlabelled decorative figure declares no target and is never counted. A float placed
-    deliberately ahead of its discussion, such as a summary table opening a chapter, is reported,
-    and the repair is a forward-pointing sentence rather than an exclusion. A float referenced
-    only from its own caption is reported, since a caption cannot introduce the float it belongs
-    to.
+    An unlabeled decorative figure declares no target and is not counted. Caption text is not
+    running prose, so a self-reference inside a caption does not establish a text reference.
 
     Examples
     --------
     Bad
     ~~~
-    A `table` carrying `\\label{tab:survival}` first referenced two sections later returns `1`,
-    and so does one nothing references.
+    A `table` carrying `\\label{tab:survival}` that nothing references returns `1`.
 
     Good
     ~~~~
-    A table introduced by the paragraph above it returns `0`.
+    A table discussed by the paragraph below it returns `0`.
 
     References
     ----------
@@ -51,10 +46,7 @@ def float_the_reader_meets_before_anything_names_it(
     """
     relations = ManuscriptRelations(subject)
     floats = relations.labelled("floats", "kind").filter(pl.col("label").str.len_chars() > 0)
-    unread = floats.filter(
-        (pl.col("reference_count") == 0)
-        | (pl.col("first_reference_order") > pl.col("reading_order"))
-    )
+    unread = floats.filter(pl.col("reference_count") == 0)
     return RuleQuery.integer(
         relations.counted(unread),
         pl.col("value"),
@@ -65,12 +57,9 @@ def float_the_reader_meets_before_anything_names_it(
                 pl.col("kind"),
                 pl.lit("` `"),
                 pl.col("label"),
-                pl.lit("` is "),
-                pl.when(pl.col("reference_count") == 0)
-                .then(pl.lit("never referenced"))
-                .otherwise(pl.lit("first referenced after the reader meets it")),
+                pl.lit("` is never referenced"),
             ),
-            (("floats met unannounced", pl.lit(1.0), Unit.COUNT),),
+            (("unreferenced floats", pl.lit(1.0), Unit.COUNT),),
             finding_order=pl.col("reading_order"),
         ),
     )

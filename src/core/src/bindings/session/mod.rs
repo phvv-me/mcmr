@@ -7,6 +7,8 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard};
 
+pyo3::create_exception!(kernel_tables, AnalysisError, PyRuntimeError);
+
 use request::AnalysisRequest;
 use state::SessionState;
 pub(in crate::bindings) use stats::SessionStats;
@@ -36,7 +38,7 @@ macro_rules! analysis_session_methods {
                     generic_schemas: generic_schemas.unwrap_or_default(),
                 };
                 let state = Python::attach(|py| py.detach(|| SessionState::build(request)))
-                    .map_err(PyRuntimeError::new_err)?;
+                    .map_err(AnalysisError::new_err)?;
                 Ok(Self {
                     state: Mutex::new(state),
                 })

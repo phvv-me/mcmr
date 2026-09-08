@@ -35,10 +35,11 @@ def symbol_missing_from_the_notation_index(
     ----------
     A symbol confined to one section is local and reports nothing, however often it appears there,
     which is the convention every index states for itself. Matching is on spelling, so an index
-    listing one subscripted form of a letter does not cover another form of the same letter, and
-    that is deliberate, since a reader looking up the second finds the first and reads the wrong
-    meaning. A symbol introduced only inside a display the index cites is still reported when the
-    index does not name the symbol itself.
+    listing one subscripted form does not automatically cover another. The parser can supply
+    additional coverage from an explicit family convention in the index, such as an optional
+    format subscript. Locally bound occurrences use the parser's free-occurrence inventory;
+    unrelated global variants remain distinct. A symbol introduced only inside a display the
+    index cites is still reported when the index does not name or explicitly cover it.
 
     Examples
     --------
@@ -60,8 +61,17 @@ def symbol_missing_from_the_notation_index(
     entries = relations.located("entries", "symbol").select(
         "fact_id", pl.col("symbol").alias("indexed")
     )
-    symbols = relations.located("symbols", "name", "use_count", "section_count").filter(
-        (pl.col("section_count") >= minimum_sections) & (pl.col("use_count") >= minimum_uses)
+    symbols = (
+        relations.located(
+            "symbols", "name", "use_count", "section_count", "free_use_count", "free_section_count"
+        )
+        .with_columns(
+            pl.coalesce("free_use_count", "use_count").alias("use_count"),
+            pl.coalesce("free_section_count", "section_count").alias("section_count"),
+        )
+        .filter(
+            (pl.col("section_count") >= minimum_sections) & (pl.col("use_count") >= minimum_uses)
+        )
     )
     missing = symbols.join(
         entries.unique(),

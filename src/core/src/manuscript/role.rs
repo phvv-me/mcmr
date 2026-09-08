@@ -11,10 +11,14 @@ pub enum Role {
     Verbatim,
     /// The proof of whatever numbered statement precedes it.
     Proof,
+    /// Source metadata, distinct from the author's narrative prose.
+    Bibliography,
     /// A figure float, referenced by label rather than met in reading order.
     Figure,
     /// A table float, whose cells hold numbers the prose is expected to agree with.
     Table,
+    /// A numbered algorithm float, whose pseudocode is a sequence of statements.
+    Algorithm,
     /// The tabular body of a table, which is where those cells actually live.
     Cells,
     /// Anything else, including the document body and every statement environment.
@@ -65,6 +69,10 @@ impl Role {
         }
         if base == "proof" {
             Self::Proof
+        } else if base == "thebibliography" {
+            Self::Bibliography
+        } else if base == "algorithm" {
+            Self::Algorithm
         } else {
             Self::Other
         }
@@ -75,6 +83,7 @@ impl Role {
         match self {
             Self::Figure => Some("figure"),
             Self::Table => Some("table"),
+            Self::Algorithm => Some("algorithm"),
             _ => None,
         }
     }

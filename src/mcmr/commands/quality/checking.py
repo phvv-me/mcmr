@@ -53,6 +53,7 @@ def check(
     limit: int = 20,
     repair: RepairMode = RepairMode.NONE,
     maximum_fixes: int = 100,
+    repair_paths: tuple[Path, ...] = (),
     output: Path | None = None,
     report_only: bool = False,
     deterministic: bool | None = None,
@@ -74,6 +75,8 @@ def check(
     repair: `preview` available patches, `apply` safe plans, or `apply-review` review plans
         through verified fixpoints.
     maximum_fixes: bound the number of verified edits in one run.
+    repair_paths: restrict every repair source and destination to these repository-relative files
+        or directories; analysis still reads the whole repository.
     output: optional path that receives the complete JSON report.
     report_only: report failures without returning a failing process status.
     deterministic: enable or disable rules computed from repository facts.
@@ -101,9 +104,9 @@ def check(
         except ProviderExecutionError as error:
             _fail_provider(error)
         report = CheckReport.of(root, result)
-    fixed = _apply_repairs(root, analysis, report, repair, maximum_fixes)
+    fixed = _apply_repairs(root, analysis, report, repair, maximum_fixes, repair_paths)
     _present_report(fixed.report, format=format, limit=limit, output=output)
-    _present_repairs(root, fixed, repair, maximum_fixes)
+    _present_repairs(root, fixed, repair, maximum_fixes, repair_paths)
     _record_run(
         root,
         RunPublication(
@@ -219,6 +222,7 @@ def _apply_repairs(
     report: CheckReport,
     repair: RepairMode,
     maximum_fixes: int,
+    repair_paths: tuple[Path, ...] = (),
 ) -> FixResult:
     """Apply the explicitly selected safety class through a verified fixpoint."""
     if repair not in {RepairMode.APPLY, RepairMode.APPLY_REVIEW}:
@@ -230,6 +234,7 @@ def _apply_repairs(
             analysis,
             safety=safety,
             maximum_fixes=maximum_fixes,
+            paths=repair_paths,
         ).run(report)
 
 
@@ -259,12 +264,13 @@ def _present_repairs(
     fixed: FixResult,
     repair: RepairMode,
     maximum_fixes: int,
+    repair_paths: tuple[Path, ...] = (),
 ) -> None:
     """Show applied plans beside every remaining review or rendering refusal."""
     if repair is RepairMode.NONE:
         return
     preview_safety = None if repair is RepairMode.PREVIEW else FixSafety.REVIEW
-    previewed, preview_refusals = PythonFixRenderer(root).available(
+    previewed, preview_refusals = PythonFixRenderer(root, paths=repair_paths).available(
         fixed.report,
         preview_safety,
         maximum=maximum_fixes,

@@ -1,5 +1,6 @@
 import os
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import pytest
@@ -25,7 +26,6 @@ from mcmr.presentation.reports import CheckReport
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
-    from pathlib import Path
 
     from mcmr.commands.quality import Judgment
 from .test_operations import failure, node
@@ -55,6 +55,46 @@ def test_review_safety_survives_rendering(tmp_path: Path) -> None:
     fixed = PythonFixRenderer(tmp_path).render(failure(), edit, "unused import")
 
     assert fixed.safety is FixSafety.REVIEW
+
+
+@pytest.mark.parametrize("scope", ["sample.py", "."])
+def test_repair_scope_accepts_a_named_file_or_its_directory(tmp_path: Path, scope: str) -> None:
+    (tmp_path / "sample.py").write_text("import os\n")
+    imported = node("sample.py", text="import os", start_line=1, start_column=0, kind="import")
+    edit = Edit(plan=FixPlan(summary="Remove the import.", rewrites=[Remove(target=imported)]))
+
+    fixed = PythonFixRenderer(tmp_path, paths=(Path(scope),)).render(failure(), edit, "unused")
+
+    assert [file.path for file in fixed.files] == ["sample.py"]
+
+
+def test_repair_scope_refuses_a_whole_plan_if_any_file_is_outside(tmp_path: Path) -> None:
+    for name in ("selected.py", "untouched.py"):
+        (tmp_path / name).write_text("import os\n")
+    edit = Edit(
+        plan=FixPlan(
+            summary="Remove both imports.",
+            rewrites=[
+                Remove(
+                    target=node(
+                        name, text="import os", start_line=1, start_column=0, kind="import"
+                    )
+                )
+                for name in ("selected.py", "untouched.py")
+            ],
+        )
+    )
+
+    with pytest.raises(UnrenderableFix, match="requested paths: untouched.py"):
+        PythonFixRenderer(tmp_path, paths=(Path("selected.py"),)).render(failure(), edit, "unused")
+
+    assert (tmp_path / "selected.py").read_text() == "import os\n"
+    assert (tmp_path / "untouched.py").read_text() == "import os\n"
+
+
+def test_repair_scope_refuses_a_path_outside_the_repository(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="inside the analyzed repository"):
+        PythonFixRenderer(tmp_path, paths=(Path(".."),))
 
 
 @pytest.mark.parametrize("failure_mode", ["verification", "rendering"])

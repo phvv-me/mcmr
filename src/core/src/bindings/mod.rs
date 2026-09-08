@@ -73,6 +73,10 @@ fn register_table_classes(module: &Bound<'_, PyModule>) -> PyResult<()> {
 }
 
 fn register_support_classes(module: &Bound<'_, PyModule>) -> PyResult<()> {
+    module.add(
+        "AnalysisError",
+        module.py().get_type::<session::AnalysisError>(),
+    )?;
     module.add_class::<GenericTables>()?;
     module.add_class::<contextual::GlinerClassifier>()?;
     module.add_class::<SessionStats>()?;

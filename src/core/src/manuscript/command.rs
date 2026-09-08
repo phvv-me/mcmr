@@ -28,6 +28,16 @@ pub enum Command {
     StatementStyle,
     /// A macro declaration, naming a symbol the reader will meet spelled that way.
     Macro,
+    /// An environment definition, whose implementation is not document prose.
+    EnvironmentKind,
+    /// A theorem style declaration, carrying its body font.
+    TheoremStyleKind,
+    /// An explicit paragraph or algorithm-statement boundary.
+    ParagraphBreak,
+    /// A list item, optionally carrying a description term.
+    Item,
+    /// A bibliography entry, whose key is metadata rather than prose.
+    BibliographyItem,
     /// Text the author marked, which is how a defined term is usually introduced.
     Emphasis,
     /// A command whose first group is presentation rather than prose.
@@ -54,6 +64,7 @@ const REFERENCES: &[&str] = &[
     "eqref",
     "nameref",
     "pageref",
+    "proofref",
     "ref",
 ];
 
@@ -78,6 +89,8 @@ const MACROS: &[&str] = &[
 const EMPHASIS: &[&str] = &["emph", "term", "textbf", "textit", "textsc", "underline"];
 
 const DISCARDED: &[&str] = &[
+    "@starttoc",
+    "Needspace",
     "addcontentsline",
     "addtolength",
     "colorbox",
@@ -85,10 +98,14 @@ const DISCARDED: &[&str] = &[
     "documentclass",
     "graphicspath",
     "hspace",
+    "hypersetup",
     "includegraphics",
     "setcounter",
     "setlength",
+    "pagenumbering",
+    "pdfbookmark",
     "textcolor",
+    "typeout",
     "usepackage",
     "vspace",
 ];
@@ -122,7 +139,15 @@ impl Command {
             "input" | "include" => Self::Include,
             "caption" => Self::Caption,
             "newtheorem" => Self::StatementKind,
+            "newmdtheoremenv" => Self::StatementKind,
             "theoremstyle" => Self::StatementStyle,
+            "newtheoremstyle" => Self::TheoremStyleKind,
+            "newenvironment" | "renewenvironment" | "provideenvironment" => Self::EnvironmentKind,
+            "item" => Self::Item,
+            "bibitem" => Self::BibliographyItem,
+            "par" | "State" | "Statex" | "Require" | "Ensure" | "Return" | "For" | "EndFor"
+            | "If" | "Else" | "ElsIf" | "EndIf" | "While" | "EndWhile" | "Function"
+            | "EndFunction" | "Procedure" | "EndProcedure" => Self::ParagraphBreak,
             _ => Self::Plain,
         }
     }

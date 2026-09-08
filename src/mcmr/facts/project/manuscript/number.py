@@ -17,3 +17,10 @@ class ManuscriptNumber(ManuscriptPlace):
     sentence_number_count: NonNegativeInt = Field(
         default=0, description="numbers the same sentence states"
     )
+    sentence_order: NonNegativeInt = Field(default=0, description="assembled sentence index")
+    is_mathematical: bool = Field(
+        default=False, description="a formula constant, not a measurement"
+    )
+    has_ratio_basis: bool = Field(
+        default=False, description="explicit ratio definition or evidence table"
+    )

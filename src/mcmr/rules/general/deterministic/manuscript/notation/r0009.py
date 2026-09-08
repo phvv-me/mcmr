@@ -1,5 +1,4 @@
 import polars as pl
-from pydantic import PositiveInt
 
 from ...... import Numeric, rule
 from ......domain.contracts import Unit
@@ -11,34 +10,35 @@ from ......table import ManuscriptRelations, Table
 @rule("ALL-MANU0009", policy=Numeric(maximum=0))
 def symbol_introduced_under_two_meanings(
     subject: Table[ManuscriptNotationFact],
-    *,
-    minimum_sections: PositiveInt = 2,
 ) -> CountQuery:
-    """Count symbols the manuscript introduces twice without saying it did.
+    """Count symbols assigned different explicit roles across sections without declared senses.
 
     Definition
     ----------
     One symbol carrying two meanings is the defect a cold reader loses the most time to, because
-    nothing tells them the meaning changed. Collect the places a manuscript introduces each symbol,
-    which is where the symbol stands alone on the left of a display equality or where a definition
-    cue precedes it in prose. Report a symbol introduced in at least `minimum_sections` different
-    sections whose own notation index row separates no senses.
+    nothing tells them the meaning changed. Compare explicit role phrases such as `let K denote
+    the reduction depth`, after normalizing case, whitespace, and a leading article. Report two
+    different such roles, even within one section, when the notation index
+    separates no senses. Identical definitions and same-meaning reminders do not create a second
+    role. An equality alone supplies no evidence that the symbol's meaning changed.
+
+    Literal sum/product and quantifier binders, function-definition parameters, and declarations
+    inside proofs or asserting statements are local. They do not redefine the document-wide role.
 
     An index row that says `elsewhere`, `instead`, or otherwise names a second sense has declared
     the reuse, and a declared reuse is a convention rather than a trap.
 
     Evidence
     --------
-    Each finding names the symbol, how many sections introduce it, and where the first two of
-    those introductions are. The value is the number of undeclared reuses.
+    Each finding names the symbol, its distinct normalized role phrases, and how many sections
+    introduce them. The value is the number of potential undeclared meaning changes.
 
     Exceptions
     ----------
-    A symbol reintroduced in a later section to restate the same meaning is reported, and the
-    repair is usually to reference the first definition rather than to restate it. A definition cue
-    detected in prose that was not one is the main source of noise here, which is why the rule
-    requires two different sections rather than two sites. A manuscript with no notation index has
-    declared nothing, so every twice-introduced symbol is reported.
+    Different words can express the same meaning. These findings therefore require author review,
+    not automatic renaming. Arbitrary semantic equivalence, macro-generated binders, and complex
+    dependent or nested binding scopes are unsupported. A declaration whose role cannot be
+    extracted is not evidence of a conflict; it remains visible in the introduction facts.
 
     Examples
     --------
@@ -60,10 +60,13 @@ def symbol_introduced_under_two_meanings(
     """
     relations = ManuscriptRelations(subject)
     sites = (
-        relations.located("sites", "symbol")
+        relations.located("sites", "symbol", "meaning", "is_local")
+        .filter(~pl.col("is_local") & (pl.col("meaning") != ""))
         .group_by("fact_id", "symbol", maintain_order=True)
         .agg(
             pl.col("section_number").n_unique().cast(pl.UInt64).alias("section_count"),
+            pl.col("meaning").n_unique().alias("meaning_count"),
+            pl.col("meaning").unique().sort().str.join(" | ").alias("meanings"),
             pl.col("reading_order").min().alias("reading_order"),
             pl.col("path").first(),
             pl.col("start_line").first(),
@@ -80,7 +83,7 @@ def symbol_introduced_under_two_meanings(
     collided = (
         sites.join(declared, on=["fact_id", "symbol"], how="left")
         .with_columns(pl.col("declared_senses").fill_null(1))
-        .filter((pl.col("section_count") >= minimum_sections) & (pl.col("declared_senses") < 2))
+        .filter((pl.col("meaning_count") >= 2) & (pl.col("declared_senses") < 2))
     )
     return RuleQuery.integer(
         relations.counted(collided),
@@ -90,9 +93,13 @@ def symbol_introduced_under_two_meanings(
             pl.concat_str(
                 pl.lit("`"),
                 pl.col("symbol"),
-                pl.lit("` is introduced in "),
+                pl.lit("` has distinct declared roles in "),
                 pl.col("section_count").cast(pl.String),
-                pl.lit(" different sections and the index separates no senses"),
+                pl.when(pl.col("section_count") == 1)
+                .then(pl.lit(" section: "))
+                .otherwise(pl.lit(" sections: ")),
+                pl.col("meanings"),
+                pl.lit("; the index separates no senses"),
             ),
             (("undeclared symbol reuses", pl.lit(1.0), Unit.COUNT),),
             finding_order=pl.col("reading_order"),

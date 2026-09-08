@@ -44,7 +44,7 @@ dependencies = [
 ]
 
 [project.scripts]
-mcmr = "mcmr.commands.cli:app"
+mcmr = "mcmr.commands.cli:main"
 
 [project.entry-points."mcmr.rules"]
 builtin = "mcmr.rules"

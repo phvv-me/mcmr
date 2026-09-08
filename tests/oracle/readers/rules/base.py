@@ -11,7 +11,7 @@ from mcmr.plugins import Fact, Table, fact_table
 from mcmr.query import RuleQuery
 from mcmr.rulebook.catalog import Catalog
 from mcmr.rulebook.discovery import RuleModuleDiscovery
-from mcmr.table import AnalysisSession
+from mcmr.table import AnalysisSession, RepositoryTables
 
 from ....support import kernel_binary
 from ...adapters import scalar_row
@@ -105,8 +105,12 @@ class RuleReader(FrozenModel, ABC):
 
     def query(self, root: Path) -> RuleQuery:
         """Run this rule once over the native table for the whole repository."""
-        result = contract(self.rule_id).invoke_table(
-            tabled(root, self.family, *self.suffixes),
+        rule = contract(self.rule_id)
+        tables = RepositoryTables(
+            {family: tabled(root, family, *self.suffixes) for _, family in rule.tables}
+        )
+        result = rule.invoke(
+            tables,
             settings=self.settings,
             dependencies={},
         )

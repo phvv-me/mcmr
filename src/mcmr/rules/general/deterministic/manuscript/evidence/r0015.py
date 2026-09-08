@@ -22,7 +22,9 @@ def measurement_resting_on_an_unpinned_citation(
     A citation beside a number is a promise that the number came from that source. A reader
     checking it has to find it, and a work of two hundred pages with no locator is a promise
     nobody can keep. Report a citation carrying no bracketed locator that sits within `reach`
-    reading positions of a prose number of at least `minimum_digits` digits.
+    reading positions of an empirical number of at least `minimum_digits` digits in the same
+    assembled sentence. Formula constants and explicitly named radix constants are not empirical
+    measurements. A nearby citation alone never turns them into measurements.
 
     Evidence
     --------
@@ -31,8 +33,7 @@ def measurement_resting_on_an_unpinned_citation(
 
     Exceptions
     ----------
-    A citation beside a number that is the source's own identifier, such as a year, is reported
-    and is the main source of noise, which is why the digit floor exists. A citation carrying a
+    Unmarked identifiers such as years can still require contextual review. A citation carrying a
     locator of any kind passes, whatever the locator says, since checking that a page number is
     the right page is not something a reader of the source can do either. A number a manuscript
     measured itself and cites nobody for reports nothing, which is the shape a self-contained
@@ -56,17 +57,21 @@ def measurement_resting_on_an_unpinned_citation(
     """
     relations = ManuscriptRelations(subject)
     numbers = (
-        relations.located("numbers", "literal", "in_cells")
+        relations.located("numbers", "literal", "in_cells", "is_mathematical", "sentence_order")
         .filter(
-            ~pl.col("in_cells") & (pl.col("literal").str.count_matches(r"[0-9]") >= minimum_digits)
+            ~pl.col("in_cells")
+            & ~pl.col("is_mathematical")
+            & (pl.col("literal").str.count_matches(r"[0-9]") >= minimum_digits)
         )
-        .select("fact_id", pl.col("reading_order").alias("number_order"), "literal")
+        .select(
+            "fact_id", "sentence_order", pl.col("reading_order").alias("number_order"), "literal"
+        )
     )
-    citations = relations.located("citations", "key", "pin").filter(
+    citations = relations.located("citations", "key", "pin", "sentence_order").filter(
         pl.col("pin").str.len_chars() == 0
     )
     unpinned = (
-        citations.join(numbers, on="fact_id", how="inner")
+        citations.join(numbers, on=["fact_id", "sentence_order"], how="inner")
         .filter((pl.col("number_order") - pl.col("reading_order")).abs() <= reach)
         .unique(subset=["fact_id", "record_id"], keep="first")
     )

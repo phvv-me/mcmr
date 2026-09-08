@@ -29,12 +29,13 @@ class FixSession:
         *,
         safety: FixSafety = FixSafety.SAFE,
         maximum_fixes: int = 100,
+        paths: Sequence[Path] = (),
     ) -> None:
         self.root = root
         self.judgment = judgment
         self.safety = safety
         self.maximum_fixes = maximum_fixes
-        self.renderer = PythonFixRenderer(root)
+        self.renderer = PythonFixRenderer(root, paths=paths)
         self.writer = AtomicFixWriter(root)
 
     @staticmethod

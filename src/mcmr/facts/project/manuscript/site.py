@@ -14,3 +14,9 @@ class ManuscriptSymbolSite(ManuscriptPlace):
     is_display: bool = Field(
         default=False, description="whether the introduction was set as a display"
     )
+    meaning: str = Field(
+        default="", description="normalized explicit role named by the declaration"
+    )
+    is_local: bool = Field(
+        default=False, description="a literal binder or statement/proof-local declaration"
+    )

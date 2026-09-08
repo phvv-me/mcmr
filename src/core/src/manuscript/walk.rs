@@ -3,7 +3,7 @@ use super::element::Element;
 use super::position::Position;
 use super::role::Role;
 use serde_json::{Value, json};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// One pass over an assembled manuscript, establishing where everything sits.
 ///
@@ -18,6 +18,7 @@ pub struct Walk {
     pub floats: Vec<Value>,
     pub labels: Vec<Value>,
     pub kinds: BTreeMap<String, bool>,
+    cell_kinds: BTreeSet<String>,
 }
 
 impl Walk {
@@ -30,6 +31,7 @@ impl Walk {
             floats: Vec::new(),
             labels: Vec::new(),
             kinds: Self::declared_kinds(manuscript),
+            cell_kinds: Self::cell_kinds(manuscript),
         };
         let mut open = Position::opening();
         let mut stack: Vec<String> = Vec::new();
@@ -64,6 +66,34 @@ impl Walk {
             .collect()
     }
 
+    /// Custom table wrappers still expose TeX's cell and row separators at their own depth.
+    fn cell_kinds(manuscript: &Manuscript) -> BTreeSet<String> {
+        let mut found = BTreeSet::new();
+        let mut stack: Vec<(String, bool, bool)> = Vec::new();
+        for located in &manuscript.elements {
+            match &located.element {
+                Element::EnvironmentOpen(kind) => stack.push((kind.clone(), false, false)),
+                Element::EnvironmentClose(_) => {
+                    if let Some((kind, true, true)) = stack.pop() {
+                        found.insert(kind);
+                    }
+                }
+                Element::Text(text) => {
+                    if let Some((_, cells, _)) = stack.last_mut() {
+                        *cells |= text.contains('&');
+                    }
+                }
+                Element::RowBreak => {
+                    if let Some((_, _, rows)) = stack.last_mut() {
+                        *rows = true;
+                    }
+                }
+                _ => {}
+            }
+        }
+        found
+    }
+
     /// Name each label on whatever it labels, so every other pass reads one answer.
     ///
     /// A label is written after the thing it names has opened, so it cannot be attributed while
@@ -89,9 +119,8 @@ impl Walk {
 
     /// Write one label onto the section it opens, when it opens one.
     ///
-    /// A label more than a couple of elements past its heading belongs to a display rather than
-    /// to the section, since that is where an equation label sits, and calling it a section label
-    /// would let a rule about unreferenced sections report the wrong thing.
+    /// Introductory prose and layout commands can intervene between a heading and its label.
+    /// Math, statements, and floats are attributed by their actual enclosing roles first.
     fn name_section(&mut self, name: &str, position: &Position) -> String {
         let Some(section) = position
             .section
@@ -99,9 +128,8 @@ impl Walk {
         else {
             return "equation".to_string();
         };
-        let opened = section["reading_order"].as_u64().unwrap_or_default() as usize;
         let named = !section["label"].as_str().unwrap_or_default().is_empty();
-        if position.order.saturating_sub(opened) > 2 || named {
+        if named {
             return "equation".to_string();
         }
         section["label"] = json!(name);
@@ -127,6 +155,9 @@ impl Walk {
             float["label"] = json!(name);
             return float["kind"].as_str().unwrap_or("float").to_string();
         }
+        if position.in_proof {
+            return "proof".to_string();
+        }
         self.name_section(name, position)
     }
 
@@ -140,10 +171,21 @@ impl Walk {
     ) {
         match element {
             Element::BodyStart => open.in_body = true,
-            Element::Section { level, title } => self.open_section(*level, title, open, located),
+            Element::Section { level, title } if open.in_body => {
+                self.open_section(*level, title, open, located)
+            }
             Element::EnvironmentOpen(kind) => {
                 stack.push(kind.clone());
                 self.open_environment(kind, open, located);
+            }
+            Element::Citation { key, .. } => {
+                if let Some(statement) = open.statement.and_then(|at| self.statements.get_mut(at))
+                {
+                    statement["attribution_keys"]
+                        .as_array_mut()
+                        .expect("a statement has a citation list")
+                        .push(json!(key));
+                }
             }
             _ => {}
         }
@@ -155,11 +197,15 @@ impl Walk {
             return;
         };
         while stack.pop().is_some_and(|opened| opened != *kind) {}
+        if self.cell_kinds.contains(kind) {
+            open.in_cells = false;
+        }
         match Role::of(kind) {
             Role::Cells => open.in_cells = false,
             Role::Math => open.in_math = false,
             Role::Proof => open.in_proof = false,
-            Role::Figure | Role::Table => open.float = None,
+            Role::Bibliography => open.in_bibliography = false,
+            Role::Figure | Role::Table | Role::Algorithm => open.float = None,
             _ if self.kinds.contains_key(kind.trim_end_matches('*')) => self.close_statement(open),
             _ => {}
         }
@@ -181,6 +227,9 @@ impl Walk {
         located: &super::located::Located,
     ) {
         let base = kind.trim_end_matches('*');
+        if self.cell_kinds.contains(kind) {
+            open.in_cells = true;
+        }
         if let Some(owes_proof) = self.kinds.get(base) {
             open.statement = Some(self.statements.len());
             self.statements.push(json!({
@@ -194,6 +243,7 @@ impl Walk {
                 "word_count": 0,
                 "proof_order": 0,
                 "has_proof": false,
+                "attribution_keys": [],
             }));
         }
         self.open_role(Role::of(kind), open, located);
@@ -205,6 +255,7 @@ impl Walk {
             Role::Cells => open.in_cells = true,
             Role::Math => open.in_math = true,
             Role::Proof => open.in_proof = true,
+            Role::Bibliography => open.in_bibliography = true,
             _ => {
                 if let Some(float) = role.float() {
                     open.float = Some(self.floats.len());

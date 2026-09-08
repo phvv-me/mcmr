@@ -15,7 +15,12 @@ class ManuscriptStatement(ManuscriptPlace):
         default=0, description="reading order at which this statement's environment closed"
     )
     proof_order: NonNegativeInt = Field(
-        default=0, description="reading order of an adjacent proof environment, zero when none"
+        default=0,
+        description="reading order of an adjacent or explicitly named proof, zero when none",
+    )
+    attribution_keys: list[str] = Field(
+        default=[],
+        description="sources cited in the statement or its title, not a proof certificate",
     )
     discharge_head: str = Field(
         default="", description="opening words of the prose immediately following the statement"

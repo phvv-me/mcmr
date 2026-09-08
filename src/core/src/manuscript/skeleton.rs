@@ -43,6 +43,7 @@ impl Skeleton {
         };
         skeleton.collect(manuscript, walk);
         skeleton.attach_arguments(manuscript);
+        skeleton.attach_named_proofs(manuscript);
         json!({
             "root": manuscript.root,
             "sections": skeleton.sections,
@@ -106,6 +107,24 @@ impl Skeleton {
         }
     }
 
+    /// A proof heading can explicitly name its statement, even in a later appendix.
+    fn attach_named_proofs(&mut self, manuscript: &Manuscript) {
+        for (order, located) in manuscript.elements.iter().enumerate() {
+            if !matches!(&located.element, Element::EnvironmentOpen(kind) if Role::of(kind) == Role::Proof)
+            {
+                continue;
+            }
+            if let Some(target) = manuscript.proof_target(order) {
+                for statement in &mut self.statements {
+                    if statement["label"] == target {
+                        statement["proof_order"] = json!(order);
+                        statement["has_proof"] = json!(true);
+                    }
+                }
+            }
+        }
+    }
+
     /// Keep the first words that follow a statement, which is where a house head discharges it.
     ///
     /// A project that writes `Why it is true.` after a theorem has argued it, and a project that
@@ -151,6 +170,7 @@ impl Skeleton {
             "section_number": Self::numbered(position.section),
             "in_cells": position.in_cells,
             "in_float": position.float.is_some(),
+            "in_bibliography": position.in_bibliography,
         }));
     }
 
@@ -165,12 +185,26 @@ impl Skeleton {
             }
             self.element(located, &position);
             opened = Self::accumulate(&mut paragraph, opened, (located, order));
-            if matches!(located.element, Element::ParagraphBreak) {
+            if Self::ends_paragraph(&located.element) {
                 let body = std::mem::take(&mut paragraph);
                 self.close_paragraph(opened, (manuscript, walk), body);
             }
         }
         self.close_paragraph(opened, (manuscript, walk), paragraph);
+    }
+
+    /// Structural blocks end prose even when their source has no blank line between them.
+    fn ends_paragraph(element: &Element) -> bool {
+        match element {
+            Element::ParagraphBreak
+            | Element::RowBreak
+            | Element::Section { .. }
+            | Element::Caption(_) => true,
+            Element::EnvironmentOpen(kind) | Element::EnvironmentClose(kind) => {
+                Role::of(kind) != Role::Math
+            }
+            _ => false,
+        }
     }
 
     /// Record whatever one element contributes beyond the prose it carries.

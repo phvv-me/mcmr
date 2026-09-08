@@ -1,5 +1,9 @@
 from typing import cast
 
+import pytest
+
+from mcmr import Numeric
+from mcmr.domain.policy import Verdict
 from mcmr.facts import (
     SourceSpan,
     SymbolReach,
@@ -80,6 +84,20 @@ def test_declared_field_count_groups_members_under_the_type_declaring_them() -> 
     assert retained_value(subject, declared_field_count) == 3
     assert retained_value(reach(attribute("service.Row.value")), declared_field_count) == 1
     assert retained_value(reach(), declared_field_count) == 0
+
+
+@pytest.mark.parametrize(
+    "count, expected", [(13, Verdict.PASS), (64, Verdict.PASS), (65, Verdict.FAIL)]
+)
+def test_declared_field_count_default_accepts_up_to_64_fields(
+    count: int, expected: Verdict
+) -> None:
+    subject = reach(*(attribute(f"service.Row.field_{index}") for index in range(count)))
+    policy = declared_field_count.policy
+
+    assert isinstance(policy, Numeric)
+    assert policy.maximum == 64
+    assert policy.verdict(retained_value(subject, declared_field_count)) is expected
 
 
 def test_ancestor_count_reports_once_at_the_first_declared_base() -> None:

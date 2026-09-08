@@ -21,8 +21,11 @@ if TYPE_CHECKING:
 class PythonFixRenderer:
     """Render typed Python rewrites into validated, conflict-free UTF-8 byte edits."""
 
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, *, paths: Sequence[Path] = ()) -> None:
         self.root = root
+        self.paths = tuple((root / path).resolve() for path in paths)
+        if any(not path.is_relative_to(root.resolve()) for path in self.paths):
+            raise ValueError("repair paths must stay inside the analyzed repository")
 
     @staticmethod
     def merge_directories(fixes: Sequence[RenderedFix]) -> list[RenderedDirectory]:
@@ -55,10 +58,28 @@ class PythonFixRenderer:
 
     def render(self, failure: RuleFailure, edit: Edit, message: str) -> RenderedFix:
         """Render one atomic plan and refuse stale, overlapping, or invalid source."""
+        self._require_scope(edit)
         files = self._rendered_files(edit)
         directories = self._rendered_directories(edit)
         self._require_change(files, directories=directories)
         return self._rendered_fix(failure, edit, message, files, directories=directories)
+
+    def _require_scope(self, edit: Edit) -> None:
+        """Keep every source and destination of a repair inside the requested paths."""
+        if not self.paths:
+            return
+        touched = {span.path for rewrite in edit.plan.rewrites for span in rewrite.spans}
+        outside = [
+            name
+            for name in sorted(touched)
+            if not any(
+                (self.root / name).resolve() == allowed
+                or (allowed.is_dir() and (self.root / name).resolve().is_relative_to(allowed))
+                for allowed in self.paths
+            )
+        ]
+        if outside:
+            raise UnrenderableFix(f"repair crosses the requested paths: {', '.join(outside)}")
 
     @staticmethod
     def _apply_edits(document: SourceDocument, edits: Sequence[ByteEdit]) -> bytes:

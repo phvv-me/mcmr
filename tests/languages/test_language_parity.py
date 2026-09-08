@@ -74,8 +74,7 @@ def findings(catalog: Catalog, root: Path, language: str) -> set[str]:
     whether anything was found. A category names a state rather than a quantity, so it is read out
     rather than compared as though zero meant silence.
     """
-    families = buildable()
-    selected = {families[name] for _, name, _ in general(catalog)}
+    selected = {family for _, _, rule in general(catalog) for _, family in rule.tables}
     session = AnalysisSession(
         root,
         suffixes=language_suffixes()[language],

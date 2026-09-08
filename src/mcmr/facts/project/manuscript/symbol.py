@@ -17,3 +17,12 @@ class ManuscriptSymbol(ManuscriptPlace):
     last_section: NonNegativeInt = Field(
         default=0, description="section the last counted occurrence sat in"
     )
+    free_use_count: NonNegativeInt | None = Field(
+        default=None, description="uses outside recognized local bindings"
+    )
+    free_section_count: NonNegativeInt | None = Field(
+        default=None, description="sections containing free uses"
+    )
+    first_free_order: NonNegativeInt | None = Field(
+        default=None, description="first use outside recognized local bindings"
+    )

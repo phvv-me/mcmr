@@ -8,16 +8,19 @@ use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
 mod analysis;
+mod resolution;
 
 use analysis::{statement_contains_raising_operation, try_clause_statement_counts};
 
 /// Every try statement one file protects, with the sizes of its clauses.
 pub fn try_blocks(source: &Source, module: &ModModule) -> Value {
     let mut setups = function_try_setups(source, module);
+    let resolved = resolution::resolved_regions(module);
     let regions: Vec<Value> = walk(module)
         .into_iter()
         .filter_map(|statement| match statement {
             Stmt::Try(item) => {
+                let names = &resolved[&u32::from(item.range.start())];
                 let setup = setups
                     .remove(&u32::from(item.range.start()))
                     .unwrap_or_default();
@@ -28,7 +31,8 @@ pub fn try_blocks(source: &Source, module: &ModModule) -> Value {
                     "statement": source.node_of("try", statement),
                     "leading_assignments": setup.leading_assignments,
                     "protected_statements": item.body.iter().map(|held| source.node_of("statement", held)).collect::<Vec<_>>(),
-                    "handlers": item.handlers.iter().map(|handler| exception_handler(source, handler)).collect::<Vec<_>>(),
+                    "protected_call_qualified_name": names["protected_call_qualified_name"],
+                    "handlers": item.handlers.iter().enumerate().map(|(index, handler)| exception_handler(source, handler, &names["caught_imports"][index])).collect::<Vec<_>>(),
                     "has_else": !item.orelse.is_empty(),
                     "has_finally": !item.finalbody.is_empty(),
                     "is_exception_group": item.is_star,
@@ -40,10 +44,15 @@ pub fn try_blocks(source: &Source, module: &ModModule) -> Value {
     json!({"regions": regions})
 }
 
-fn exception_handler(source: &Source, handler: &ruff_python_ast::ExceptHandler) -> Value {
+fn exception_handler(
+    source: &Source,
+    handler: &ruff_python_ast::ExceptHandler,
+    resolved: &Value,
+) -> Value {
     let ruff_python_ast::ExceptHandler::ExceptHandler(held) = handler;
     json!({
         "caught": held.type_.as_deref().map_or("", |caught| source.slice(caught.range())),
+        "caught_import": resolved,
         "caught_is_tuple": matches!(held.type_.as_deref(), Some(Expr::Tuple(_))),
         "alias": held.name.as_ref().map_or("", |name| name.as_str()),
         "body": held.body.iter().map(|statement| source.node_of("statement", statement)).collect::<Vec<_>>(),

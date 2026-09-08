@@ -23,7 +23,9 @@ def numbered_statement_left_without_an_argument(
     Read the preamble to learn which environments this manuscript declares as numbered statements
     and which of them assert rather than name, which is what a plain theorem style means. For each
     asserting statement, look at what immediately follows it. Report one that is followed by no
-    proof environment and by no run-in head opening with a word in `discharge_heads`.
+    proof environment and by no run-in head opening with a word in `discharge_heads`, unless
+    a proof elsewhere explicitly names the statement in its heading or the statement supplies
+    a source attribution. A known result can be cited instead of proved again.
 
     A house that argues its theorems with a bold `Why it is true.` rather than with a proof
     environment satisfies this, because the head is read as well as the environment. An
@@ -39,9 +41,12 @@ def numbered_statement_left_without_an_argument(
     ----------
     A statement argued by the paragraph immediately before it rather than after is reported, and
     that is a real style some manuscripts use, so a project writing that way states its own
-    ceiling rather than tuning the rule. A proof deferred to an appendix satisfies the rule when
-    the sentence after the statement says so, since that sentence opens with a discharge head, and
-    is reported when nothing says so, which is the case worth reporting.
+    ceiling rather than tuning the rule. An appendix proof whose heading references the statement
+    is attached directly; no forward reference to that appendix is required. This checks that an
+    argument exists, not that its mathematics is correct.
+
+    A citation in a statement is evidence of attribution, not a certificate that the cited source
+    proves it. Checking the source and the statement's novelty remains part of scientific review.
 
     Examples
     --------
@@ -62,7 +67,13 @@ def numbered_statement_left_without_an_argument(
     """
     relations = ManuscriptRelations(subject)
     statements = relations.located(
-        "statements", "kind", "label", "owes_proof", "proof_order", "discharge_head"
+        "statements",
+        "kind",
+        "label",
+        "owes_proof",
+        "proof_order",
+        "attribution_keys.length",
+        "discharge_head",
     )
     head = pl.col("discharge_head").fill_null("").str.to_lowercase().str.strip_chars()
     argued = pl.any_horizontal(*(head.str.starts_with(word) for word in discharge_heads))
@@ -70,6 +81,7 @@ def numbered_statement_left_without_an_argument(
         pl.col("owes_proof")
         & ~pl.col("kind").is_in(list(unproved_kinds))
         & (pl.col("proof_order") == 0)
+        & (pl.col("attribution_keys.length") == 0)
         & ~argued
     )
     return RuleQuery.integer(

@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, NonNegativeInt
 
 from .place import ManuscriptPlace
 
@@ -10,3 +10,4 @@ class ManuscriptCitation(ManuscriptPlace):
     pin: str = Field(
         default="", description="page, section, or equation the citation pins, empty when unpinned"
     )
+    sentence_order: NonNegativeInt = Field(default=0, description="assembled sentence index")

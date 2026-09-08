@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from mcmr.rules.general import (
     raise_without_cause,
     swallowed_error,
@@ -7,6 +9,137 @@ from mcmr.rules.general import (
 )
 
 from .support import query, table, value
+
+
+@pytest.mark.parametrize(
+    ("imports", "parameters", "setup", "operation", "caught", "expected"),
+    [
+        ("from queue import Empty, Queue", "", "q = Queue()", "q.get(timeout=1)", "Empty", 0),
+        ("import queue as queues", "q: queues.Queue", "", "q.get_nowait()", "queues.Empty", 0),
+        (
+            "from queue import Empty as E, SimpleQueue as Q",
+            "q: Q[int]",
+            "",
+            "q.get(block=False)",
+            "E",
+            0,
+        ),
+        (
+            "from queue import Empty, Queue",
+            "",
+            "q = Queue()",
+            "q.get(timeout=1)",
+            "(Empty, OSError)",
+            1,
+        ),
+        (
+            "from queue import Empty, Queue",
+            "",
+            "q = Queue()",
+            "q.get(timeout=1)",
+            "Empty:\n        pass\n    except OSError",
+            2,
+        ),
+        ("from queue import Empty, Queue", "Empty", "q = Queue()", "q.get(timeout=1)", "Empty", 1),
+        (
+            "from queue import Empty, Queue\nEmpty = ValueError",
+            "",
+            "q = Queue()",
+            "q.get(timeout=1)",
+            "Empty",
+            1,
+        ),
+        (
+            "from queue import Empty, Queue",
+            "",
+            "q = Queue()\n    Empty = ValueError",
+            "q.get(timeout=1)",
+            "Empty",
+            1,
+        ),
+        (
+            "from other import Empty\nfrom queue import Queue",
+            "",
+            "q = Queue()",
+            "q.get(timeout=1)",
+            "Empty",
+            1,
+        ),
+        ("from queue import Empty, Queue", "", "q = Queue()", "deliver()", "Empty", 1),
+        (
+            "from queue import Empty, Queue",
+            "",
+            "q = Queue()",
+            "q.get(timeout=clock())",
+            "Empty",
+            1,
+        ),
+        (
+            "from queue import Empty, Queue",
+            "",
+            "q = Queue()",
+            "q.get(timeout=1)\n        deliver()",
+            "Empty",
+            1,
+        ),
+        ("from queue import Empty", "q", "", "q.get(timeout=1)", "Empty", 1),
+        (
+            "from queue import Empty, Queue",
+            "",
+            "q = Queue()\n    q = Other()",
+            "q.get(timeout=1)",
+            "Empty",
+            1,
+        ),
+        ("from queue import Empty, Queue", "Queue", "q = Queue()", "q.get(timeout=1)", "Empty", 1),
+        ("from queue import Empty, Queue", "", "q = Queue()", "q.get(timeout=1)", "ValueError", 1),
+        ("from queue import Empty", "changes", "", "changes.batch(1)", "Empty", 1),
+        (
+            "from queue import Queue\nclass Empty(Exception): pass",
+            "",
+            "q = Queue()",
+            "q.get()",
+            "Empty",
+            1,
+        ),
+        (
+            "import queue\nqueue.Empty = ValueError",
+            "q: queue.Queue",
+            "",
+            "q.get()",
+            "queue.Empty",
+            1,
+        ),
+        (
+            "from queue import Empty, Queue",
+            "",
+            "q = Queue()\n    q.get = deliver",
+            "q.get()",
+            "Empty",
+            1,
+        ),
+        ("", "", "from queue import Empty, Queue\n    q = Queue()", "q.get()", "Empty", 0),
+    ],
+)
+def test_queue_absence_requires_resolved_pure_retrieval(
+    tmp_path: Path,
+    imports: str,
+    parameters: str,
+    setup: str,
+    operation: str,
+    caught: str,
+    expected: int,
+) -> None:
+    """Expected absence does not excuse mixed catches, shadowed imports, or unrelated work."""
+    subject = table(
+        tmp_path,
+        {
+            "queue_cases.py": f"{imports}\n\ndef waiting({parameters}):\n"
+            f"    {setup}\n    try:\n        item = {operation}\n"
+            f"    except {caught}:\n        pass\n"
+        },
+    )
+    assert value(query(swallowed_error, subject), subject, "waiting") == expected
 
 
 def test_a_handler_that_answers_with_nothing_throws_the_failure_away(tmp_path: Path) -> None:

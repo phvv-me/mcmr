@@ -99,6 +99,29 @@ def test_check_applies_a_review_fix_only_when_explicitly_requested(
     )
 
 
+def test_check_repairs_only_requested_files_without_hiding_other_findings(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    original = "def ready(value: str | None) -> bool:\n    return bool(value is None)\n"
+    selected = tmp_path / "selected.py"
+    untouched = tmp_path / "untouched.py"
+    selected.write_text(original)
+    untouched.write_text(original)
+
+    with pytest.raises(SystemExit) as stopped:
+        check(
+            tmp_path,
+            select="PY-TYPE0008",
+            repair=RepairMode.APPLY,
+            repair_paths=(Path("selected.py"),),
+        )
+
+    assert stopped.value.code == 1
+    assert "return value is None" in selected.read_text()
+    assert untouched.read_text() == original
+    assert "untouched.py" in capsys.readouterr().out
+
+
 def test_the_report_states_what_each_rule_policy_allows() -> None:
     """A failure is only readable beside the allowance it broke."""
     lines = definition("ALL-MODU0001", output="int", unit="count", policy=Numeric(maximum=500))

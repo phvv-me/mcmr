@@ -25,6 +25,7 @@ mod symbols;
 #[cfg(test)]
 mod tests;
 mod text;
+mod typst;
 mod walk;
 
 pub use document::Manuscript;

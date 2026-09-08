@@ -13,6 +13,9 @@ class ExceptionHandler(FrozenModel):
     caught_is_tuple: bool = Field(
         default=False, description="whether the caught type is a tuple of multiple exception types"
     )
+    caught_import: str = Field(
+        default="", description="absolute imported exception identity, empty when unresolved"
+    )
     alias: str = Field(
         default="", description="name the caught exception is bound to, empty when none"
     )

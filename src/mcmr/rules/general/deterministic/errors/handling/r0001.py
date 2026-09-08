@@ -4,7 +4,7 @@ import polars as pl
 
 from ...... import rule
 from ......domain.contracts import Unit
-from ......facts import SyntaxFact
+from ......facts import SyntaxFact, TryBlockFact
 from ......query import FindingQuery, RuleQuery
 from ......table import SyntaxRelation, Table
 from ......table.relations import SyntaxTable
@@ -14,15 +14,20 @@ def _guard_lines(
     relations: SyntaxTable[SyntaxFact], nodes: pl.LazyFrame, handlers: tuple[str, ...]
 ) -> tuple[pl.LazyFrame, pl.LazyFrame]:
     """Expand each guard into located source lines and its handler clauses."""
-    guards = relations.with_text(nodes.filter(pl.col("kind") == "guard")).select(
-        "fact_id",
-        pl.col("ordinal").alias("guard_ordinal"),
-        "path",
-        "start_line",
-        "start_column",
-        "end_line",
-        "end_column",
-        pl.col("text").str.split("\n").alias("lines"),
+    guards = (
+        relations.with_text(nodes.filter(pl.col("kind") == "guard"))
+        .join(relations.facts.select("fact_id", "language"), on="fact_id", how="inner")
+        .select(
+            "fact_id",
+            pl.col("ordinal").alias("guard_ordinal"),
+            "path",
+            "start_line",
+            "start_column",
+            "end_line",
+            "end_column",
+            "language",
+            pl.col("text").str.split("\n").alias("lines"),
+        )
     )
     lines = (
         guards.with_columns(pl.int_ranges(0, pl.col("lines").list.len()).alias("offset"))
@@ -37,7 +42,10 @@ def _guard_lines(
     )
     opening = r"^[}\t ]*(?:" + "|".join(map(re.escape, handlers)) + r")\b"
     clauses = (
-        lines.filter(pl.col("lines").str.contains(opening))
+        lines.filter(
+            pl.col("lines").str.contains(opening)
+            & ((pl.col("language") != "python") | (pl.col("indent") == pl.col("start_column")))
+        )
         .select(
             "fact_id",
             "guard_ordinal",
@@ -112,6 +120,41 @@ def _swallowed_handlers(
     )
 
 
+def _queue_reads(regions: Table[TryBlockFact]) -> pl.LazyFrame:
+    """Locate pure standard-library queue reads with exactly one Empty handler."""
+    handlers = (
+        regions.records("regions.handlers")
+        .group_by("parent_id")
+        .agg(
+            pl.len().alias("handler_count"),
+            pl.col("caught_import").first().alias("handler_import"),
+            pl.col("caught_is_tuple").first().alias("handler_is_tuple"),
+        )
+    )
+    return (
+        regions.records("regions")
+        .join(handlers, left_on="record_id", right_on="parent_id", how="inner")
+        .filter(
+            (pl.col("handler_count") == 1)
+            & (pl.col("handler_import") == "queue.Empty")
+            & ~pl.col("handler_is_tuple")
+            & ~pl.col("is_exception_group")
+            & pl.col("protected_call_qualified_name").is_in(
+                [
+                    f"queue.{kind}.{method}"
+                    for kind in ("Queue", "SimpleQueue", "LifoQueue", "PriorityQueue")
+                    for method in ("get", "get_nowait")
+                ]
+            )
+        )
+        .select(
+            pl.col("statement.span.path").alias("path"),
+            pl.col("statement.span.start_line").cast(pl.UInt64).alias("start_line"),
+            pl.col("statement.span.start_column").cast(pl.UInt64).alias("start_column"),
+        )
+    )
+
+
 def _discarded_bindings(
     relations: SyntaxTable[SyntaxFact], nodes: pl.LazyFrame, discard: str
 ) -> pl.LazyFrame:
@@ -164,6 +207,7 @@ def _discarded_bindings(
 @rule("ALL-ERRO0001")
 def swallowed_error(
     subject: Table[SyntaxFact],
+    regions: Table[TryBlockFact],
     *,
     handlers: tuple[str, ...] = ("except", "catch", "rescue"),
     inert: tuple[str, ...] = ("pass", "continue", "..."),
@@ -209,6 +253,12 @@ def swallowed_error(
     languages that return failures rather than throwing them, which is what decides whether a
     discard binding is read at all.
 
+    A sole `queue.Empty` handler around a sole standard-library queue `get` or `get_nowait`
+    call describes an empty read, not an ignored failure. Native source evidence must resolve
+    both the exception import and the receiver's literal constructor or parameter annotation.
+    Aliases are allowed. Shadowed names, mixed catches, compound operations, and unresolved
+    wrappers remain findings. This distinction does not excuse other ignored exceptions.
+
     Examples
     --------
     Bad
@@ -247,6 +297,9 @@ def swallowed_error(
     nodes = relations.nodes
     lines, clauses = _guard_lines(relations, nodes, handlers)
     swallowed = _swallowed_handlers(lines=lines, clauses=clauses, inert=inert)
+    swallowed = swallowed.join(
+        _queue_reads(regions), on=["path", "start_line", "start_column"], how="anti"
+    )
     swallowed_counts = swallowed.group_by("fact_id", maintain_order=True).agg(
         pl.col("amount").sum().cast(pl.UInt64).alias("handler_value")
     )

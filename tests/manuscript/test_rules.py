@@ -39,7 +39,7 @@ from mcmr.rules.general.deterministic.manuscript.prose import (
     sentence_longer_than_a_reader_holds,
 )
 from mcmr.rules.general.deterministic.manuscript.structure import (
-    float_the_reader_meets_before_anything_names_it,
+    float_without_a_text_reference,
     numbered_statement_left_without_an_argument,
     numbered_statement_nothing_refers_to,
 )
@@ -68,17 +68,25 @@ def test_a_reference_forward_to_a_statement_is_reported_and_one_backward_is_not(
     ]
 
 
-def test_a_reference_a_marked_command_spells_is_read_as_a_deliberate_pointer() -> None:
-    """Naming a target in words rather than by number is how a forward pointer is written."""
+def test_a_named_reference_still_requires_the_target_to_have_been_read() -> None:
+    """The spelling of a reference does not establish its target's prerequisites."""
     fact = manuscript(
         ManuscriptFact,
-        labels=[ManuscriptLabel(name="thm:late", kind="theorem", reading_order=90, line=90)],
+        labels=[
+            ManuscriptLabel(name="thm:late", kind="theorem", reading_order=90, line=90),
+            ManuscriptLabel(name="proof:late", kind="proof", reading_order=100, line=100),
+        ],
         references=[
-            ManuscriptReference(target="thm:late", command="autoref", reading_order=10, line=10)
+            ManuscriptReference(target="thm:late", command="autoref", reading_order=10, line=10),
+            ManuscriptReference(target="thm:late", command="proofref", reading_order=11, line=11),
+            ManuscriptReference(
+                target="proof:late", command="proofref", reading_order=12, line=12
+            ),
+            ManuscriptReference(target="proof:late", command="Cref", reading_order=13, line=13),
         ],
     )
 
-    assert measured(forward_reference_to_unread_material, fact) == 0
+    assert measured(forward_reference_to_unread_material, fact) == 3
 
 
 def test_a_symbol_used_before_its_introduction_is_reported() -> None:
@@ -90,16 +98,19 @@ def test_a_symbol_used_before_its_introduction_is_reported() -> None:
             ManuscriptSymbol(name="\\mu", use_count=9, first_order=40, line=40),
             ManuscriptSymbol(name="k", use_count=9, first_order=1, line=1),
             ManuscriptSymbol(name="\\xi", use_count=1, first_order=1, line=1),
+            ManuscriptSymbol(name="Q", use_count=4, first_order=40, line=40),
         ],
         sites=[
             ManuscriptSymbolSite(symbol="\\nu", reading_order=30, line=30),
             ManuscriptSymbolSite(symbol="\\mu", reading_order=30, line=30),
+            ManuscriptSymbolSite(symbol="Q", reading_order=20, line=20, is_local=True),
         ],
     )
 
-    assert measured(symbol_used_before_it_is_introduced, fact) == 1
+    assert measured(symbol_used_before_it_is_introduced, fact) == 2
     assert messages(symbol_used_before_it_is_introduced, fact) == [
-        "`\\nu` is used 9 times and is introduced only after the reader has met it"
+        "`\\nu` is used 9 times and is introduced only after the reader has met it",
+        "`Q` is used 4 times and is introduced nowhere",
     ]
 
 
@@ -170,6 +181,13 @@ def test_an_asserting_statement_with_no_proof_and_no_head_is_reported() -> None:
             ),
             ManuscriptStatement(kind="conjecture", label="con:open", owes_proof=True, line=40),
             ManuscriptStatement(kind="definition", label="def:one", owes_proof=False, line=50),
+            ManuscriptStatement(
+                kind="theorem",
+                label="thm:known",
+                owes_proof=True,
+                attribution_keys=["original-source"],
+                line=60,
+            ),
         ],
     )
 
@@ -198,7 +216,7 @@ def test_a_numbered_statement_nothing_references_is_reported() -> None:
     ]
 
 
-def test_a_float_met_before_anything_names_it_is_reported() -> None:
+def test_an_unreferenced_float_is_reported_without_requiring_a_forward_reference() -> None:
     """A figure with nothing to read it against is a figure a reader skips."""
     fact = manuscript(
         ManuscriptFact,
@@ -214,10 +232,9 @@ def test_a_float_met_before_anything_names_it_is_reported() -> None:
         ],
     )
 
-    assert measured(float_the_reader_meets_before_anything_names_it, fact) == 2
-    assert messages(float_the_reader_meets_before_anything_names_it, fact) == [
+    assert measured(float_without_a_text_reference, fact) == 1
+    assert messages(float_without_a_text_reference, fact) == [
         "`table` `tab:orphan` is never referenced",
-        "`figure` `fig:late` is first referenced after the reader meets it",
     ]
 
 
@@ -275,11 +292,25 @@ def test_a_symbol_introduced_in_two_sections_without_a_declared_sense_is_reporte
     fact = manuscript(
         ManuscriptNotationFact,
         sites=[
-            ManuscriptSymbolSite(symbol="K", section_number=1, reading_order=5, line=5),
-            ManuscriptSymbolSite(symbol="K", section_number=4, reading_order=50, line=50),
-            ManuscriptSymbolSite(symbol="B", section_number=1, reading_order=6, line=6),
-            ManuscriptSymbolSite(symbol="B", section_number=4, reading_order=60, line=60),
+            ManuscriptSymbolSite(
+                symbol="K", meaning="reduction depth", section_number=1, reading_order=5, line=5
+            ),
+            ManuscriptSymbolSite(
+                symbol="K", meaning="kernel matrix", section_number=4, reading_order=50, line=50
+            ),
+            ManuscriptSymbolSite(
+                symbol="B", meaning="matrix operand", section_number=1, reading_order=6, line=6
+            ),
+            ManuscriptSymbolSite(
+                symbol="B", meaning="budget", section_number=4, reading_order=60, line=60
+            ),
             ManuscriptSymbolSite(symbol="u", section_number=2, reading_order=7, line=7),
+            ManuscriptSymbolSite(symbol="n", meaning="input count", section_number=1),
+            ManuscriptSymbolSite(symbol="n", meaning="input count", section_number=2),
+            ManuscriptSymbolSite(
+                symbol="i", meaning="leaf index", section_number=1, is_local=True
+            ),
+            ManuscriptSymbolSite(symbol="i", meaning="row index", section_number=2, is_local=True),
         ],
         entries=[
             ManuscriptEntry(
@@ -290,8 +321,17 @@ def test_a_symbol_introduced_in_two_sections_without_a_declared_sense_is_reporte
 
     assert measured(symbol_introduced_under_two_meanings, fact) == 1
     assert messages(symbol_introduced_under_two_meanings, fact) == [
-        "`K` is introduced in 2 different sections and the index separates no senses"
+        "`K` has distinct declared roles in 2 sections: kernel matrix | reduction depth; "
+        "the index separates no senses"
     ]
+    same_section = manuscript(
+        ManuscriptNotationFact,
+        sites=[
+            ManuscriptSymbolSite(symbol="K", meaning="reduction depth", section_number=1),
+            ManuscriptSymbolSite(symbol="K", meaning="kernel matrix", section_number=1),
+        ],
+    )
+    assert measured(symbol_introduced_under_two_meanings, same_section) == 1
 
 
 def test_a_sentence_over_the_ceiling_is_reported_and_table_prose_is_not() -> None:
@@ -408,6 +448,20 @@ def test_a_ratio_printed_without_its_parts_is_reported() -> None:
         numbers=[
             ManuscriptNumber(literal="0.1456", names_ratio=True, sentence_number_count=1, line=10),
             ManuscriptNumber(literal="0.1456", names_ratio=True, sentence_number_count=3, line=20),
+            ManuscriptNumber(
+                literal="0.1456",
+                names_ratio=True,
+                has_ratio_basis=True,
+                sentence_number_count=1,
+                line=21,
+            ),
+            ManuscriptNumber(
+                literal="128",
+                names_ratio=True,
+                is_mathematical=True,
+                sentence_number_count=1,
+                line=22,
+            ),
             ManuscriptNumber(
                 literal="0.1456", names_ratio=False, sentence_number_count=1, line=30
             ),

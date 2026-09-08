@@ -9,7 +9,21 @@ from ......query import CountQuery, FindingQuery, RuleQuery
 from ......table import ManuscriptRelations, Table
 
 # What a reference points at when the reader has to have understood it already.
-_HELD = ("theorem", "lemma", "proposition", "corollary", "definition")
+_HELD = (
+    "theorem",
+    "lemma",
+    "proposition",
+    "corollary",
+    "definition",
+    "remark",
+    "example",
+    "section",
+    "equation",
+    "figure",
+    "table",
+    "algorithm",
+    "proof",
+)
 
 
 @rule("ALL-MANU0001", policy=Numeric(maximum=0))
@@ -17,7 +31,7 @@ def forward_reference_to_unread_material(
     subject: Table[ManuscriptFact],
     *,
     kinds: Sequence[str] = _HELD,
-    marked_commands: Sequence[str] = ("autoref", "nameref"),
+    marked_commands: Sequence[str] = (),
 ) -> CountQuery:
     """Count references sending a reader to something they have not read yet.
 
@@ -29,11 +43,12 @@ def forward_reference_to_unread_material(
     `kinds`. A reader executes a document once, from the top, so a reference forward is a demand
     to hold an unread thing in mind, and it is the complaint a cold reader makes most often.
 
-    Only the kinds a reader has to have understood are held to this, which by default is the
-    numbered statements and not the sections, because a roadmap paragraph naming every chapter
-    ahead is how a document is supposed to open. A spelling in `marked_commands` names its target
-    in words rather than by number, which is how a deliberate forward pointer is written, so those
-    are read as marked and stay quiet.
+    The default covers statements, sections, equations, and floats. A different reference
+    command does not make unread material available: `autoref` and `nameref` follow the same
+    order as `ref`. A typed `proofref` may navigate to a later proof, but only when its
+    resolved target is actually a proof. It cannot exempt a prerequisite definition or theorem.
+    Projects allowing explicit roadmaps can configure `kinds` or
+    `marked_commands`; the default requires a linear exposition.
 
     Evidence
     --------
@@ -43,12 +58,8 @@ def forward_reference_to_unread_material(
 
     Exceptions
     ----------
-    A reference to a figure, a table or an equation is never reported, because a float is placed
-    by the typesetter rather than by the author. A reference naming a label the manuscript never
-    declares resolves to nothing and is left to the build, since a broken reference is a different
-    defect. A section is out of scope by default and a project that wants its own reading order
-    held to this adds `section` to `kinds`, which is the stricter reading and reports every
-    roadmap sentence.
+    A missing label is left to the document build. This check observes source order, not page
+    placement; the rendered PDF still needs review because a typesetter can move a float.
 
     Examples
     --------
@@ -59,8 +70,7 @@ def forward_reference_to_unread_material(
 
     Good
     ~~~~
-    The same sentence pointing at `fig:chain` returns `0`, and so does any reference to a theorem
-    the reader has already passed.
+    A reference to any labeled object the reader has already passed returns `0`.
 
     References
     ----------
@@ -74,6 +84,7 @@ def forward_reference_to_unread_material(
         pl.col("target_order").is_not_null()
         & (pl.col("target_order") > pl.col("reading_order"))
         & held
+        & ~((pl.col("command") == "proofref") & (pl.col("target_kind") == "proof"))
         & ~pl.col("command").is_in(list(marked_commands))
     )
     return RuleQuery.integer(

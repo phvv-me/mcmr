@@ -15,18 +15,15 @@ def ratio_published_without_its_parts(
     minimum_digits: PositiveInt = 3,
     minimum_parts: PositiveInt = 3,
 ) -> CountQuery:
-    """Count ratios printed without the two numbers they are a ratio of.
+    """Count reported ratios without components or an explicit statistical definition.
 
     Definition
     ----------
-    A share, a fraction or a ratio is a number a reader cannot check, because two different pairs
-    of measurements give the same quotient and only one of them is the one that was taken. Report
-    a number of at least `minimum_digits` digits printed in running prose whose sentence names it
-    as a derived quantity and which shares that sentence with fewer than `minimum_parts` numbers
-    in total.
-
-    Requiring three numbers in the sentence is requiring the quotient beside its numerator and its
-    denominator, which is what lets a reader divide and agree.
+    A quotient needs its numerator and denominator. An aggregate of per-trial ratios instead needs
+    the ratio and aggregation statistic defined; a median of ratios is not a ratio of medians.
+    Report a derived quantity of at least `minimum_digits` digits without `minimum_parts` numbers
+    in its assembled sentence, an explicit ratio definition in the paragraph, or a linked table.
+    Inline mathematics belongs to the same sentence as the surrounding words.
 
     Evidence
     --------
@@ -35,10 +32,11 @@ def ratio_published_without_its_parts(
 
     Exceptions
     ----------
-    A ratio whose parts sit in the previous sentence is reported, and moving them into the same
-    sentence or into a table is the repair. A ratio printed in a table cell is never counted,
-    since the columns beside it are its parts. A sentence naming a ratio without printing one, as
-    a definition does, states no number and reports nothing.
+    Formula constants and table cells are not running empirical ratio claims. A confidence bound
+    is not a percentage merely because the sentence also states its confidence level. A linked
+    table or literal definition provides a place to check; this rule does not prove that the table
+    columns or the definition are scientifically appropriate. Implicit statistical definitions
+    and definitions requiring semantic equivalence remain outside the deterministic check.
 
     Examples
     --------
@@ -58,9 +56,17 @@ def ratio_published_without_its_parts(
     """
     relations = ManuscriptRelations(subject)
     bare = relations.located(
-        "numbers", "literal", "in_cells", "names_ratio", "sentence_number_count"
+        "numbers",
+        "literal",
+        "in_cells",
+        "names_ratio",
+        "sentence_number_count",
+        "is_mathematical",
+        "has_ratio_basis",
     ).filter(
         ~pl.col("in_cells")
+        & ~pl.col("is_mathematical")
+        & ~pl.col("has_ratio_basis")
         & pl.col("names_ratio")
         & (pl.col("literal").str.count_matches(r"[0-9]") >= minimum_digits)
         & (pl.col("sentence_number_count") < minimum_parts)

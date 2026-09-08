@@ -13,11 +13,10 @@ from mcmr.rules.general import (
 from .support import query, table, value
 
 if TYPE_CHECKING:
-    from mcmr.facts import SyntaxFact
-    from mcmr.plugins import Table
+    from mcmr.plugins import RepositoryTables
 
 
-def guarded_corpus(root: Path) -> Table[SyntaxFact]:
+def guarded_corpus(root: Path) -> RepositoryTables:
     """Build native guards covering protected, handled, nested, and cleanup raises."""
     return table(
         root,

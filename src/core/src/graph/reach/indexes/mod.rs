@@ -2,7 +2,7 @@ use crate::graph::contracts::Visibility;
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(super) struct ReachIndexes<'a> {
-    pub(super) modules: BTreeMap<&'a str, &'a str>,
+    pub(super) module_declarations: BTreeSet<&'a str>,
     pub(super) packages: BTreeMap<&'a str, &'a str>,
     pub(super) visibility: BTreeMap<&'a str, Visibility>,
     pub(super) qualnames: BTreeMap<&'a str, &'a str>,

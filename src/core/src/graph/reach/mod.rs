@@ -104,12 +104,18 @@ impl<'a> ReachIndex<'a> {
         )
     }
 
-    fn modules(graph: &'a Graph) -> BTreeMap<&'a str, &'a str> {
-        graph
+    fn module_declarations(graph: &'a Graph) -> BTreeSet<&'a str> {
+        let modules: BTreeSet<&str> = graph
             .nodes
             .iter()
             .filter(|node| node.kind() == NodeKind::Module)
-            .filter_map(|node| Some((node.path()?, node.qualname())))
+            .map(|node| node.id())
+            .collect();
+        graph
+            .edges
+            .iter()
+            .filter(|edge| edge.kind == EdgeKind::Define && modules.contains(edge.source.as_str()))
+            .map(|edge| edge.target.as_str())
             .collect()
     }
 
@@ -122,7 +128,7 @@ impl<'a> ReachIndex<'a> {
         };
         Self {
             indexes: ReachIndexes {
-                modules: Self::modules(graph),
+                module_declarations: Self::module_declarations(graph),
                 packages: Self::packages(graph),
                 visibility: Self::visibility(graph),
                 qualnames: graph
@@ -332,18 +338,13 @@ impl<'a> ReachIndex<'a> {
     }
 
     fn is_module_scope(&self, reachable: Reachable<'_>) -> bool {
-        let module = self
+        matches!(
+            reachable.kind,
+            DeclarationKind::Class | DeclarationKind::Function | DeclarationKind::Variable
+        ) && self
             .indexes
-            .modules
-            .get(reachable.path)
-            .copied()
-            .unwrap_or_default();
-        let separator = reachable.node.language().map_or(".", Language::separator);
-        reachable
-            .node
-            .qualname()
-            .rsplit_once(separator)
-            .is_some_and(|(owner, _)| owner == module)
+            .module_declarations
+            .contains(reachable.node.id())
     }
 
     fn owner_reference_counts(

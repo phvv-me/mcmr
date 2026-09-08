@@ -23,9 +23,12 @@ use scope_entry::ScopeEntry;
 pub fn graph(source: Source, module: &str, language: Language) -> Option<Stated> {
     let tree = parse(&source)?;
     let root = tree.root_node();
+    // File modules keep their suffix for includes. Declarations retain the shared stem scope
+    // so a header's prototype and its implementation still name the same symbol.
+    let scope = module.rsplit_once('.').map_or(module, |(stem, _)| stem);
     let mut collector = Collector {
         owners: vec![identity(language, NodeKind::Module, module)],
-        scopes: vec![module.to_string()],
+        scopes: vec![scope.to_string()],
         source,
         language,
         nodes: Vec::new(),
@@ -95,7 +98,12 @@ impl Collector {
             written: &written,
         }
         .module();
-        let owner = self.owner();
+        // Includes relate files even when written inside a namespace shared with another file.
+        let owner = self
+            .owners
+            .first()
+            .expect("the native collector must retain its file module")
+            .clone();
         self.push(
             Relation {
                 source: &owner,
@@ -445,11 +453,6 @@ impl HeaderPath<'_> {
                 name => parts.push(name),
             }
         }
-        let joined = parts.join("/");
-        joined
-            .rsplit_once('.')
-            .map(|(stem, _)| stem)
-            .unwrap_or(&joined)
-            .replace('/', "::")
+        parts.join("::")
     }
 }

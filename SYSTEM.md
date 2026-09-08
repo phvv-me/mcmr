@@ -55,6 +55,11 @@ One distribution named `mcmr` ships everything, and `src` holds the three trees 
 `src/core` is the Rust kernel and PyO3 extension. It owns discovery, parsing, repository graphs,
 primitive evidence, and direct Polars frames.
 
+C, C++, and CUDA file modules retain their filename extensions in the include graph. Symbol
+scopes retain the shared filename stem so header declarations and source definitions still merge.
+An include belongs to its source file, including when written inside a shared namespace.
+Declaration scope follows graph ownership rather than a filename-prefix guess.
+
 `src/mcmr` is the Python engine, CLI, and built-in rule catalog. It owns contracts, configuration,
 dependency injection, query planning, judgment, rendering, and plugin discovery, and `src/mcmr/rules`
 holds every rule that needs nothing beyond the repository itself.

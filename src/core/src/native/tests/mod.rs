@@ -398,7 +398,7 @@ fn an_include_beyond_the_repository_root_keeps_its_unresolved_climb() {
             written: "../../engine.h",
         }
         .module(),
-        "..::engine"
+        "..::engine.h"
     );
 }
 

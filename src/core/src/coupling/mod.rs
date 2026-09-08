@@ -162,9 +162,9 @@ mod tests {
             "class Shape {\n public:\n  virtual double area() const = 0;\n  virtual Shape* clone() = 0;\n};\n\nclass Circle : public Shape {\n public:\n  double area() const { return 1.0; }\n};\n\nclass Counter {\n public:\n  int limit = 0;\n};\n",
         )]);
 
-        assert_eq!(module(&facts, "src::shape")["declaration_count"], 3);
+        assert_eq!(module(&facts, "src::shape.hpp")["declaration_count"], 3);
         assert_eq!(
-            module(&facts, "src::shape")["abstract_declaration_count"],
+            module(&facts, "src::shape.hpp")["abstract_declaration_count"],
             1
         );
     }

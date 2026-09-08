@@ -51,6 +51,10 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 
 ### Fixed
 
+- Native file modules and include targets retain their extensions. A source including its
+  same-named header no longer produces a false `ALL-ARCH0002` self-import cycle. Shared
+  declaration scopes, genuine self-includes, and cycles between headers are preserved.
+
 - Manuscript facts retain the local scope of explicit operand lists and entries of typed numerical
   vectors. A declared indexed family can name the literal lower endpoint of a reduction bound in
   the same statement. Undeclared families, unbound variants, and uses outside the statement remain

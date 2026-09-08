@@ -18,8 +18,8 @@ impl Naming {
 
     /// Return the language and module name declared by one path.
     ///
-    /// Native and TypeScript files use their suffix-free paths. Python packages and Rust crates
-    /// use the naming models already derived from the repository.
+    /// Native files retain their suffix so a source and its header are distinct import targets.
+    /// TypeScript uses suffix-free paths; Python packages and Rust crates use their naming models.
     pub(crate) fn module(&self, relative: &str) -> Option<(Language, String)> {
         let language = Language::of(relative)?;
         let stem = relative
@@ -30,7 +30,7 @@ impl Naming {
             Language::Python => self.packages.module_name(relative),
             Language::Rust => self.crates.module_name(relative),
             Language::TypeScript => stem.to_string(),
-            _ => stem.replace('/', "::"),
+            _ => relative.replace('/', "::"),
         };
         Some((language, module))
     }

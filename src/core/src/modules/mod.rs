@@ -295,6 +295,70 @@ mod tests {
     }
 
     #[test]
+    fn native_sources_including_their_same_named_headers_are_not_cycles() {
+        for (source, header) in [("c", "h"), ("cpp", "hpp"), ("cu", "cuh"), ("cu", "hpp")] {
+            let source_path = format!("src/engine.{source}");
+            let header_path = format!("src/engine.{header}");
+            let include = format!("#include \"engine.{header}\"\n");
+            let fact = fact_of(&[(&source_path, &include), (&header_path, "")]);
+
+            assert_eq!(
+                pairs(&fact),
+                [(
+                    format!("src::engine.{source}"),
+                    format!("src::engine.{header}")
+                )]
+            );
+            let edge = &fact["import_edges"][0];
+            assert_ne!(edge["source_component"], edge["target_component"]);
+            assert_eq!(edge["path"], source_path);
+        }
+    }
+
+    #[test]
+    fn native_self_includes_and_two_header_cycles_remain_visible() {
+        let fact = fact_of(&[
+            ("src/one.hpp", "#include \"two.cuh\"\n"),
+            ("src/two.cuh", "#include \"one.hpp\"\n"),
+            ("src/self.h", "#include \"self.h\"\n"),
+        ]);
+
+        assert_eq!(
+            pairs(&fact),
+            [
+                ("src::one.hpp".to_string(), "src::two.cuh".to_string()),
+                ("src::self.h".to_string(), "src::self.h".to_string()),
+                ("src::two.cuh".to_string(), "src::one.hpp".to_string()),
+            ]
+        );
+        for edge in fact["import_edges"].as_array().unwrap() {
+            assert_eq!(edge["source_component"], edge["target_component"]);
+        }
+    }
+
+    #[test]
+    fn native_relative_includes_keep_paths_suffixes_and_the_including_file() {
+        let fact = fact_of(&[
+            (
+                "src/engine.cpp",
+                "namespace app {\n#include \"../include/engine.hpp\"\n}\n",
+            ),
+            ("src/engine.hpp", "namespace app {}\n"),
+            ("include/engine.hpp", ""),
+        ]);
+
+        assert_eq!(
+            pairs(&fact),
+            [(
+                "src::engine.cpp".to_string(),
+                "include::engine.hpp".to_string()
+            )]
+        );
+        assert_eq!(fact["import_edges"][0]["line"], 2);
+        assert_eq!(fact["import_edges"][0]["path"], "src/engine.cpp");
+    }
+
+    #[test]
     fn a_nested_rust_module_importing_its_parent_is_not_a_file_cycle() {
         let fact = fact_of(&[(
             "engine/src/core.rs",

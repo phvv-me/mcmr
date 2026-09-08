@@ -47,8 +47,8 @@ impl Lookup {
 /// Resolve one native reference against the repository, leaving what cannot be proved visible.
 ///
 /// This language family resolves by name rather than by path, so the question is which enclosing
-/// scope declares the name. A header and the unit that implements it land in the same module,
-/// which is what makes a declaration in one and a definition in the other the same node.
+/// scope declares the name. A header and its implementation retain a shared declaration scope,
+/// while their file modules stay distinct so including the header is not a self import.
 pub fn resolve(
     reference: &Reference,
     reachable: &BTreeSet<String>,

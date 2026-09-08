@@ -52,6 +52,9 @@ statement structure, notation, prose and evidence. That lane never repairs.
 Explicit local operand lists and numerical-vector entries retain their local scope. Unsupported
 indexed notation still needs review rather than automatic renaming.
 
+Native include checks distinguish source files from same-named headers. Shared declarations
+still resolve together, while genuine self-includes and cycles between headers remain findings.
+
 ## Usage
 
 ```sh

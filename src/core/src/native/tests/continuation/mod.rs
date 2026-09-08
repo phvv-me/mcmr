@@ -55,7 +55,7 @@ fn the_cuda_grammar_reads_a_launch_the_cpp_grammar_cannot_see() {
 }
 
 #[test]
-fn a_header_and_the_unit_that_implements_it_declare_one_module() {
+fn a_header_and_its_implementation_share_symbols_but_not_file_modules() {
     let graph = crate::graph::build(
         "repo",
         &[
@@ -78,7 +78,7 @@ fn a_header_and_the_unit_that_implements_it_declare_one_module() {
         .map(|item| item.qualname())
         .collect();
 
-    assert_eq!(modules, vec!["src::engine"]);
+    assert_eq!(modules, vec!["src::engine.cpp", "src::engine.h"]);
     assert!(
         graph
             .nodes
@@ -87,6 +87,62 @@ fn a_header_and_the_unit_that_implements_it_declare_one_module() {
     );
     assert!(graph.edges.iter().any(|edge| edge.kind == EdgeKind::Define
         && edge.target == "cpp:method:src::engine::Engine::run"));
+    assert_eq!(
+        graph
+            .nodes
+            .iter()
+            .filter(|item| item.id() == "cpp:method:src::engine::Engine::run")
+            .count(),
+        1
+    );
+    assert!(graph.edges.iter().any(|edge| edge.kind == EdgeKind::Import
+        && edge.source == "cpp:module:src::engine.cpp"
+        && edge.target == "cpp:module:src::engine.h"));
+}
+
+#[test]
+fn native_declaration_scope_and_calls_do_not_depend_on_file_module_spelling() {
+    let graph = crate::graph::build(
+        "repo",
+        &[
+            Document {
+                relative: "src/engine.hpp".to_string(),
+                source: "class Engine { public: int run(); };\nint helper();\n".to_string(),
+            },
+            Document {
+                relative: "src/engine.cu".to_string(),
+                source: concat!(
+                    "#include \"engine.hpp\"\n",
+                    "int Engine::run() { return helper(); }\n",
+                    "int helper() { return 1; }\n",
+                    "namespace first { int read() { return helper(); } }\n",
+                    "namespace second { int read() { return helper(); } }\n",
+                )
+                .to_string(),
+            },
+        ],
+    )
+    .expect("the graph builds");
+    let declarations = crate::graph::reach(&graph)
+        .into_iter()
+        .flat_map(|summary| summary.declarations)
+        .map(|declaration| (declaration.qualname, declaration.context.is_module_scope))
+        .collect::<BTreeMap<_, _>>();
+
+    assert!(declarations["src::engine::Engine"]);
+    assert!(!declarations["src::engine::Engine::run"]);
+    assert!(declarations["src::engine::helper"]);
+    assert!(declarations["src::engine::first::read"]);
+    assert!(declarations["src::engine::second::read"]);
+    assert_eq!(
+        graph
+            .edges
+            .iter()
+            .filter(|edge| edge.kind == EdgeKind::Call
+                && edge.target == "cpp:function:src::engine::helper")
+            .count(),
+        3
+    );
 }
 
 /// Return every comment group one source states, which is what the family carries.

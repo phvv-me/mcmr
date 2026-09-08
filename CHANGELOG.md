@@ -8,6 +8,11 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 
 ### Added
 
+- Literal local Typst imports resolve without inserting module definitions as
+  prose. Imported bindings retain shadowing, and missing targets or cyclic
+  dependencies fail visibly. Unsupported template calls name their callee;
+  literal imports are no longer mislabeled as generated content.
+
 - Tool-only Python manifests inherit enclosing project metadata without importing
   the enclosing source graph. Local Python targets and pytest settings retain
   conflict checks. Configuration evidence identifies ancestor paths, metadata

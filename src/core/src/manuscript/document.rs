@@ -80,19 +80,49 @@ impl Manuscript {
 
     fn included_typst(read: &BTreeMap<String, Vec<Located>>) -> Result<BTreeSet<String>, String> {
         let mut included = BTreeSet::new();
+        let mut dependencies = BTreeMap::<String, Vec<String>>::new();
         for (path, elements) in read.iter().filter(|(path, _)| path.ends_with(".typ")) {
             let directory = path.rsplit_once('/').map_or("", |(head, _)| head);
             for located in elements {
-                if let Element::Include(target) = &located.element {
+                if let Element::Include(target) | Element::Import(target) = &located.element {
+                    let kind = if matches!(located.element, Element::Import(_)) {
+                        "import"
+                    } else {
+                        "include"
+                    };
                     let resolved =
-                        Include { directory, target }.resolve(read).ok_or_else(|| {
-                            format!("{path}:{}: unresolved Typst include {target}", located.line)
+                        Include { directory, target }.resolve_typst(read).ok_or_else(|| {
+                            format!("{path}:{}: unresolved Typst {kind} {target}; target is not in the owned manuscript source", located.line)
                         })?;
+                    dependencies
+                        .entry(path.clone())
+                        .or_default()
+                        .push(resolved.clone());
                     included.insert(resolved);
                 }
             }
         }
+        Self::acyclic_typst(&dependencies)?;
         Ok(included)
+    }
+
+    /// A dependency cycle must not make every file disappear from the manuscript root set.
+    fn acyclic_typst(dependencies: &BTreeMap<String, Vec<String>>) -> Result<(), String> {
+        for (root, targets) in dependencies {
+            let mut pending = targets.clone();
+            let mut seen = BTreeSet::new();
+            while let Some(path) = pending.pop() {
+                if path == *root {
+                    return Err(format!("{root}: cyclic Typst import/include dependency"));
+                }
+                if seen.insert(path.clone())
+                    && let Some(targets) = dependencies.get(&path)
+                {
+                    pending.extend(targets.iter().cloned());
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Flatten one root and everything it includes into a single reading order.
@@ -166,7 +196,12 @@ impl Manuscript {
                 continue;
             };
             let include = Include { directory, target };
-            let Some(resolved) = include.resolve(read) else {
+            let resolved = if path.ends_with(".typ") {
+                include.resolve_typst(read)
+            } else {
+                include.resolve(read)
+            };
+            let Some(resolved) = resolved else {
                 continue;
             };
             if visited.contains(&resolved) {

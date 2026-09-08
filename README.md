@@ -55,6 +55,9 @@ statement structure, notation, prose and evidence. That lane never repairs.
 Explicit local operand lists and numerical-vector entries retain their local scope. Unsupported
 indexed notation still needs review rather than automatic renaming.
 
+The literal Typst frontend resolves local imports without treating module definitions as prose.
+Custom template calls remain explicitly unsupported; an import is not itself runtime content.
+
 Native include checks distinguish source files from same-named headers. Shared declarations
 still resolve together, while genuine self-includes and cycles between headers remain findings.
 

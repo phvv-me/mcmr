@@ -7,6 +7,8 @@
 pub enum Element {
     /// Another file spliced into this one at this position.
     Include(String),
+    /// A module declaration whose source must exist, but whose content is not inserted here.
+    Import(String),
     /// A heading, at a level where zero is the outermost the document uses.
     Section { level: u8, title: String },
     /// The start of a named environment, whatever the environment turns out to be for.

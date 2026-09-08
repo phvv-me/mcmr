@@ -436,3 +436,86 @@ fn typst_uses_its_ast_and_refuses_unresolved_generated_content() {
     .expect_err("runtime transformation must not silently pass");
     assert!(dynamic.contains("unresolved Typst"));
 }
+
+#[test]
+fn literal_typst_imports_are_declarations_not_inserted_prose() {
+    let root = tempfile::tempdir().expect("a temporary manuscript opens");
+    std::fs::create_dir(root.path().join("chapters")).unwrap();
+    std::fs::write(
+        root.path().join("template.typ"),
+        "#let style(body) = [= Hidden\n#body]\n",
+    )
+    .unwrap();
+    let paper = root.path().join("chapters/paper.typ");
+    std::fs::write(
+        &paper,
+        "#import \"../template.typ\": style\n= Visible\nLiteral text.\n",
+    )
+    .unwrap();
+    let scope = crate::discovery::Scope::of(root.path(), &[".typ".to_string()]);
+    let found = Manuscript::scan(root.path(), &scope).expect("literal import resolves");
+    assert_eq!(found.len(), 1);
+    assert_eq!(Walk::of(&found[0]).sections[0]["title"], "Visible");
+    assert_eq!(Walk::of(&found[0]).sections.len(), 1);
+    std::fs::write(
+        &paper,
+        "#import \"../template.typ\": style\n#style[Content]\n",
+    )
+    .unwrap();
+    assert!(
+        Manuscript::scan(root.path(), &scope)
+            .err()
+            .expect("a custom call needs evaluation")
+            .contains("call to `style`")
+    );
+    std::fs::write(
+        &paper,
+        "#import \"../template.typ\": style as text\n#text[Content]\n",
+    )
+    .unwrap();
+    assert!(
+        Manuscript::scan(root.path(), &scope)
+            .err()
+            .expect("an imported name is not a builtin wrapper")
+            .contains("call to `text`")
+    );
+}
+
+#[test]
+fn typst_import_resolution_refuses_missing_paths_and_cycles() {
+    let root = tempfile::tempdir().expect("a temporary manuscript opens");
+    std::fs::create_dir(root.path().join("chapters")).unwrap();
+    std::fs::write(root.path().join("template.typ"), "#let value = 1\n").unwrap();
+    let paper = root.path().join("chapters/paper.typ");
+    std::fs::write(&paper, "#import \"template.typ\": value\n= Visible\n").unwrap();
+    let scope = crate::discovery::Scope::of(root.path(), &[".typ".to_string()]);
+    assert!(
+        Manuscript::scan(root.path(), &scope)
+            .err()
+            .expect("an import cannot fall back to the project root")
+            .contains("unresolved Typst import")
+    );
+    std::fs::write(&paper, "#import \"../template.typ\": value\n= Visible\n").unwrap();
+    std::fs::write(
+        root.path().join("template.typ"),
+        "#import \"chapters/paper.typ\"\n#let value = 1\n",
+    )
+    .unwrap();
+    assert!(
+        Manuscript::scan(root.path(), &scope)
+            .err()
+            .expect("an import cycle is not an empty manuscript")
+            .contains("cyclic Typst")
+    );
+    std::fs::write(
+        &paper,
+        "#let target = \"../template.typ\"\n#import target: value\n",
+    )
+    .unwrap();
+    assert!(
+        Manuscript::scan(root.path(), &scope)
+            .err()
+            .expect("nonliteral imports need evaluation")
+            .contains("unresolved Typst")
+    );
+}

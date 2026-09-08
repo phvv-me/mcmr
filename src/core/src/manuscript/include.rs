@@ -11,6 +11,27 @@ pub struct Include<'a> {
 }
 
 impl Include<'_> {
+    /// Typst paths resolve exactly from the declaring file, with root-relative paths supported.
+    pub fn resolve_typst(&self, read: &BTreeMap<String, Vec<Located>>) -> Option<String> {
+        let joined = if self.target.starts_with('/') {
+            self.target.to_string()
+        } else {
+            format!("{}/{}", self.directory, self.target)
+        };
+        let mut parts = Vec::new();
+        for part in joined.split('/') {
+            match part {
+                "" | "." => {}
+                ".." => {
+                    parts.pop()?;
+                }
+                _ => parts.push(part),
+            }
+        }
+        let path = parts.join("/");
+        read.contains_key(&path).then_some(path)
+    }
+
     /// Return the repository path this include names, among the files actually read.
     ///
     /// TeX resolves an include against the directory it was written in and against the directory

@@ -490,6 +490,12 @@ order, the facts and every rule are written once. The LaTeX reader is lexical ra
 parser, because TeX is macro expansion and has no grammar a scanner can settle, and a control
 sequence it does not recognize contributes a word boundary and nothing else.
 
+Typst literal imports use the existing manuscript source resolver, with paths relative
+to the declaring file. Named bindings, including renamed imports, prevent a shadowed
+layout helper from being treated as a builtin. Imports do not splice module text into
+prose. Missing or out-of-owner sources and import/include cycles are refused. Custom
+template calls remain unresolved and name the actual callee in their diagnostic.
+
 Three families come out of one walk, because a paragraph, a symbol and a number have to agree
 about which section they were met in or no comparison between them means anything.
 `ManuscriptFact` holds the skeleton, its sections, statements, floats, labels, references,

@@ -138,6 +138,7 @@ impl TypstReader<'_> {
                 };
                 self.push(Element::Include(path.get().to_string()), line);
             }
+            Expr::ModuleImport(import) => self.module_import(import, line)?,
             Expr::FuncCall(call) => self.transparent_call(call, line)?,
             Expr::LetBinding(binding) => self.bindings.extend(
                 binding
@@ -177,16 +178,56 @@ impl TypstReader<'_> {
         Ok(())
     }
 
+    /// Resolve declaration names without evaluating the imported module or treating it as prose.
+    fn module_import(&mut self, import: ast::ModuleImport<'_>, line: usize) -> Result<(), String> {
+        let Expr::Str(path) = import.source() else {
+            return self.unresolved(Expr::ModuleImport(import), line);
+        };
+        match import.imports() {
+            Some(ast::Imports::Items(items)) => self
+                .bindings
+                .extend(items.iter().map(|item| item.bound_name().get().to_string())),
+            Some(ast::Imports::Wildcard) => {
+                return Err(format!(
+                    "{}:{line}: unresolved Typst wildcard import; exported bindings are outside the literal manuscript frontend",
+                    self.path,
+                ));
+            }
+            None => {
+                let name = match import.new_name() {
+                    Some(name) => name.get().to_string(),
+                    None => import
+                        .bare_name()
+                        .map_err(|failure| {
+                            format!(
+                                "{}:{line}: invalid Typst import binding: {failure:?}",
+                                self.path,
+                            )
+                        })?
+                        .to_string(),
+                };
+                self.bindings.insert(name);
+            }
+        }
+        self.push(Element::Import(path.get().to_string()), line);
+        Ok(())
+    }
+
     fn item(&mut self, body: ast::Markup<'_>, line: usize) -> Result<(), String> {
         self.push(Element::ParagraphBreak, line);
         self.markup(body)
     }
 
     fn unresolved(&self, expression: Expr<'_>, line: usize) -> Result<(), String> {
+        let description = match expression {
+            Expr::FuncCall(call) => {
+                format!("call to `{}`", call.callee().to_untyped().full_text())
+            }
+            _ => expression.to_untyped().kind().name().to_string(),
+        };
         Err(format!(
-            "{}:{line}: unresolved Typst {}: runtime-generated content is outside the literal manuscript frontend",
-            self.path,
-            expression.to_untyped().kind().name()
+            "{}:{line}: unresolved Typst {description}; the literal manuscript frontend does not evaluate user code",
+            self.path
         ))
     }
 

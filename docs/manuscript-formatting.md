@@ -181,12 +181,24 @@ intact. Definitions inside unused `#let` bindings are not manuscript prose. The 
 AST contracts are documented by [Typst](https://github.com/typst/typst/blob/main/docs/dev/architecture.md)
 and its [syntax crate](https://docs.rs/typst-syntax/0.15.1/typst_syntax/).
 
+Literal local imports resolve inside the owned source corpus. Named and renamed
+bindings are retained, so an imported `text` is not mistaken for the builtin layout
+wrapper. Imported module definitions are not inserted as manuscript prose. Typst
+paths resolve from the declaring file, without TeX's project-root fallback. Missing
+targets and import/include cycles are explicit errors. Wildcard imports remain
+unsupported because their exported bindings have not been established.
+
 This is a literal-document frontend, not a Typst interpreter. Runtime-generated content, show
 rules, arbitrary function calls, and unresolved includes stop the scan with a source-located
 diagnostic. They do not produce an empty passing verdict. Generated theorem packages, figures,
 tables, and bibliography semantics need a later extension with evidence from their evaluated
 structure. A static rule pass also does not replace the compiler: for example, a valid reference
 label still needs numbering enabled to compile in Typst.
+
+The September 8 root-lint check reached the existing career resume sources. Their
+literal `resume-clean.typ` import is supported by this follow-up, but the subsequent
+custom `resume` call still requires template evaluation. That is a real integration
+limit, not a passing Typst manuscript check or evidence that the import is dynamic.
 
 The same contract applies to both frontends: preserve semantic spelling, record source order,
 separate rendered blocks, and expose unsupported constructs. Dynamic macro expansion, imported

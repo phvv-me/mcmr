@@ -33,10 +33,10 @@ index. Group that index by related concepts, not alphabetical order alone.
 | Graphs, trees, circuits | Calligraphic letters, such as `\mathcal{G}`, `\mathcal{T}`, `\mathcal{C}` |
 | Node, leaf, and other sets | `\mathcal{N}`, `\mathcal{L}`, `\mathcal{W}` |
 | Nodes, coordinates, and scalars | Ordinary italic letters |
-| Named operators | Short upright names such as `\lca`; arguments remain explicit |
-| Tree-dependent reduction | `\Sigma_{\mathcal T_v}(\mathbf x)` with structure below and final format above |
+| Named operators | Short upright names such as `\lca`; omit only inputs fixed by context |
+| Tree-dependent reduction | `\Sigma_{\mathcal T_v}^{\mathbb F_\oplus}` with structure below and accumulator format above |
 | Component indices | Adjacent indices without commas; retain commas between function arguments |
-| Computed values | Hats for computed outputs; stars for ideal operands; no tildes |
+| Computed values | Precision superscript for sums; hats for other computed outputs; stars for ideal operands; no tildes |
 
 These choices are a project style, not universal mathematical truth. Standard number domains use
 blackboard letters; vectors and matrices use bold letters. The glossary and context still matter. A font alone cannot prove an
@@ -50,13 +50,17 @@ Only unify integer bounds after checking their meaning. For example, `\mathbb{Z}
 node set must not rename an unrelated matrix dimension. Do not autofix either transformation from
 raw text alone.
 
-The report uses `\Sigma(\mathbf x)` for the exact sum and `\Sigma^{\mathbb F}(\mathbf x)`
-for its once-rounded value. A structure subscript specifies the tree or subtree. A hat marks
-the computed result before a final store, and a format superscript specifies that final
-conversion, as in `\widehat\Sigma_{\mathcal T}^{\mathbb F}(\mathbf x)`. Tree and store format
-do not specify the intermediate arithmetic policy. The accumulator format is `\mathbb F_\Sigma`.
-Keep the exponent function `e(x)` distinct from the anchor `e_*`. Quantizer maps are `Q_E` and
-`Q_D`, with their scaling stated explicitly. These are manuscript choices, not new parser rules.
+The report uses `\Sigma` for an exact sum and `(\Sigma)_{\mathbb F}` for its once-rounded
+value, omitting inputs fixed by context. A structure subscript specifies the tree or subtree.
+The computed sum is `\Sigma_{\mathcal T}^{\mathbb F_\oplus}`, without a hat. Its superscript
+names the accumulator format; a separate outer conversion specifies the final store.
+Tree and format still do not determine the intermediate arithmetic policy.
+
+Structural sets use subscripts such as `\mathcal N_{\mathcal T}`; `\mathcal L(v)` maps a
+node to descendant leaves. Keep exponent `e(x)` distinct from its anchor `e_*`; errors use
+epsilon or delta. Quantizer maps `Q_E,Q_D` give `(x)_Q=\alpha Q_D(Q_E(x))` with explicit scale.
+A Jacobian `\mathrm D f(\mathbf x)` identifies both the map and evaluation point.
+These are manuscript choices, not hard-coded parser rules or permission for automatic renaming.
 
 Definition references use Def. or Defs., while displayed definition titles remain complete.
 Do not use paragraph environments outside related work. The report-owned `STYLE.md` is the

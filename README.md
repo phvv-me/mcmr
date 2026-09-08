@@ -73,6 +73,13 @@ destination of an applied repair must stay inside the named files or directories
 plan is refused as a whole when any part falls outside that scope. The usual safe-plan and
 post-repair verification requirements still apply; other findings remain visible.
 
+`--boundaries packages/other` identifies a nested project analyzed separately.
+Repeat it for other owners. MCMR retains the rest of the owner's complete graph,
+including unchanged callers and root manifests. The report names these boundaries.
+This is owner coverage, not a claim that external clients do not use a public API.
+Boundaries do not expand repair permissions. Shared TypeScript configuration that
+crosses one requires an explicitly shared analysis owner.
+
 Write every verdict to DataHub, then read the history before the next agent changes the code.
 
 ```sh

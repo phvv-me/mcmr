@@ -30,7 +30,7 @@ mod tests {
                 source: (*source).to_string(),
             })
             .collect();
-        modules(&crate::graph::build("repo", &documents).expect("the graph builds"))
+        modules(&crate::graph::test_build("repo", &documents).expect("the graph builds"))
     }
 
     fn module<'a>(facts: &'a [Value], name: &str) -> &'a Value {

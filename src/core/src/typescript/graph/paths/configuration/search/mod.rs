@@ -5,17 +5,17 @@ use crate::typescript::graph::paths::support::parent_of;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-pub(super) struct ConfigurationSearch {
+pub(super) struct ConfigurationSearch<'scope> {
     root: PathBuf,
-    ignored: Scope,
+    ignored: &'scope Scope,
     visited: BTreeSet<String>,
 }
 
-impl ConfigurationSearch {
-    pub(super) fn new(root: &Path) -> Self {
+impl<'scope> ConfigurationSearch<'scope> {
+    pub(super) fn new(root: &Path, scope: &'scope Scope) -> Self {
         Self {
             root: root.to_owned(),
-            ignored: Scope::of(root, &[]),
+            ignored: scope,
             visited: BTreeSet::new(),
         }
     }
@@ -45,7 +45,7 @@ impl ConfigurationSearch {
             return Ok(());
         }
         let Some(mappings) =
-            ConfigurationChain::new(&self.root, &self.ignored).mappings(directory)?
+            ConfigurationChain::new(&self.root, self.ignored).mappings(directory)?
         else {
             return Ok(());
         };

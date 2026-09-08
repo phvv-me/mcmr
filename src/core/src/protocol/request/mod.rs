@@ -9,6 +9,8 @@ pub struct Request {
     #[serde(default = "default_suffixes")]
     pub suffixes: Vec<String>,
     #[serde(default)]
+    pub boundaries: Vec<String>,
+    #[serde(default)]
     pub graph: bool,
     #[serde(default)]
     pub stream: bool,
@@ -25,6 +27,7 @@ impl Request {
             root,
             families,
             suffixes: default_suffixes(),
+            boundaries: Vec::new(),
             graph: false,
             stream: true,
             fingerprint_only: false,

@@ -413,7 +413,7 @@ fn graph_of(sources: &[(&str, &str)]) -> crate::graph::Graph {
             source: (*source).to_string(),
         })
         .collect();
-    crate::graph::build("repo", &documents).expect("the graph builds")
+    crate::graph::test_build("repo", &documents).expect("the graph builds")
 }
 
 /// Return every symbol node the graph holds, leaving the places on disk out of it.

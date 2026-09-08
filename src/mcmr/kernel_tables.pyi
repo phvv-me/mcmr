@@ -135,6 +135,7 @@ class AnalysisSession:
         *,
         python_standard_library: Sequence[str],
         suffixes: Sequence[str] | None = None,
+        boundaries: Sequence[str] = (),
         generic_schemas: dict[str, str] | None = None,
     ) -> None: ...
     def call_tables(self) -> CallTables: ...

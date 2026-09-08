@@ -8,6 +8,13 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 
 ### Added
 
+- Repeatable `check --boundaries` separates nested project owners while retaining
+  the complete owning graph and root manifest facts. Shared native scope governs
+  discovery, history, routes, manuscripts, cross-language reads, and TypeScript
+  configuration. Invalid boundaries and cross-owner configuration are refused.
+  Reports retain the boundary list through repair verification. No rule limits or
+  repair permissions change.
+
 - Repeatable `check --repair-paths` restricts all repair sources and destinations to requested
   files or directories without narrowing analysis or hiding findings elsewhere. A repair that
   crosses the boundary is refused in full, including cross-file moves.

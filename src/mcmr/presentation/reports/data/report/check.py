@@ -12,6 +12,8 @@ if TYPE_CHECKING:
 class CheckReport(CheckReportFields.Outcome):
     """Retain what one catalog pass concluded before anybody renders it."""
 
+    boundaries: list[str] = []
+
     @property
     def failure_count(self) -> int:
         """Return every failure found, including ones outside a bounded view."""
@@ -27,10 +29,13 @@ class CheckReport(CheckReportFields.Outcome):
         return sum(len(failure.findings) for failure in self.failures)
 
     @classmethod
-    def of(cls, root: Path, judged: CheckReportFields.Judgment) -> CheckReport:
+    def of(
+        cls, root: Path, judged: CheckReportFields.Judgment, *, boundaries: tuple[str, ...] = ()
+    ) -> CheckReport:
         """Return the report one judgment makes in the order it found failures."""
         return cls(
             root=str(root),
+            boundaries=list(boundaries),
             file_count=judged.kernel.file_count,
             fact_count=judged.engine.fact_count,
             rule_count=judged.engine.rule_count,

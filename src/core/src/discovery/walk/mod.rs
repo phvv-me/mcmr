@@ -34,6 +34,7 @@ impl<'a> DiscoveryWalk<'a> {
     fn new(request: &'a Request, scope: &'a Scope) -> Self {
         let mut fingerprint = DefaultHasher::new();
         request.suffixes.hash(&mut fingerprint);
+        request.boundaries.hash(&mut fingerprint);
         Self {
             request,
             scope,

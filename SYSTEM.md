@@ -59,6 +59,21 @@ Python discovery receives the analysis root as well as its retained files. A roo
 `__init__.py` makes that directory a package, so its name remains in import, graph, and
 reach identities. File spans remain relative to the requested scan root.
 
+An analysis can name nested-owner directories through `check --boundaries`.
+The request carries these root-relative paths into the existing discovery Scope.
+They exclude whole path components from discovery, history, routes, manuscripts,
+and cross-language reads. The TypeScript configuration chain uses that same Scope
+and refuses an inherited configuration across an owner boundary. Paths outside the
+root, files, nonexistent directories, and symbolic-link aliases are refused.
+
+The retained inventory contains every other source file, not only changed files.
+Root `pyproject.toml` and `mainboard.toml` still supply project and task facts.
+Boundary inputs participate in the analysis fingerprint and appear in the check
+report, including after repair verification. Repair paths remain a separate
+permission boundary. A complete owner graph does not establish global absence of
+external API consumers. This feature neither discovers house-specific project
+layouts nor changes the existing reach policies.
+
 C, C++, and CUDA file modules retain their filename extensions in the include graph. Symbol
 scopes retain the shared filename stem so header declarations and source definitions still merge.
 An include belongs to its source file, including when written inside a shared namespace.

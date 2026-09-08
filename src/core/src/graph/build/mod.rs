@@ -17,9 +17,13 @@ mod reachable;
 /// definitions and the references each file makes, and one resolution pass attaches every reference
 /// to the declaration it named. A language reaches the graph by adding a frontend to the middle
 /// pass, which is why the ends of this function say nothing about any particular language.
-pub fn build(root: &str, documents: &[Document]) -> Result<Graph, String> {
+pub fn build(
+    root: &str,
+    documents: &[Document],
+    scope: &crate::discovery::Scope,
+) -> Result<Graph, String> {
     let naming = Naming::of(root, documents);
-    let specifiers = crate::typescript::Specifiers::of(root, naming.typescript(documents))?;
+    let specifiers = crate::typescript::Specifiers::of(root, naming.typescript(documents), scope)?;
     let (nodes, edges) = workspace(root, documents, &naming);
     let mut building = Building::new(nodes, edges);
     for (index, module, stated) in state(documents, &naming, &specifiers) {

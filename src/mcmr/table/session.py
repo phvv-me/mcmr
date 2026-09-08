@@ -52,6 +52,7 @@ class AnalysisSession:
         *,
         suffixes: Sequence[str] | None = None,
         typed_families: Sequence[type[Fact]] | None = None,
+        boundaries: Sequence[Path] = (),
     ) -> None:
         selected = [FunctionFact] if typed_families is None else list(typed_families)
         self.session = NativeAnalysisSession(
@@ -59,6 +60,7 @@ class AnalysisSession:
             [family.__name__ for family in selected],
             python_standard_library=sorted(sys.stdlib_module_names),
             suffixes=None if not suffixes else list(suffixes),
+            boundaries=[str(path) for path in boundaries],
             generic_schemas=self._generic_schemas(selected),
         )
 

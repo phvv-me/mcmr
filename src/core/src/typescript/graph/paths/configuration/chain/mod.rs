@@ -33,7 +33,15 @@ impl<'scope> ConfigurationChain<'scope> {
 
     fn collect_mappings(&mut self, mut current: String) -> Result<Vec<Mapping>, String> {
         let mut mappings = Vec::new();
-        while !self.ignored.excludes(&current) {
+        loop {
+            if self.ignored.crosses_boundary(&current) {
+                return Err(format!(
+                    "TypeScript configuration {current} crosses a nested-owner boundary; analyze the shared configuration in an explicit common owner"
+                ));
+            }
+            if self.ignored.excludes(&current) {
+                break;
+            }
             self.remember(&current)?;
             let config: TypeScriptConfig = read_config(&self.root.join(&current))?;
             mappings.extend(config.mappings(&current)?);

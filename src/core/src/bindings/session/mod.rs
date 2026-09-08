@@ -22,19 +22,21 @@ macro_rules! analysis_session_methods {
         #[pymethods]
         impl AnalysisSession {
             #[new]
-            #[pyo3(signature = (root, typed_families, *, python_standard_library, suffixes=None, generic_schemas=None))]
+            #[pyo3(signature = (root, typed_families, *, python_standard_library, suffixes=None, generic_schemas=None, boundaries=Vec::new()))]
             fn new(
                 root: PathBuf,
                 typed_families: Vec<String>,
                 python_standard_library: Vec<String>,
                 suffixes: Option<Vec<String>>,
                 generic_schemas: Option<BTreeMap<String, String>>,
+                boundaries: Vec<String>,
             ) -> PyResult<Self> {
                 let request = AnalysisRequest {
                     root,
                     typed_families,
                     python_standard_library,
                     suffixes,
+                    boundaries,
                     generic_schemas: generic_schemas.unwrap_or_default(),
                 };
                 let state = Python::attach(|py| py.detach(|| SessionState::build(request)))

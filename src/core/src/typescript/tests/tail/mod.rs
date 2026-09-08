@@ -149,7 +149,7 @@ fn a_configured_alias_reaches_the_module_the_mapping_names() {
             },
         ];
     let graph =
-        crate::graph::build(&root.to_string_lossy(), &documents).expect("the graph builds");
+        crate::graph::test_build(&root.to_string_lossy(), &documents).expect("the graph builds");
     std::fs::remove_dir_all(&root).expect("the temporary root is removable");
     let reached: Vec<&str> = graph
         .edges
@@ -200,7 +200,7 @@ fn a_broken_typescript_configuration_fails_graph_construction() {
         source: "export const value = 1;\n".to_string(),
     }];
 
-    let failure = crate::graph::build(&root.to_string_lossy(), &documents)
+    let failure = crate::graph::test_build(&root.to_string_lossy(), &documents)
         .expect_err("invalid TypeScript configuration must fail");
 
     assert!(failure.contains("tsconfig.json is not valid JSON"));
@@ -217,7 +217,7 @@ fn a_typescript_configuration_path_that_is_not_a_file_fails() {
         source: "export const value = 1;\n".to_string(),
     }];
 
-    let failure = crate::graph::build(&root.to_string_lossy(), &documents)
+    let failure = crate::graph::test_build(&root.to_string_lossy(), &documents)
         .expect_err("a directory cannot stand in for configuration");
 
     assert!(failure.contains("tsconfig.json could not be read"));
@@ -252,8 +252,9 @@ fn a_circular_extends_chain_cannot_yield_partial_mappings() {
     )
     .expect("the file is writable");
 
-    let failure = Specifiers::of(&root.to_string_lossy(), BTreeSet::from(["src/main".into()]))
-        .expect_err("a circular configuration must fail");
+    let failure =
+        Specifiers::test_of(&root.to_string_lossy(), BTreeSet::from(["src/main".into()]))
+            .expect_err("a circular configuration must fail");
 
     assert!(failure.contains("circular TypeScript extends chain"));
     std::fs::remove_dir_all(&root).expect("the temporary root is removable");
@@ -283,7 +284,7 @@ fn an_ignored_extends_target_does_not_escape_the_discovery_scope() {
     ];
 
     let graph =
-        crate::graph::build(&root.to_string_lossy(), &documents).expect("the graph builds");
+        crate::graph::test_build(&root.to_string_lossy(), &documents).expect("the graph builds");
 
     assert!(graph.edges.iter().any(|edge| {
         edge.kind == EdgeKind::Import && edge.target == "typescript:module:src/lib/model"
@@ -301,8 +302,9 @@ fn an_extends_chain_cannot_read_outside_the_repository() {
     )
     .expect("the file is writable");
 
-    let failure = Specifiers::of(&root.to_string_lossy(), BTreeSet::from(["src/main".into()]))
-        .expect_err("configuration must stay inside the repository");
+    let failure =
+        Specifiers::test_of(&root.to_string_lossy(), BTreeSet::from(["src/main".into()]))
+            .expect_err("configuration must stay inside the repository");
 
     assert!(failure.contains("leaves the repository"));
     std::fs::remove_dir_all(&root).expect("the temporary root is removable");
@@ -321,7 +323,7 @@ fn a_configuration_reads_through_the_comments_and_commas_json_forbids() {
 
 #[test]
 fn a_specifier_is_read_as_a_path_a_mapping_or_the_package_it_names() {
-    let specifiers = Specifiers::of(
+    let specifiers = Specifiers::test_of(
         "",
         BTreeSet::from(["src/lib/models".to_string(), "src/pack/index".to_string()]),
     )

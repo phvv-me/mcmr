@@ -54,6 +54,7 @@ def check(
     repair: RepairMode = RepairMode.NONE,
     maximum_fixes: int = 100,
     repair_paths: tuple[Path, ...] = (),
+    boundaries: tuple[Path, ...] = (),
     output: Path | None = None,
     report_only: bool = False,
     deterministic: bool | None = None,
@@ -77,6 +78,8 @@ def check(
     maximum_fixes: bound the number of verified edits in one run.
     repair_paths: restrict every repair source and destination to these repository-relative files
         or directories; analysis still reads the whole repository.
+    boundaries: nested-owner directories relative to root; their sources are analyzed separately.
+        Other owned files remain in the graph, including unchanged callers and root manifests.
     output: optional path that receives the complete JSON report.
     report_only: report failures without returning a failing process status.
     deterministic: enable or disable rules computed from repository facts.
@@ -97,13 +100,14 @@ def check(
         deterministic=_STATED[deterministic],
         contextual=_STATED[contextual],
         external=_STATED[external],
+        boundaries=boundaries,
     )
     with console.status("Analyzing the repository", spinner="dots"):
         try:
             result = analysis.run()
         except ProviderExecutionError as error:
             _fail_provider(error)
-        report = CheckReport.of(root, result)
+        report = CheckReport.of(root, result, boundaries=tuple(str(path) for path in boundaries))
     fixed = _apply_repairs(root, analysis, report, repair, maximum_fixes, repair_paths)
     _present_report(fixed.report, format=format, limit=limit, output=output)
     _present_repairs(root, fixed, repair, maximum_fixes, repair_paths)

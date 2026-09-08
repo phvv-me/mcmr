@@ -1,5 +1,6 @@
 mod imports;
 
+use super::test_build as build;
 use super::*;
 use crate::discovery::Document;
 use std::collections::BTreeSet;

@@ -33,6 +33,7 @@ class TableExecution(FrozenModel):
 
     root: Path
     suffixes: list[str]
+    boundaries: tuple[Path, ...] = ()
     dependencies: Runtime[Mapping[type, RuleDependency]]
     accumulator: Runtime[JudgmentSink]
     provider_settings: Mapping[str, Mapping[str, JsonValue]] = {}
@@ -202,6 +203,7 @@ class TableExecution(FrozenModel):
                 AnalysisSession,
                 self.root,
                 suffixes=self.suffixes,
+                boundaries=self.boundaries,
                 typed_families=sorted(native, key=lambda family: family.__name__),
             )
         )

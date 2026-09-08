@@ -1,6 +1,7 @@
 use super::entry_kind::EntryKind;
+use crate::protocol::Request;
 use ignore::{IncrementalIgnore, WalkBuilder};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
 
 /// Which files one request is about, which every pass asks rather than only the walk.
@@ -13,6 +14,7 @@ pub struct Scope {
     ignored: Mutex<IncrementalIgnore>,
     prefix: PathBuf,
     suffixes: Vec<String>,
+    boundaries: Vec<PathBuf>,
 }
 
 impl Scope {
@@ -40,7 +42,55 @@ impl Scope {
             ignored: Mutex::new(ignored),
             prefix,
             suffixes: suffixes.to_vec(),
+            boundaries: Vec::new(),
         }
+    }
+
+    /// Apply explicit nested-owner boundaries without reducing the owner's caller graph.
+    pub fn requested(request: &Request) -> Result<Self, String> {
+        let root = Path::new(&request.root);
+        let mut scope = Self::of(root, &request.suffixes);
+        if request.boundaries.is_empty() {
+            return Ok(scope);
+        }
+        let canonical_root = root
+            .canonicalize()
+            .map_err(|failure| format!("analysis root could not be resolved: {failure}"))?;
+        for boundary in &request.boundaries {
+            let path = Path::new(boundary);
+            if boundary.is_empty()
+                || path
+                    .components()
+                    .any(|component| !matches!(component, Component::Normal(_)))
+                || path.components().next().is_none()
+            {
+                return Err(format!(
+                    "owner boundary {boundary:?} must be a nonempty root-relative directory without dot or parent components"
+                ));
+            }
+            let canonical = root.join(path).canonicalize().map_err(|failure| {
+                format!("owner boundary {boundary:?} could not be resolved: {failure}")
+            })?;
+            if !canonical.is_dir()
+                || canonical == canonical_root
+                || canonical != canonical_root.join(path)
+            {
+                return Err(format!(
+                    "owner boundary {boundary:?} must name a directory inside the analysis root without symbolic-link aliases"
+                ));
+            }
+            scope.boundaries.push(path.to_path_buf());
+        }
+        scope.boundaries.sort();
+        scope.boundaries.dedup();
+        Ok(scope)
+    }
+
+    /// Whether a path is owned by a separately analyzed nested project.
+    pub fn crosses_boundary(&self, relative: &str) -> bool {
+        self.boundaries
+            .iter()
+            .any(|boundary| Path::new(relative).starts_with(boundary))
     }
 
     /// Whether the exclusion set removes one path.
@@ -73,6 +123,9 @@ impl Scope {
 
     /// Whether one path is excluded, which the Git history always is and the ignore contract may be.
     fn is_ignored(&self, relative: &str, kind: EntryKind) -> bool {
+        if self.crosses_boundary(relative) {
+            return true;
+        }
         if relative.split('/').any(|component| component == ".git") {
             return true;
         }

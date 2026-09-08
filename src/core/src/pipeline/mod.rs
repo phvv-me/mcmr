@@ -344,7 +344,14 @@ where
         scope,
         delivery,
     )?;
-    let graph = deliver_graph_facts(extraction.request, documents, deferred, delivery, calls)?;
+    let graph = deliver_graph_facts(
+        extraction.request,
+        documents,
+        scope,
+        deferred,
+        delivery,
+        calls,
+    )?;
     Ok((graph, started.elapsed().as_nanos()))
 }
 

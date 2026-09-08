@@ -7,6 +7,7 @@ fn request(root: &str) -> Request {
         root: root.to_string(),
         families: vec!["ModuleFact".to_string(), "FunctionFact".to_string()],
         suffixes: vec![".py".to_string()],
+        boundaries: Vec::new(),
         graph: false,
         stream: false,
         fingerprint_only: false,

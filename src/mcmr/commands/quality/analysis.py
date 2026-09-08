@@ -33,6 +33,7 @@ class Judgment(FrozenModel):
     policies: RulePolicies = RulePolicies()
     select: str = ""
     suffixes: list[str] = []
+    boundaries: tuple[Path, ...] = ()
     failure_limit: NonNegativeInt | None = None
     configuration: MCMRConfiguration = MCMRConfiguration()
 
@@ -103,6 +104,7 @@ class Judgment(FrozenModel):
         return TableExecution(
             root=self.root,
             suffixes=self.suffixes,
+            boundaries=self.boundaries,
             dependencies=engine.dependencies,
             accumulator=accumulator,
             provider_settings=self.configuration.providers,
@@ -132,6 +134,7 @@ def judgment(
     deterministic: ExecutionOverride = ExecutionOverride.UNCHANGED,
     contextual: ExecutionOverride = ExecutionOverride.UNCHANGED,
     external: ExecutionOverride = ExecutionOverride.UNCHANGED,
+    boundaries: tuple[Path, ...] = (),
 ) -> Judgment:
     """Build the one pass of the engine that every command judging a repository runs."""
     configuration = MCMRConfiguration.read(root)
@@ -146,6 +149,7 @@ def judgment(
         policies=configuration.policies(),
         select=select,
         suffixes=listed(suffixes) or configuration.scan.suffixes,
+        boundaries=boundaries,
         failure_limit=failure_limit,
         configuration=configuration,
     )

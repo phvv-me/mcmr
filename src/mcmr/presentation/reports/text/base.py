@@ -54,6 +54,14 @@ class CheckRendering(FrozenModel, ABC):
                     for line in self.diagnostic(failure, finding, source)
                 ),
                 *([f"and {omitted} more diagnostics"] if omitted else []),
+                *(
+                    [
+                        f"Owner {projection.root}; nested owners excluded: "
+                        f"{', '.join(projection.boundaries)}"
+                    ]
+                    if projection.boundaries
+                    else []
+                ),
                 "",
                 f"{projection.file_count} files, {projection.fact_count} facts, "
                 f"{projection.rule_execution_count}/{projection.rule_count} rules, "

@@ -2,7 +2,7 @@ use super::*;
 use crate::discovery::Document;
 
 fn facts_of(source: &str) -> Vec<Value> {
-    let graph = crate::graph::build(
+    let graph = crate::graph::test_build(
         "repo",
         &[
             Document {

@@ -21,6 +21,7 @@ fn corpus() -> (PathBuf, Vec<Document>) {
         root: root.to_string_lossy().into_owned(),
         families: Vec::new(),
         suffixes: vec![".py".to_string()],
+        boundaries: Vec::new(),
         graph: false,
         stream: false,
         fingerprint_only: false,
@@ -90,9 +91,20 @@ fn graph(criterion: &mut Criterion) {
     let (root, documents) = corpus();
     let root = root.to_string_lossy();
     criterion.bench_function("build the repository graph", |bencher| {
-        bencher.iter(|| black_box(kernel_tables::graph::build(&root, &documents)))
+        bencher.iter(|| {
+            black_box(kernel_tables::graph::build(
+                &root,
+                &documents,
+                &kernel_tables::discovery::Scope::of(Path::new(root.as_ref()), &[]),
+            ))
+        })
     });
-    let built = kernel_tables::graph::build(&root, &documents).expect("the graph builds");
+    let built = kernel_tables::graph::build(
+        &root,
+        &documents,
+        &kernel_tables::discovery::Scope::of(Path::new(root.as_ref()), &[]),
+    )
+    .expect("the graph builds");
     criterion.bench_function("summarize reach from the graph", |bencher| {
         bencher.iter(|| black_box(kernel_tables::graph::reach(&built)))
     });

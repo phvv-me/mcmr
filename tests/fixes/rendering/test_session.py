@@ -319,10 +319,11 @@ def test_fix_session_verifies_compatible_plans_in_one_batch(
         calls = 0
 
         @classmethod
-        def of(cls, root: Path, judged: int) -> CheckReport:
+        def of(cls, root: Path, judged: int, *, boundaries: tuple[str, ...] = ()) -> CheckReport:
             """Return a report proving both distinct finding messages closed."""
             assert root == tmp_path
             assert judged == 1
+            assert boundaries == ()
             cls.calls += 1
             return resolved
 
@@ -361,10 +362,11 @@ def test_fix_session_restores_an_edit_whose_finding_remains(
             self.root = root
             self.report = report
 
-        def of(self, root: Path, judged: int) -> CheckReport:
+        def of(self, root: Path, judged: int, *, boundaries: tuple[str, ...] = ()) -> CheckReport:
             """Return the retained report after validating the fake rerun boundary."""
             assert root == self.root
             assert judged == 1
+            assert boundaries == ()
             return self.report
 
     monkeypatch.setattr(

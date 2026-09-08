@@ -135,6 +135,7 @@ class FixSession:
             verified = CheckReport.of(
                 self.root,
                 self.judgment.model_copy(update={"failure_limit": None}).run(),
+                boundaries=tuple(current.boundaries),
             )
             if not self._improved(current=current, verified=verified, candidates=candidates):
                 return None

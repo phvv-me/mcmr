@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn a_super_path_beyond_the_crate_root_stays_unresolved() {
-    let graph = crate::graph::build(
+    let graph = crate::graph::test_build(
         "repo",
         &[
             Document {
@@ -43,7 +43,7 @@ fn a_nested_module_climbs_from_itself_rather_than_from_the_file_around_it() {
 
 #[test]
 fn importing_a_module_by_name_reaches_that_module_and_not_the_one_holding_it() {
-    let graph = crate::graph::build(
+    let graph = crate::graph::test_build(
         "repo",
         &[
             Document {

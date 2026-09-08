@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 pub(super) fn deliver_graph_facts<Emit>(
     request: &Request,
     documents: &[discovery::Document],
+    scope: &discovery::Scope,
     deferred: &mut DeferredFacts,
     delivery: &mut Delivery<Emit>,
     calls: Option<&mut Vec<calls::CallRecord>>,
@@ -21,7 +22,7 @@ where
     let wants_calls = wants("CallFact") || wants("TestFunctionFact") || typed_calls;
     let wants_graph = GRAPH_DERIVED.iter().any(|family| wants(family)) || wants_calls;
     let graph = if request.graph || wants_graph {
-        Some(graph::build(&request.root, documents)?)
+        Some(graph::build(&request.root, documents, scope)?)
     } else {
         None
     };

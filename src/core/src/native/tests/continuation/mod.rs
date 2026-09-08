@@ -56,7 +56,7 @@ fn the_cuda_grammar_reads_a_launch_the_cpp_grammar_cannot_see() {
 
 #[test]
 fn a_header_and_its_implementation_share_symbols_but_not_file_modules() {
-    let graph = crate::graph::build(
+    let graph = crate::graph::test_build(
         "repo",
         &[
             Document {
@@ -102,7 +102,7 @@ fn a_header_and_its_implementation_share_symbols_but_not_file_modules() {
 
 #[test]
 fn native_declaration_scope_and_calls_do_not_depend_on_file_module_spelling() {
-    let graph = crate::graph::build(
+    let graph = crate::graph::test_build(
         "repo",
         &[
             Document {
@@ -410,7 +410,7 @@ fn every_kind_a_tree_uses_is_in_the_shared_vocabulary() {
 
 #[test]
 fn a_parameter_binds_by_position_and_says_when_a_caller_may_leave_it_out() {
-    let graph = crate::graph::build(
+    let graph = crate::graph::test_build(
         "repo",
         &[Document {
             relative: "src/engine.cpp".to_string(),

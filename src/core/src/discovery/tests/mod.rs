@@ -44,6 +44,7 @@ impl Tree {
                 root: self.root.to_string_lossy().into_owned(),
                 families: Vec::new(),
                 suffixes: suffixes.clone(),
+                boundaries: Vec::new(),
                 graph: false,
                 stream: false,
                 fingerprint_only: false,

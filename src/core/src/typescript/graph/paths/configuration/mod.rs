@@ -26,9 +26,22 @@ pub struct Specifiers {
 
 impl Specifiers {
     /// Read every configuration that governs a TypeScript file of this repository.
-    pub fn of(root: &str, modules: BTreeSet<String>) -> Result<Self, String> {
-        let tables = ConfigurationSearch::new(Path::new(root)).tables(&modules)?;
+    pub fn of(
+        root: &str,
+        modules: BTreeSet<String>,
+        scope: &crate::discovery::Scope,
+    ) -> Result<Self, String> {
+        let tables = ConfigurationSearch::new(Path::new(root), scope).tables(&modules)?;
         Ok(Self { modules, tables })
+    }
+
+    #[cfg(test)]
+    pub(crate) fn test_of(root: &str, modules: BTreeSet<String>) -> Result<Self, String> {
+        Self::of(
+            root,
+            modules,
+            &crate::discovery::Scope::of(Path::new(root), &[]),
+        )
     }
 
     /// Return where one specifier written in one file lands.

@@ -16,7 +16,7 @@ fn facts_for(source: &str, family: FactFamily<'_>) -> Vec<Value> {
 }
 
 fn graph_of(source: &str) -> crate::graph::Graph {
-    crate::graph::build(
+    crate::graph::test_build(
         "repo",
         &[
             Document {

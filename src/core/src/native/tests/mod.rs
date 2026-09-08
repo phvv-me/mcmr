@@ -199,7 +199,7 @@ fn a_call_through_a_receiver_keeps_the_receiver_the_source_wrote() {
 
 #[test]
 fn a_native_call_credits_the_declaration_it_reaches() {
-    let graph = crate::graph::build(
+    let graph = crate::graph::test_build(
         "repo",
         &[Document {
             relative: "beta.cpp".to_string(),
@@ -224,7 +224,7 @@ fn a_native_call_credits_the_declaration_it_reaches() {
 
 #[test]
 fn an_external_symbol_keeps_the_name_the_source_qualified() {
-    let graph = crate::graph::build(
+    let graph = crate::graph::test_build(
         "repo",
         &[Document {
             relative: "unit.cpp".to_string(),

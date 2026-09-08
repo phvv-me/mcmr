@@ -117,6 +117,7 @@ fn selected_request(request: &Request, generic: &BTreeSet<String>) -> Request {
         root: request.root.clone(),
         families,
         suffixes: request.suffixes.clone(),
+        boundaries: request.boundaries.clone(),
         graph: request.graph,
         stream: request.stream,
         fingerprint_only: request.fingerprint_only,

@@ -117,6 +117,28 @@ fn scoped_repository() -> Repository {
 }
 
 #[test]
+fn owner_boundaries_filter_history_before_reading_foreign_contents() {
+    let repository = Repository::new("owner-boundary");
+    std::fs::create_dir(repository.root.join("foreign")).expect("the owner directory is writable");
+    repository.write("owned.py", "value = 1\n");
+    repository.write("foreign/other.py", "value = 2\n");
+    repository.commit("both owners", "First Author", "2026-09-01");
+    repository.write("foreign/other.py", [0xff]);
+    let mut request = crate::protocol::Request::analysis(
+        repository.root.to_string_lossy().into_owned(),
+        Vec::new(),
+    );
+    request.boundaries = vec!["foreign".to_string()];
+    let scope = crate::discovery::Scope::requested(&request).expect("the nested owner is valid");
+    let retained = scan(&repository.root, &scope)
+        .expect("the owner history reads")
+        .expect("the owner has history");
+    assert_eq!(retained.files.len(), 1);
+    assert_eq!(retained.files[0].path, "owned.py");
+    assert_eq!(retained.changes[0].other_file_count, 1);
+}
+
+#[test]
 fn a_directory_outside_a_repository_reports_nothing_rather_than_failing() {
     let outside = std::env::temp_dir().join(format!("mcmr-history-bare-{}", std::process::id()));
     std::fs::create_dir_all(&outside).expect("the temporary root is writable");

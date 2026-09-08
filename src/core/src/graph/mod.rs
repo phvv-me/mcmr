@@ -21,3 +21,15 @@ pub use reach::{Declaration, DeclarationCounts, Reach, reach};
 pub use resolution_engine::{expand, stray};
 
 pub(crate) use resolution_engine::{Attachment, ResolutionContext, attach, is_builtin};
+
+#[cfg(test)]
+pub(crate) fn test_build(
+    root: &str,
+    documents: &[crate::discovery::Document],
+) -> Result<Graph, String> {
+    build(
+        root,
+        documents,
+        &crate::discovery::Scope::of(std::path::Path::new(root), &[]),
+    )
+}

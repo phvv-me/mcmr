@@ -69,11 +69,17 @@ class SummaryRenderer(FrozenModel):
 
     def _caption(self) -> str:
         """Return the complete compact outcome caption."""
-        return (
+        summary = (
             f"{self.projection.file_count} files, {self.projection.failure_count} failures, "
             f"{self.projection.finding_count} findings, "
             f"{self.projection.unassessed_count} unassessed, "
             f"{self.projection.skipped_rule_count} skipped"
+        )
+        return (
+            f"{summary}\nOwner {self.projection.root}; nested owners excluded: "
+            f"{', '.join(self.projection.boundaries)}"
+            if self.projection.boundaries
+            else summary
         )
 
     def _counts(self) -> list[tuple[str, str | Text]]:

@@ -204,7 +204,7 @@ mod tests {
                 source: (*source).to_string(),
             })
             .collect();
-        dependencies(&crate::graph::build("repo", &documents).expect("the graph builds"))
+        dependencies(&crate::graph::test_build("repo", &documents).expect("the graph builds"))
     }
 
     fn pairs(fact: &Value) -> Vec<(String, String)> {
@@ -423,7 +423,7 @@ mod tests {
             source: (*source).to_string(),
         })
         .collect();
-        let graph = crate::graph::build("repo", &documents).expect("the graph builds");
+        let graph = crate::graph::test_build("repo", &documents).expect("the graph builds");
         let index = ModuleImports::of(&graph);
 
         assert_eq!(index.importers("pkg/core.py"), ["pkg/reader.py"]);

@@ -7,7 +7,7 @@ pub(super) fn discover_repository(
     request: &Request,
 ) -> Result<(discovery::Scope, discovery::Inventory, u128), String> {
     let started = Instant::now();
-    let scope = discovery::Scope::of(std::path::Path::new(&request.root), &request.suffixes);
+    let scope = discovery::Scope::requested(request)?;
     let inventory = discovery::collect(request, &scope)?;
     Ok((scope, inventory, started.elapsed().as_nanos()))
 }

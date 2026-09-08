@@ -8,7 +8,7 @@ fn organization(sources: &[(&str, &str)]) -> Organization {
             source: (*source).to_string(),
         })
         .collect::<Vec<_>>();
-    let packages = Packages::of(&documents);
+    let packages = Packages::of(std::path::Path::new("repo"), &documents);
     Organization::of(&documents, &packages)
 }
 

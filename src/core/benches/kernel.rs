@@ -11,11 +11,11 @@ use kernel_tables::source::Source;
 use ruff_python_parser::parse_module;
 use std::collections::BTreeMap;
 use std::hint::black_box;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 /// Read this repository's own Python as the corpus, since a synthetic one measures nothing real.
-fn corpus() -> Vec<Document> {
+fn corpus() -> (PathBuf, Vec<Document>) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../mcmr");
     let request = Request {
         root: root.to_string_lossy().into_owned(),
@@ -27,13 +27,14 @@ fn corpus() -> Vec<Document> {
         python_standard_library: Vec::new(),
     };
     let scope = kernel_tables::discovery::Scope::of(&root, &request.suffixes);
-    kernel_tables::discovery::collect(&request, &scope)
+    let documents = kernel_tables::discovery::collect(&request, &scope)
         .expect("the corpus reads")
-        .documents
+        .documents;
+    (root, documents)
 }
 
 fn parsing(criterion: &mut Criterion) {
-    let documents = corpus();
+    let (_, documents) = corpus();
     criterion.bench_function("parse every file", |bencher| {
         bencher.iter(|| {
             for document in &documents {
@@ -52,8 +53,8 @@ fn parsing(criterion: &mut Criterion) {
 
 /// Measure one family over the whole corpus, parse included, the way a request pays for it.
 fn family(criterion: &mut Criterion) {
-    let documents = corpus();
-    let packages = Packages::of(&documents);
+    let (root, documents) = corpus();
+    let packages = Packages::of(&root, &documents);
     let mut group = criterion.benchmark_group("family");
     for name in [
         "ModuleFact",
@@ -86,19 +87,20 @@ fn family(criterion: &mut Criterion) {
 }
 
 fn graph(criterion: &mut Criterion) {
-    let documents = corpus();
+    let (root, documents) = corpus();
+    let root = root.to_string_lossy();
     criterion.bench_function("build the repository graph", |bencher| {
-        bencher.iter(|| black_box(kernel_tables::graph::build("src", &documents)))
+        bencher.iter(|| black_box(kernel_tables::graph::build(&root, &documents)))
     });
-    let built = kernel_tables::graph::build("src", &documents).expect("the graph builds");
+    let built = kernel_tables::graph::build(&root, &documents).expect("the graph builds");
     criterion.bench_function("summarize reach from the graph", |bencher| {
         bencher.iter(|| black_box(kernel_tables::graph::reach(&built)))
     });
 }
 
 fn serializing(criterion: &mut Criterion) {
-    let documents = corpus();
-    let packages = Packages::of(&documents);
+    let (root, documents) = corpus();
+    let packages = Packages::of(&root, &documents);
     let mut facts = BTreeMap::from([("SyntaxFact".to_string(), Vec::new())]);
     let mut stats = Stats::default();
     for document in &documents {

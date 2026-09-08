@@ -18,7 +18,7 @@ impl Stated {
         let module = parsed.syntax();
         let source = Source::new(document);
         let name = packages.module_name(&document.relative);
-        let is_package = document.relative.ends_with("/__init__.py");
+        let is_package = document.is_package_initializer();
         let importer = ImportingModule::for_document(&name, document);
         let (called, read) = usage(module);
         Some(Self {

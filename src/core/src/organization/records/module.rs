@@ -31,7 +31,7 @@ impl Module {
             location: ModuleLocation {
                 name: name.clone(),
                 path: document.relative.clone(),
-                is_package: document.relative.ends_with("/__init__.py"),
+                is_package: document.is_package_initializer(),
                 is_test: is_test_path(&document.relative)
                     || document
                         .relative

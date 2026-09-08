@@ -27,7 +27,7 @@ fn extracted(sources: &[(&str, &str)]) -> BTreeMap<String, Vec<Value>> {
             source: (*source).to_string(),
         })
         .collect();
-    let packages = Packages::of(&documents);
+    let packages = Packages::of(std::path::Path::new("repo"), &documents);
     let mut facts: BTreeMap<String, Vec<Value>> = BTreeMap::from([
         ("ClassFact".to_string(), Vec::new()),
         ("FunctionFact".to_string(), Vec::new()),

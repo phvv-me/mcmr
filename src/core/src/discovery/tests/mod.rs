@@ -70,7 +70,7 @@ impl Drop for Tree {
 
 /// Every directory fact one walk produced, keyed by the path it names.
 fn measured(inventory: &Inventory, catalogs: &BTreeSet<String>) -> BTreeMap<String, Value> {
-    let packages = Packages::of(&inventory.documents);
+    let packages = Packages::of(Path::new("repo"), &inventory.documents);
     let roots = SourceRoots::of(&inventory.directories, &packages);
     directories(&inventory.directories, &roots, catalogs)
         .into_iter()

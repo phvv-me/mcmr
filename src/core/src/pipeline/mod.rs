@@ -286,7 +286,10 @@ where
     Emit: FnMut(String, Vec<serde_json::Value>) -> Result<(), String>,
 {
     let per_file = per_file_families(extraction.request, extraction.built, typed);
-    let packages = discovery::Packages::of(&extraction.inventory.documents);
+    let packages = discovery::Packages::of(
+        std::path::Path::new(&extraction.request.root),
+        &extraction.inventory.documents,
+    );
     let mut deferred = DeferredFacts::new(
         spooled_families(extraction.request, typed, &per_file),
         deferred_mode,

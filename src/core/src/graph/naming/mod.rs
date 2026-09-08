@@ -11,7 +11,7 @@ pub(crate) struct Naming {
 impl Naming {
     pub(crate) fn of(root: &str, documents: &[Document]) -> Self {
         Self {
-            packages: Packages::of(documents),
+            packages: Packages::of(std::path::Path::new(root), documents),
             crates: Crates::of(std::path::Path::new(root), documents),
         }
     }

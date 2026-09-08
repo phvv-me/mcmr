@@ -1,6 +1,47 @@
 use super::*;
 
 #[test]
+fn a_scan_root_package_resolves_siblings_and_nested_test_imports() {
+    let documents = [
+        (
+            "__init__.py",
+            "from .result import Result\n__all__ = ['Result']\n",
+        ),
+        ("result.py", "class Result:\n    pass\n"),
+        ("changes.py", "class Changes:\n    pass\n"),
+        (
+            "quality.py",
+            "from .changes import Changes\nchanges = Changes()\n",
+        ),
+        ("tests/__init__.py", ""),
+        (
+            "tests/test_quality.py",
+            "from ..result import Result\nresult = Result()\n",
+        ),
+    ]
+    .into_iter()
+    .map(|(relative, source)| Document {
+        relative: relative.to_string(),
+        source: source.to_string(),
+    })
+    .collect::<Vec<_>>();
+    let graph = build("workspace/hooks", &documents).expect("the root package graph builds");
+    let declarations = reach(&graph)
+        .into_iter()
+        .flat_map(|summary| summary.declarations)
+        .collect::<Vec<_>>();
+
+    for name in ["hooks.changes.Changes", "hooks.result.Result"] {
+        let declaration = declarations
+            .iter()
+            .find(|item| item.qualname == name)
+            .expect("the package owns the class");
+        assert!(declaration.references.other_file_references > 0);
+    }
+    assert_eq!(graph.exports[0].target, "hooks.result.Result");
+}
+
+#[test]
 fn explicit_python_exports_count_only_consumers_of_the_public_route() {
     let graph = build(
         "repo",

@@ -86,10 +86,24 @@ pub fn definition_catalogs(modules: &[Value]) -> BTreeSet<String> {
 /// the same name under another import root. Reading both shapes from the tree keeps split source
 /// roots, ordinary `src` layouts, and bare scripts naming themselves the way Python names them.
 impl Packages {
-    pub fn of(documents: &[Document]) -> Self {
+    pub fn of(root: &Path, documents: &[Document]) -> Self {
+        if documents
+            .iter()
+            .any(|document| document.relative == "__init__.py")
+        {
+            let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+            let name = root
+                .file_name()
+                .and_then(|name| name.to_str())
+                .expect("a Python package root has a directory name");
+            return Self {
+                directories: BTreeSet::new(),
+                root_package: Some(name.to_string()),
+            };
+        }
         let regular: BTreeSet<String> = documents
             .iter()
-            .filter(|document| document.relative.ends_with("/__init__.py"))
+            .filter(|document| document.is_package_initializer())
             .map(|document| directory_of(&document.relative).to_string())
             .collect();
         let names: BTreeSet<String> = regular
@@ -113,7 +127,10 @@ impl Packages {
                 candidate = directory_of(candidate);
             }
         }
-        Self { directories }
+        Self {
+            directories,
+            root_package: None,
+        }
     }
 
     /// Return the dotted module name one repository-relative path declares.
@@ -131,12 +148,20 @@ impl Packages {
             .strip_suffix(".pyi")
             .or_else(|| inside.strip_suffix(".py"))
             .unwrap_or(inside);
-        let trimmed = trimmed.strip_suffix("/__init__").unwrap_or(trimmed);
-        trimmed
+        let trimmed = trimmed
+            .strip_suffix("/__init__")
+            .or_else(|| (trimmed == "__init__" && self.root_package.is_some()).then_some(""))
+            .unwrap_or(trimmed);
+        let module = trimmed
             .split('/')
             .filter(|part| !part.is_empty())
             .collect::<Vec<_>>()
-            .join(".")
+            .join(".");
+        match &self.root_package {
+            Some(package) if module.is_empty() => package.clone(),
+            Some(package) => format!("{package}.{module}"),
+            None => module,
+        }
     }
 
     /// Return every directory the import system starts naming a package chain from.
@@ -146,7 +171,10 @@ impl Packages {
     /// flat layout at the repository root all report the directory their imports are written
     /// against.
     pub fn roots(&self) -> BTreeSet<String> {
-        package_roots(&self.directories)
+        match self.root_package {
+            Some(_) => BTreeSet::from([String::new()]),
+            None => package_roots(&self.directories),
+        }
     }
 }
 

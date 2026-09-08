@@ -42,6 +42,9 @@ tables. Python rules query the shared evidence and report exact findings with so
 Structural limits are configurable: `ALL-CLAS0004`, for example, allows up to 64 declared
 fields per class by default. Project policies can set a different ceiling.
 
+Scanning a Python package directory preserves its package name and relative imports when
+that directory contains `__init__.py`.
+
 Expected queue absence is not an ignored error. `ALL-ERRO0001` distinguishes a resolved
 `queue.Empty` catch around a single queue read from mixed catches or unrelated failed work.
 Unresolved wrappers remain findings; there is no exception-name allowlist.

@@ -38,7 +38,7 @@ impl Stated {
         let parsed = parse_module(&document.source).ok()?;
         let module = parsed.syntax();
         let name = packages.module_name(&document.relative);
-        let is_package = document.relative.ends_with("/__init__.py");
+        let is_package = document.is_package_initializer();
         let importer = ImportingModule::for_document(&name, document);
         Some(Self {
             declared: declarations(module),
@@ -200,7 +200,7 @@ mod tests {
                 source: (*source).to_string(),
             })
             .collect();
-        let packages = Packages::of(&documents);
+        let packages = Packages::of(std::path::Path::new("repo"), &documents);
         facts(&documents, &packages)
     }
 

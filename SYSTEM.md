@@ -55,6 +55,10 @@ One distribution named `mcmr` ships everything, and `src` holds the three trees 
 `src/core` is the Rust kernel and PyO3 extension. It owns discovery, parsing, repository graphs,
 primitive evidence, and direct Polars frames.
 
+Python discovery receives the analysis root as well as its retained files. A root
+`__init__.py` makes that directory a package, so its name remains in import, graph, and
+reach identities. File spans remain relative to the requested scan root.
+
 C, C++, and CUDA file modules retain their filename extensions in the include graph. Symbol
 scopes retain the shared filename stem so header declarations and source definitions still merge.
 An include belongs to its source file, including when written inside a shared namespace.

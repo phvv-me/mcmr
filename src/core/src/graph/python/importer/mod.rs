@@ -10,7 +10,7 @@ pub enum ImportingModule<'a> {
 
 impl<'a> ImportingModule<'a> {
     pub fn for_document(name: &'a str, document: &Document) -> Self {
-        if document.relative.ends_with("/__init__.py") {
+        if document.is_package_initializer() {
             Self::Package(name)
         } else {
             Self::File(name)

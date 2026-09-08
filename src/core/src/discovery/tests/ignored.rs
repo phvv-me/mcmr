@@ -108,10 +108,13 @@ fn a_directory_whose_every_module_declares_one_thing_is_a_catalog() {
 
 #[test]
 fn a_module_is_named_from_the_package_root_the_import_system_would_find() {
-    let packages = Packages::of(&[
-        document("packages/mcmr/src/api/mcmr/__init__.py"),
-        document("packages/mcmr/src/rules/mcmr/rules/writing/prose.py"),
-    ]);
+    let packages = Packages::of(
+        Path::new("repo"),
+        &[
+            document("packages/mcmr/src/api/mcmr/__init__.py"),
+            document("packages/mcmr/src/rules/mcmr/rules/writing/prose.py"),
+        ],
+    );
 
     assert_eq!(
         packages.module_name("packages/mcmr/src/api/mcmr/engine.py"),
@@ -130,19 +133,59 @@ fn a_module_is_named_from_the_package_root_the_import_system_would_find() {
 }
 
 #[test]
+fn a_scan_root_initializer_keeps_its_package_name() {
+    let packages = Packages::of(
+        Path::new("workspace/hooks"),
+        &[
+            document("__init__.py"),
+            document("quality.py"),
+            document("tests/__init__.py"),
+            document("tests/test_quality.py"),
+        ],
+    );
+
+    assert_eq!(packages.module_name("__init__.py"), "hooks");
+    assert_eq!(packages.module_name("quality.py"), "hooks.quality");
+    assert_eq!(packages.module_name("tests/__init__.py"), "hooks.tests");
+    assert_eq!(
+        packages.module_name("tests/test_quality.py"),
+        "hooks.tests.test_quality"
+    );
+    assert_eq!(packages.roots(), BTreeSet::from([String::new()]));
+}
+
+#[test]
+fn a_scan_root_package_name_does_not_depend_on_its_parent_directory() {
+    for root in ["first/hooks", "elsewhere/hooks"] {
+        let packages = Packages::of(Path::new(root), &[document("__init__.py")]);
+        assert_eq!(packages.module_name("model.pyi"), "hooks.model");
+    }
+}
+
+#[test]
+fn a_standalone_initializer_stub_keeps_its_module_identity() {
+    let packages = Packages::of(Path::new("repo"), &[document("__init__.pyi")]);
+
+    assert_eq!(packages.module_name("__init__.pyi"), "__init__");
+}
+
+#[test]
 fn a_package_root_does_not_claim_a_sibling_with_the_same_textual_prefix() {
-    let packages = Packages::of(&[document("src/app/__init__.py")]);
+    let packages = Packages::of(Path::new("repo"), &[document("src/app/__init__.py")]);
 
     assert_eq!(packages.module_name("src2/run.py"), "src2.run");
 }
 
 #[test]
 fn a_nested_regular_package_below_a_namespace_keeps_the_outer_package_root() {
-    let packages = Packages::of(&[
-        document("src/mcmr/__init__.py"),
-        document("src/mcmr/rules/python/contextual/__init__.py"),
-        document("src/mcmr/rules/python/contextual/interfaces/r1001.py"),
-    ]);
+    let packages = Packages::of(
+        Path::new("repo"),
+        &[
+            document("src/mcmr/__init__.py"),
+            document("src/mcmr/rules/python/contextual/__init__.py"),
+            document("src/mcmr/rules/python/contextual/interfaces/r1001.py"),
+        ],
+    );
 
     assert_eq!(
         packages.module_name("src/mcmr/rules/python/contextual/interfaces/r1001.py"),
@@ -152,11 +195,14 @@ fn a_nested_regular_package_below_a_namespace_keeps_the_outer_package_root() {
 
 #[test]
 fn a_split_namespace_is_not_hidden_by_a_regular_package_below_it() {
-    let packages = Packages::of(&[
-        document("src/api/mcmr/__init__.py"),
-        document("src/rules/mcmr/rules/general/deterministic/coupling/__init__.py"),
-        document("src/rules/mcmr/rules/general/deterministic/architecture/r0010.py"),
-    ]);
+    let packages = Packages::of(
+        Path::new("repo"),
+        &[
+            document("src/api/mcmr/__init__.py"),
+            document("src/rules/mcmr/rules/general/deterministic/coupling/__init__.py"),
+            document("src/rules/mcmr/rules/general/deterministic/architecture/r0010.py"),
+        ],
+    );
 
     assert_eq!(
         packages.module_name("src/rules/mcmr/rules/general/deterministic/architecture/r0010.py"),
@@ -166,13 +212,16 @@ fn a_split_namespace_is_not_hidden_by_a_regular_package_below_it() {
 
 #[test]
 fn fully_regular_split_namespace_branches_keep_the_shared_outer_package() {
-    let packages = Packages::of(&[
-        document("src/api/mcmr/__init__.py"),
-        document("src/rules/mcmr/rules/general/__init__.py"),
-        document("src/rules/mcmr/rules/general/architecture/r0010.py"),
-        document("src/rules/mcmr/rules/python/__init__.py"),
-        document("src/rules/mcmr/rules/python/imports/r0005.py"),
-    ]);
+    let packages = Packages::of(
+        Path::new("repo"),
+        &[
+            document("src/api/mcmr/__init__.py"),
+            document("src/rules/mcmr/rules/general/__init__.py"),
+            document("src/rules/mcmr/rules/general/architecture/r0010.py"),
+            document("src/rules/mcmr/rules/python/__init__.py"),
+            document("src/rules/mcmr/rules/python/imports/r0005.py"),
+        ],
+    );
 
     assert_eq!(
         packages.module_name("src/rules/mcmr/rules/general/architecture/r0010.py"),

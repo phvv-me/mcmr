@@ -18,7 +18,7 @@ where
     deliver_history(request, root, scope, delivery)?;
     deliver_routes(request, root, scope, delivery)?;
     deliver_manuscripts(request, root, scope, delivery)?;
-    deliver_organization(request, documents, delivery)
+    deliver_organization(request, documents, root, delivery)
 }
 
 fn deliver_interop<Emit>(
@@ -114,13 +114,14 @@ where
 fn deliver_organization<Emit>(
     request: &Request,
     documents: &[discovery::Document],
+    root: &std::path::Path,
     delivery: &mut Delivery<Emit>,
 ) -> Result<(), String>
 where
     Emit: FnMut(String, Vec<serde_json::Value>) -> Result<(), String>,
 {
     if request.wants("Enum") || request.wants("SymbolFact") {
-        let packages = discovery::Packages::of(documents);
+        let packages = discovery::Packages::of(root, documents);
         let organization = organization::Organization::of(documents, &packages);
         if request.wants("Enum") {
             delivery.send("Enum".to_string(), vec![organization.enum_fact()])?;

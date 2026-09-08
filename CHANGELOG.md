@@ -51,6 +51,10 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 
 ### Fixed
 
+- Scanning a Python package itself retains the scan-root `__init__.py` and package name.
+  Valid sibling and nested relative imports no longer appear out of bounds or leave their
+  referenced classes falsely unreachable. Genuine imports beyond the package remain findings.
+
 - Native file modules and include targets retain their extensions. A source including its
   same-named header no longer produces a false `ALL-ARCH0002` self-import cycle. Shared
   declaration scopes, genuine self-includes, and cycles between headers are preserved.

@@ -35,6 +35,9 @@ def pytest_import_isolation(
     Pytest notes that `importlib` prevents test modules from importing one another unless test
     utilities are moved into an importable application package.
 
+    A tool-only manifest without local pytest settings uses the nearest enclosing explicit pytest
+    configuration. A local configuration retains its own import mode and source location.
+
     Examples
     --------
     Bad

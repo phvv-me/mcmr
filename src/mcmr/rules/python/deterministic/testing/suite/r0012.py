@@ -39,6 +39,10 @@ def pytest_configuration_strictness(
     `partial` as acceptable. Environment-only `PYTEST_ADDOPTS` is not assumed because it is not a
     reproducible repository setting.
 
+    A tool-only manifest without local pytest settings uses the nearest enclosing explicit pytest
+    configuration. An explicit local pytest table is checked on its own, not merged with parent
+    strictness controls that pytest would not inherit.
+
     Examples
     --------
     Bad

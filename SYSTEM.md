@@ -74,6 +74,20 @@ permission boundary. A complete owner graph does not establish global absence of
 external API consumers. This feature neither discovers house-specific project
 layouts nor changes the existing reach policies.
 
+For a local `pyproject.toml` without `[project]`, project facts read ancestor
+manifests up to the nearest `[project]` declaration. Its Python minimum supplies
+omitted local checker targets. Explicit local targets, including ty's environment
+target, remain conflict-checked. An independently declared project cannot borrow
+an enclosing declaration to hide its own missing metadata.
+
+Pytest takes the nearest explicit supported `tool.pytest` configuration, without
+merging a local table with parent controls. The nearest coverage settings remain
+separate. This bounded inheritance frontend reads `pyproject.toml` fields, not
+pytest INI files or runtime `-c` overrides. Evidence names the consulted manifests
+and retains the relevant settings. A local tool-only manifest is the diagnostic
+anchor because repair spans cannot escape the owner. Ancestor metadata enters
+the analysis fingerprint; ancestor source never enters the graph.
+
 C, C++, and CUDA file modules retain their filename extensions in the include graph. Symbol
 scopes retain the shared filename stem so header declarations and source definitions still merge.
 An include belongs to its source file, including when written inside a shared namespace.

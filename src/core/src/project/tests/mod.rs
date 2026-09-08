@@ -121,6 +121,59 @@ fn a_requires_python_specifier_yields_its_minimum_minor() {
 }
 
 #[test]
+fn tool_only_projects_inherit_metadata_not_parent_source() {
+    let directory = tempfile::tempdir().expect("temporary workspace opens");
+    let root = directory.path();
+    std::fs::write(
+        root.join("pyproject.toml"),
+        concat!(
+            "[project]\nrequires-python = '>=3.14'\n",
+            "[tool.pytest.ini_options]\nstrict = true\naddopts = '--import-mode=importlib'\n",
+        ),
+    )
+    .expect("parent manifest is writable");
+    let owner = root.join("hooks");
+    std::fs::create_dir(&owner).expect("owner is writable");
+    std::fs::write(
+        owner.join("pyproject.toml"),
+        "[tool.ty.environment]\nextra-paths = ['..']\n",
+    )
+    .expect("local tools are writable");
+    let selected = [
+        "ProjectConfigurationFact".to_string(),
+        "TestSuiteFact".to_string(),
+    ];
+    let built = facts(&owner, &selected, &Inventory::default()).expect("inheritance is valid");
+    let suite = &built[0].1;
+    let project = &built[1].1;
+    assert_eq!(project["python_target"]["project_minimum_minor"], 14);
+    assert_eq!(project["python_target"]["tool_target_minors"]["ty"], 14);
+    assert_eq!(suite["strict_controls"]["strict_markers"], true);
+    assert_eq!(suite["import_mode"], "importlib");
+    assert_eq!(suite["span"]["path"], "pyproject.toml");
+    assert!(
+        suite["evidence"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["source"] == "../pyproject.toml")
+    );
+    std::fs::write(
+        owner.join("pyproject.toml"),
+        concat!(
+            "[tool.ty.environment]\npython-version = '3.13'\n",
+            "[tool.pytest.ini_options]\nstrict_markers = true\n",
+        ),
+    )
+    .expect("conflicting local settings are writable");
+    let built =
+        facts(&owner, &selected, &Inventory::default()).expect("local settings are measured");
+    assert_eq!(built[1].1["python_target"]["tool_target_minors"]["ty"], 13);
+    assert_eq!(built[0].1["strict_controls"]["strict_config"], false);
+    assert_eq!(built[0].1["import_mode"], "prepend");
+}
+
+#[test]
 fn the_test_suite_reads_its_strictness_from_the_manifest() {
     let manifest: Table = r#"
 [tool.pytest.ini_options]

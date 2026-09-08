@@ -34,6 +34,10 @@ def minimum_python_declaration(
     developer machines and CI. Packaging upper bounds and exclusions remain valid when they
     preserve the declared minimum.
 
+    A tool-only manifest without `[project]` may inherit the nearest enclosing project's Python
+    minimum. Omitted local tool targets inherit that declaration; explicit local targets are
+    still checked for conflicts. Ancestor manifests are evidence, not additional source scope.
+
     Examples
     --------
     Good

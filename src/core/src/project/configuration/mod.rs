@@ -6,6 +6,7 @@ use toml::Table;
 use super::fact_identity::FactIdentity;
 
 mod assignments;
+pub(super) mod inheritance;
 mod python_target;
 mod test_suite;
 mod text;
@@ -18,7 +19,7 @@ pub(super) use python_target::minor;
 pub(super) use test_suite::test_suite;
 
 /// State what a repository configures about itself, which is its policy and its Python target.
-pub(super) fn configuration(manifest: &Table, documents: &[Document]) -> Value {
+pub(super) fn configuration(manifest: &Table, documents: &[Document], inherited: bool) -> Value {
     JsonObject::new(
         FactIdentity {
             key: "configuration:pyproject",
@@ -28,6 +29,6 @@ pub(super) fn configuration(manifest: &Table, documents: &[Document]) -> Value {
     )
     .merged(json!({
         "assignments": configuration_assignments(documents),
-        "python_target": python_target(manifest),
+        "python_target": python_target(manifest, inherited),
     }))
 }

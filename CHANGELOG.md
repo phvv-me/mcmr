@@ -8,6 +8,11 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 
 ### Added
 
+- Tool-only Python manifests inherit enclosing project metadata without importing
+  the enclosing source graph. Local Python targets and pytest settings retain
+  conflict checks. Configuration evidence identifies ancestor paths, metadata
+  changes invalidate the analysis identity, and repair spans stay owner-local.
+
 - Repeatable `check --boundaries` separates nested project owners while retaining
   the complete owning graph and root manifest facts. Shared native scope governs
   discovery, history, routes, manuscripts, cross-language reads, and TypeScript

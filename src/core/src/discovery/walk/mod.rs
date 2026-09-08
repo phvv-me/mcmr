@@ -54,6 +54,7 @@ impl<'a> DiscoveryWalk<'a> {
             self.visit(entry, &mut walker)?;
         }
         self.hash_head();
+        crate::project::hash_inherited(self.root, &mut self.fingerprint)?;
         self.documents
             .sort_by(|left, right| left.relative.cmp(&right.relative));
         self.guides

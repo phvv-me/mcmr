@@ -80,6 +80,10 @@ This is owner coverage, not a claim that external clients do not use a public AP
 Boundaries do not expand repair permissions. Shared TypeScript configuration that
 crosses one requires an explicitly shared analysis owner.
 
+A tool-only `pyproject.toml` can inherit its enclosing project's Python version and
+pytest configuration. Explicit local targets still face conflict checks. Reports
+cite the configuration sources without adding enclosing source files to the scan.
+
 Write every verdict to DataHub, then read the history before the next agent changes the code.
 
 ```sh

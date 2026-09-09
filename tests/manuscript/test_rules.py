@@ -36,7 +36,7 @@ from mcmr.rules.general.deterministic.manuscript.order import (
 from mcmr.rules.general.deterministic.manuscript.prose import (
     paragraph_longer_than_a_reader_holds,
     section_title_that_is_not_a_noun_phrase,
-    sentence_longer_than_a_reader_holds,
+    sentence_length_outside_house_bounds,
 )
 from mcmr.rules.general.deterministic.manuscript.structure import (
     float_without_a_text_reference,
@@ -334,24 +334,40 @@ def test_a_symbol_introduced_in_two_sections_without_a_declared_sense_is_reporte
     assert measured(symbol_introduced_under_two_meanings, same_section) == 1
 
 
-def test_a_sentence_over_the_ceiling_is_reported_and_table_prose_is_not() -> None:
-    """A cell holding a whole clause is not read at the pace running prose is."""
+def test_sentence_bounds_locate_openings_and_exclude_non_narrative_content() -> None:
+    """Both bounds apply to prose, with separate context for paragraph openings."""
     fact = manuscript(
         ManuscriptFact,
         paragraphs=[
             ManuscriptParagraph(reading_order=1, line=1),
             ManuscriptParagraph(reading_order=2, line=2, in_cells=True),
+            ManuscriptParagraph(reading_order=3, line=3, in_float=True),
+            ManuscriptParagraph(reading_order=4, line=4, in_bibliography=True),
         ],
         sentences=[
             ManuscriptSentence(reading_order=1, word_count=60, text="A long sentence", line=1),
             ManuscriptSentence(reading_order=1, word_count=12, text="A short one", line=1),
+            ManuscriptSentence(
+                reading_order=1, index=1, word_count=4, text="The CPU comparison matters.", line=1
+            ),
+            ManuscriptSentence(
+                reading_order=1,
+                index=2,
+                word_count=10,
+                text="Exactly ten words remain inside the requested house style bounds.",
+                line=1,
+            ),
+            ManuscriptSentence(reading_order=1, index=3, word_count=1, text="·.", line=1),
             ManuscriptSentence(reading_order=2, word_count=60, text="A long cell", line=2),
+            ManuscriptSentence(reading_order=3, word_count=2, text="Figure caption.", line=3),
+            ManuscriptSentence(reading_order=4, word_count=2, text="Source metadata.", line=4),
         ],
     )
 
-    assert measured(sentence_longer_than_a_reader_holds, fact) == 1
-    assert messages(sentence_longer_than_a_reader_holds, fact) == [
-        "a sentence of 60 words opens `A long sentence`"
+    assert measured(sentence_length_outside_house_bounds, fact) == 2
+    assert messages(sentence_length_outside_house_bounds, fact) == [
+        "a paragraph-opening sentence of 60 words opens `A long sentence`",
+        "a sentence of 4 words opens `The CPU comparison matters.`",
     ]
 
 

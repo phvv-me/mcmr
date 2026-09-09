@@ -49,6 +49,10 @@ Expected queue absence is not an ignored error. `ALL-ERRO0001` distinguishes a r
 `queue.Empty` catch around a single queue read from mixed catches or unrelated failed work.
 Unresolved wrappers remain findings; there is no exception-name allowlist.
 
+Manuscript sentence checks use configurable house bounds of 10–48 words, marking paragraph
+openings separately. Captions, table cells, code, and bibliography metadata do not count as
+narrative prose; the checker reports wording without rewriting the author's argument.
+
 MCMR reads Python, Rust, TypeScript, C, C++, and CUDA. It also reads LaTeX manuscripts, in the
 order a reader meets them across every included file, and reports defects of reading order,
 statement structure, notation, prose and evidence. That lane never repairs.

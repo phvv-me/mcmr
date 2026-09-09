@@ -43,6 +43,51 @@ fn a_comment_contributes_nothing_a_reader_reads() {
 }
 
 #[test]
+fn unnumbered_float_captions_do_not_become_narrative_sentences() {
+    let manuscript = assembled(
+        "\\documentclass{article}\\begin{document}The CPU comparison matters.\
+         \\captionof{figure}{Short caption.}The following paragraph has its own opening.\
+         \\begin{description}\\item[Short label.]A real list sentence.\\end{description}\
+         \\end{document}",
+    );
+    let skeleton = super::skeleton::Skeleton::build(&manuscript, &Walk::of(&manuscript));
+    let sentences = skeleton["sentences"].as_array().unwrap();
+    assert_eq!(sentences.len(), 3);
+    assert_eq!(sentences[0]["text"], "The CPU comparison matters.");
+    assert_eq!(sentences[1]["index"], 0);
+    assert_eq!(sentences[2]["text"], "A real list sentence.");
+}
+
+#[test]
+fn literal_prose_macros_and_layout_arguments_keep_sentence_counts_honest() {
+    let manuscript = assembled(
+        "\\documentclass{article}\\newcommand{\\method}{Our method}\
+         \\newcommand{\\baseline}{the CPU baseline~\\cite{baseline}}\\begin{document}\
+         \\method{} compares measured tokenization rates against \\baseline{} under matched conditions.\
+         \\bibliographystyle{article}\\bibliography{references}\
+         \\crefalias{section}{appendix}\\numberwithin{figure}{section}\
+         \\begin{adjustbox}{max width=\\linewidth}\\end{adjustbox}\
+         \\captionsetup{type=table,hypcap=false}\\end{document}",
+    );
+    let skeleton = super::skeleton::Skeleton::build(&manuscript, &Walk::of(&manuscript));
+    let sentences = skeleton["sentences"].as_array().unwrap();
+    assert_eq!(sentences.len(), 1);
+    assert_eq!(sentences[0]["word_count"], 14); // The citation is one shared-reader placeholder.
+    assert!(
+        sentences[0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("Our method")
+    );
+    assert!(text::literal_macro("\\unknown{not safely expandable}").is_none());
+    assert_eq!(text::words("10~words  in~this~counter"), 5);
+    assert_eq!(
+        text::sentences("Def. 1 supplies the input. Defs. 2 and 3 supply bounds.").len(),
+        2
+    );
+}
+
+#[test]
 fn a_display_environment_is_one_math_span_and_keeps_its_label() {
     let elements = read("\\begin{equation}\\label{eq:one} a = b \\end{equation}");
 

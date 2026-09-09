@@ -1,7 +1,26 @@
 /// Abbreviations whose trailing dot never ends a sentence in mathematical prose.
 const ABBREVIATIONS: &[&str] = &[
-    "al", "cf", "e.g", "eq", "etc", "fig", "i.e", "no", "resp", "sec", "tab", "thm", "vs",
+    "al", "cf", "def", "defs", "e.g", "eq", "eqs", "etc", "fig", "figs", "i.e", "no", "prop",
+    "resp", "sec", "secs", "tab", "thm", "vs",
 ];
+
+/// Read a zero-argument prose macro without interpreting arbitrary TeX commands.
+pub fn literal_macro(replacement: &str) -> Option<String> {
+    let elements = super::latex::LatexReader::read(&crate::lexical::CorpusFile {
+        path: String::new(),
+        text: replacement.to_string(),
+    });
+    let mut body = String::new();
+    for located in elements {
+        match located.element {
+            super::element::Element::Text(text) => body.push_str(&text),
+            super::element::Element::Citation { .. }
+            | super::element::Element::Emphasis { .. } => {}
+            _ => return None,
+        }
+    }
+    (!body.trim().is_empty()).then(|| format!(" {} ", body.trim()))
+}
 
 /// Split one run of prose into the sentences a reader hears.
 ///
@@ -50,7 +69,9 @@ pub fn numbers(text: &str) -> Vec<String> {
 
 /// Count the whitespace separated words one run of text holds.
 pub fn words(text: &str) -> usize {
-    text.split_whitespace().count()
+    text.split(|character: char| character.is_whitespace() || character == '~')
+        .filter(|word| !word.is_empty())
+        .count()
 }
 
 /// Whether the dot at one index closes a sentence rather than a number or an abbreviation.

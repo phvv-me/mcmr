@@ -12,6 +12,7 @@ use std::collections::BTreeMap;
 /// A column specification is layout rather than prose, so reading it as running text would put
 /// `@{}p{4.6cm}` in the middle of a sentence and make every measurement of that sentence wrong.
 const ARGUED: &[(&str, usize)] = &[
+    ("adjustbox", 1),
     ("array", 1),
     ("longtable", 1),
     ("minipage", 1),
@@ -123,6 +124,11 @@ impl LatexReader {
 
     /// Apply one named command, which either emits an element or opens a math span.
     fn dispatch(&mut self, name: &str, cursor: &mut Cursor<'_>, line: usize) {
+        if name == "captionof" {
+            drop(BRACE.read(cursor));
+            self.caption(cursor, line);
+            return;
+        }
         match Command::of(name) {
             Command::EnvironmentOpen => self.open_environment(cursor, line),
             Command::EnvironmentClose => self.close_environment(cursor, line),
@@ -163,7 +169,8 @@ impl LatexReader {
         while BRACKET.read(cursor).is_some() {}
         let count = match name {
             "addcontentsline" | "definecolor" => 3,
-            "addtolength" | "setcounter" | "setlength" | "pdfbookmark" => 2,
+            "addtolength" | "setcounter" | "setlength" | "pdfbookmark" | "crefalias"
+            | "numberwithin" => 2,
             _ => 1,
         };
         for _ in 0..count {

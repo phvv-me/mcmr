@@ -6,6 +6,7 @@ use super::role::Role;
 use super::text;
 use super::walk::Walk;
 use serde_json::{Value, json};
+use std::collections::BTreeMap;
 
 /// How far past a statement a proof or a run-in head still reads as that statement's argument.
 const HEAD_REACH: usize = 6;
@@ -66,10 +67,20 @@ impl Skeleton {
     }
 
     /// Add one element's prose to the paragraph, returning where that paragraph opened.
-    fn accumulate(paragraph: &mut String, opened: usize, met: (&Located, usize)) -> usize {
+    fn accumulate(
+        paragraph: &mut String,
+        opened: usize,
+        met: (&Located, usize),
+        macros: &BTreeMap<String, String>,
+    ) -> usize {
         let (located, order) = met;
-        let Element::Text(body) = &located.element else {
-            return opened;
+        let body = match &located.element {
+            Element::Text(body) => body,
+            Element::MacroUse(name) => match macros.get(name) {
+                Some(body) => body,
+                None => return opened,
+            },
+            _ => return opened,
         };
         let started = if paragraph.trim().is_empty() {
             order
@@ -178,13 +189,20 @@ impl Skeleton {
     fn collect(&mut self, manuscript: &Manuscript, walk: &Walk) {
         let mut paragraph = String::new();
         let mut opened = 0usize;
+        let mut macros = BTreeMap::new();
         for (order, located) in manuscript.elements.iter().enumerate() {
+            if let Element::Macro { name, replacement } = &located.element {
+                macros.remove(name);
+                if let Some(body) = text::literal_macro(replacement) {
+                    macros.insert(name.clone(), body);
+                }
+            }
             let position = walk.positions[order];
             if !position.in_body {
                 continue;
             }
             self.element(located, &position);
-            opened = Self::accumulate(&mut paragraph, opened, (located, order));
+            opened = Self::accumulate(&mut paragraph, opened, (located, order), &macros);
             if Self::ends_paragraph(&located.element) {
                 let body = std::mem::take(&mut paragraph);
                 self.close_paragraph(opened, (manuscript, walk), body);

@@ -521,6 +521,16 @@ Nothing in this family repairs anything. A repair to code is proved by reparsing
 the rule, and neither proof exists for prose, where a wrong repair to an argument is far harder to
 see than a wrong repair to a function. The lane reports.
 
+`ALL-MANU0010` checks narrative sentences against `minimum_words=10` and
+`maximum_words=48`. These are configurable house choices, not universal writing standards.
+Findings identify paragraph openings from the shared sentence index; subsequent sentences
+receive the same bounds. Float content, table cells, bibliography entries, and math-only
+fragments are excluded. Headings, captions (including LaTeX `\\captionof`), literal code,
+and list labels never enter the narrative sentence stream. Narrative list text remains prose.
+Literal zero-argument prose macros contribute their text, including through included preambles;
+unknown macro programs are not executed. As in the existing upper-bound check, math and citation
+placeholders each count as one word. Nonbreaking spaces separate words like ordinary spaces.
+
 ## Contextual rules
 
 Contextual rules build typed candidates from local tables. The engine batches candidates and calls

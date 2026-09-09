@@ -9,8 +9,8 @@ class EnumMember(FrozenModel):
 
     name: str = Field(description="declared name of the enum member")
     explicit_value: str | int = Field(description="literal value the source assigns to the member")
-    standard_auto_value: str | int = Field(
-        description="value the standard `auto()` implementation would generate at this position"
+    standard_auto_value: str | int | None = Field(
+        description="standard `auto()` value at this position, or None when it is not proven"
     )
     value_node: NodeRef | None = Field(
         default=None, description="syntax node the member's value expression occupies"

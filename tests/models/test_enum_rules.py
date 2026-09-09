@@ -106,6 +106,36 @@ def test_parallel_enum_metadata_cases() -> None:
     assert value(fact_table(unresolved), parallel_enum_metadata) is False
 
 
+def test_numeric_enum_autofix_requires_a_proven_matching_value() -> None:
+    """Unknown generation and a first Flag value of two are not redundant."""
+    subjects = [
+        Enum(
+            key=f"flag-{index}",
+            span=_SPAN,
+            enums=[
+                EnumAnalysis(
+                    name="Feature",
+                    kind="flag",
+                    members=[
+                        EnumMember(
+                            name="SPANS",
+                            explicit_value=explicit,
+                            standard_auto_value=automatic,
+                        )
+                    ],
+                )
+            ],
+        )
+        for index, (explicit, automatic) in enumerate([(2, 1), (1, 1), (2, None)])
+    ]
+
+    assert values(query(fact_table(subjects[0], *subjects[1:]), redundant_enum_value)) == [
+        False,
+        True,
+        False,
+    ]
+
+
 def test_shared_enum_placement_cases() -> None:
     subject = Enum(
         key="enums",

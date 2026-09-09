@@ -15,6 +15,8 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
   Literal prose macros now contribute their words, while bibliography and layout arguments
   remain metadata. Nonbreaking spaces and common numbered-reference abbreviations retain
   their intended word and sentence boundaries.
+  A closing parenthesis after a citation placeholder is no longer mistaken for an
+  author's initial, preventing adjacent sentences from being joined.
 
 - Literal local Typst imports resolve without inserting module definitions as
   prose. Imported bindings retain shadowing, and missing targets or cyclic

@@ -100,7 +100,8 @@ fn is_abbreviation(before: &[char]) -> bool {
         .rev()
         .collect();
     let lowered = word.to_lowercase();
-    word.chars().count() == 1 || ABBREVIATIONS.contains(&lowered.as_str())
+    (word.chars().count() == 1 && word.chars().all(char::is_alphabetic))
+        || ABBREVIATIONS.contains(&lowered.as_str())
 }
 
 /// Keep one candidate number after removing punctuation that only ended a sentence.

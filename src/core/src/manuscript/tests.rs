@@ -85,6 +85,10 @@ fn literal_prose_macros_and_layout_arguments_keep_sentence_counts_honest() {
         text::sentences("Def. 1 supplies the input. Defs. 2 and 3 supply bounds.").len(),
         2
     );
+    assert_eq!(
+        text::sentences("The GPU path preserves these boundaries ( · ). Its timings differ.").len(),
+        2
+    );
 }
 
 #[test]

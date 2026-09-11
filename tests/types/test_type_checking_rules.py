@@ -20,6 +20,7 @@ from mcmr.facts import (
 from mcmr.plugins import Fact, RepositoryTables, Table, fact_table
 from mcmr.query import RuleQuery
 from mcmr.rules.python import (
+    cast_calls,
     future_annotations_import,
     minimum_python_declaration,
     nullable_boolean_annotation,
@@ -351,6 +352,15 @@ def third(key):
     ) == (3, 1, "a.py", True)
     assert isolated.findings is not None
     assert (integer_total(isolated), isolated.findings.rows.collect().is_empty()) == (0, True)
+    every = native_query(cast_calls, cast("Table[Fact]", casts))
+    assert every.findings is not None
+    every_findings = every.findings.rows.collect()
+    assert (
+        integer_total(every),
+        every_findings.height,
+        every_findings.get_column("path").to_list(),
+        "`cast` to `Type` asserts about `table.get(key)`" in every_findings.item(0, "message"),
+    ) == (3, 3, ["a.py", "b.py", "c.py"], True)
 
     conversions = call_table(
         {

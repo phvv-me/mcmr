@@ -818,7 +818,7 @@ requires-dist = [
     { name = "cyclopts", specifier = ">=4" },
     { name = "httpx", specifier = ">=0.28,<1" },
     { name = "httpx2", specifier = ">=2.12,<3" },
-    { name = "huggingface-hub", specifier = ">=0.34,<1" },
+    { name = "huggingface-hub", specifier = ">=0.34,<2" },
     { name = "openai", specifier = ">=2.53,<4" },
     { name = "packaging", specifier = ">=26,<27" },
     { name = "pathspec", specifier = ">=1.1,<2" },
@@ -826,7 +826,7 @@ requires-dist = [
     { name = "polars", specifier = ">=1.41,<2" },
     { name = "pydantic", specifier = ">=2.13,<3" },
     { name = "rich", specifier = ">=14,<16" },
-    { name = "sqlglot", specifier = ">=27,<28" },
+    { name = "sqlglot", specifier = ">=30,<31" },
     { name = "tron-python", specifier = ">=0.1,<0.2" },
 ]
 
@@ -1272,11 +1272,11 @@ wheels = [
 
 [[package]]
 name = "sqlglot"
-version = "27.29.0"
+version = "30.19.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d1/50/766692a83468adb1bde9e09ea524a01719912f6bc4fdb47ec18368320f6e/sqlglot-27.29.0.tar.gz", hash = "sha256:2270899694663acef94fa93497971837e6fadd712f4a98b32aee1e980bc82722", size = 5503507, upload-time = "2025-10-29T13:50:24.594Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fe/48/996687ba146c07deee6cc3528738e645d2e72805e023ed9672b483648378/sqlglot-30.19.0.tar.gz", hash = "sha256:6fcfbe93c5ee76e07faadf0930dd119eebb545c4f317f8e4f205f177305d8b08", size = 6042945, upload-time = "2026-09-22T15:19:58.64Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9b/70/20c1912bc0bfebf516d59d618209443b136c58a7cff141afa7cf30969988/sqlglot-27.29.0-py3-none-any.whl", hash = "sha256:9a5ea8ac61826a7763de10cad45a35f0aa9bfcf7b96ee74afb2314de9089e1cb", size = 526060, upload-time = "2025-10-29T13:50:22.061Z" },
+    { url = "https://files.pythonhosted.org/packages/10/94/094d83ec808b50374f33a3024c9e60ca3074595e1f9581c1692591fda81e/sqlglot-30.19.0-py3-none-any.whl", hash = "sha256:b4500fcced395359feea582f09d2d4433bf1f36362a3a9d0d6d5ebbc1f84242e", size = 756203, upload-time = "2026-09-22T15:19:56.761Z" },
 ]
 
 [[package]]

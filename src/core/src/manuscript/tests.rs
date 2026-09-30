@@ -568,3 +568,37 @@ fn typst_import_resolution_refuses_missing_paths_and_cycles() {
             .contains("unresolved Typst")
     );
 }
+
+#[test]
+fn a_symbol_named_in_apposition_carries_that_phrase_as_its_role() {
+    let manuscript = assembled(
+        "\\documentclass{article}\\begin{document}\\section{Values}\
+         At radix $\\beta=2$ a value has a significand.\n\n\
+         \\section{Blocks}The byte budget $\\beta\\in\\mathbb N$ fixes the block width.\
+         The sum of $x$ is exact. Blocks attach scales $\\alpha_j,\\gamma_j$ to their runs.\
+         The total $\\sum_{k=0}^{n}y_k$ reads a relation inside a subscript.\n\n\
+         \\section{Depths}The alignment depth $f\\in\\mathbb N$ counts positions. With depth $f=3$ the\
+         grid is coarse. The absorption inequality $2^{f}<y$ is a use.\\end{document}",
+    );
+    let notation = super::notation::Notation::build(&manuscript, &Walk::of(&manuscript));
+    let roles = |symbol: &str| -> Vec<String> {
+        notation["sites"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|site| site["symbol"] == symbol && site["meaning"] != "")
+            .map(|site| site["meaning"].as_str().unwrap().to_string())
+            .collect()
+    };
+    assert_eq!(roles("\\beta"), ["radix", "byte budget"]);
+    assert!(roles("x").is_empty());
+    assert!(roles("\\alpha_j").is_empty());
+    assert!(roles("y_k").is_empty());
+    let depth = roles("f");
+    assert!(
+        depth.len() == 2 && depth[0] == depth[1],
+        "one meaning, reminded: {depth:?}"
+    );
+    assert!(roles("y").is_empty());
+    assert_eq!(symbols::named("x_{"), ["x_{}"]);
+}

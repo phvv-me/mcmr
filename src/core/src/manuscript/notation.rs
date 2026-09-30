@@ -19,6 +19,23 @@ const SENSES: &[&str] = &["also", "elsewhere", "instead", "sense", "senses"];
 /// How many words back a definition cue still reaches the symbol it introduces.
 const CUE_REACH: usize = 4;
 
+/// The words that open a noun phrase naming the symbol set right after it, `the byte budget $\beta$`.
+const APPOSITION_OPENERS: &[&str] = &[
+    "the", "a", "an", "its", "their", "each", "every", "at", "of", "for", "by", "in", "on", "to",
+    "from", "into", "over", "under", "between", "per", "via", "with",
+];
+
+/// The words that cannot belong to an appositive noun phrase, so meeting one ends the search.
+const APPOSITION_BREAKS: &[&str] = &[
+    "and", "or", "but", "nor", "so", "then", "is", "are", "be", "been", "was", "were", "has",
+    "have", "had", "gives", "give", "returns", "return", "takes", "take", "where", "when",
+    "which", "while", "if", "not", "only", "also", "both", "all", "this", "that", "these",
+    "those", "some", "any", "no", "as", "than", "denote", "denotes", "means",
+];
+
+/// How many words an appositive noun phrase may hold, `the zero exponent` being two.
+const APPOSITION_REACH: usize = 3;
+
 /// What one manuscript calls things, and where it says so.
 ///
 /// The three record families answer the three questions a reader keeps asking. Which symbols are
@@ -33,6 +50,7 @@ pub struct Notation {
     terms: BTreeMap<String, Value>,
     entries: Vec<Value>,
     locals: BTreeSet<String>,
+    appositions: Vec<usize>,
     endpoints: BTreeMap<String, BTreeSet<String>>,
     continued_declaration: bool,
 }
@@ -57,10 +75,12 @@ impl Notation {
             terms: BTreeMap::new(),
             entries: Vec::new(),
             locals: BTreeSet::new(),
+            appositions: Vec::new(),
             endpoints: BTreeMap::new(),
             continued_declaration: false,
         };
         notation.collect(manuscript, walk);
+        notation.merge_appositive_reminders();
         notation.cover_format_parameters();
         notation.cover_vector_components();
         notation.count_term_uses(manuscript, walk);
@@ -404,6 +424,117 @@ impl Notation {
         role.split_whitespace().collect::<Vec<_>>().join(" ")
     }
 
+    /// Read an appositive phrase that repeats another role of the same symbol as that role.
+    ///
+    /// `precision $p$` beside `binary precision $p$`, or `depth` beside `alignment depth`, is a
+    /// reminder of one meaning, not a second one. An apposition whose words all appear in
+    /// another role of its symbol, or whose words contain all of that role's, takes that role.
+    fn merge_appositive_reminders(&mut self) {
+        let words = |meaning: &str| -> BTreeSet<String> {
+            meaning.split_whitespace().map(str::to_string).collect()
+        };
+        for &at in &self.appositions {
+            let symbol = self.sites[at]["symbol"].clone();
+            let own = words(self.sites[at]["meaning"].as_str().unwrap_or_default());
+            let other = self
+                .sites
+                .iter()
+                .enumerate()
+                .filter(|(index, site)| *index != at && site["symbol"] == symbol)
+                .filter_map(|(_, site)| site["meaning"].as_str().filter(|role| !role.is_empty()))
+                .find(|role| {
+                    let theirs = words(role);
+                    own != theirs && (own.is_subset(&theirs) || theirs.is_subset(&own))
+                })
+                .map(str::to_string);
+            if let Some(role) = other {
+                self.sites[at]["meaning"] = json!(role);
+            }
+        }
+    }
+
+    /// Whether a span states its first symbol by a top-level `=` or `\in`, as `\beta=2` or
+    /// `\beta\in\mathbb N` do, with nothing but that symbol on the left: the only spans an
+    /// apposition can name. A bare symbol or an inequality is a use, not an introduction.
+    fn introduces(expanded: &str, first: Option<&String>) -> bool {
+        let Some(first) = first else {
+            return false;
+        };
+        let mut depth = 0usize;
+        let top_level: Vec<usize> = expanded
+            .char_indices()
+            .filter_map(|(at, one)| {
+                match one {
+                    '{' => depth += 1,
+                    '}' => depth = depth.saturating_sub(1),
+                    _ => {}
+                }
+                (depth == 0).then_some(at)
+            })
+            .collect();
+        let Some(at) = ["=", "\\in"]
+            .iter()
+            .flat_map(|relation| {
+                expanded.match_indices(relation).filter(|(at, _)| {
+                    top_level.binary_search(at).is_ok()
+                        && !expanded[at + relation.len()..].starts_with(|one: char| {
+                            relation.starts_with('\\') && one.is_ascii_alphabetic()
+                        })
+                })
+            })
+            .map(|(at, _)| at)
+            .min()
+        else {
+            return false;
+        };
+        let bare = |text: &str| -> String {
+            text.chars()
+                .filter(|one| !one.is_whitespace() && !matches!(one, '{' | '}'))
+                .collect()
+        };
+        bare(&expanded[..at]) == bare(first)
+    }
+
+    /// The noun phrase set in apposition just before a symbol, `byte budget` of
+    /// `the byte budget $\beta\in\mathbb N$` or `radix` of `at radix $\beta=2$`, else nothing.
+    ///
+    /// Apposition is how most prose actually introduces a symbol, with no `let` or `denote` in
+    /// sight, so a reuse introduced that way is invisible to the explicit role phrases alone.
+    /// The phrase is the run of at most three plain words between the symbol and the article or
+    /// preposition that opens it; any other word in that run means the words before the symbol
+    /// are a clause rather than a name, and nothing is read.
+    fn apposition(tail: &str) -> String {
+        let before = super::text::sentences(tail)
+            .last()
+            .map_or("", String::as_str)
+            .trim()
+            .trim_end_matches('·')
+            .trim()
+            .to_lowercase();
+        let clause = before
+            .rsplit([',', ';', ':', '('])
+            .next()
+            .unwrap_or_default();
+        let mut phrase = Vec::new();
+        for word in clause.split_whitespace().rev() {
+            if APPOSITION_OPENERS.contains(&word) {
+                phrase.reverse();
+                return phrase.join(" ");
+            }
+            if phrase.len() == APPOSITION_REACH
+                || APPOSITION_BREAKS.contains(&word)
+                || !word
+                    .chars()
+                    .all(|one| one.is_ascii_alphabetic() || one == '-')
+                || word.ends_with("ly")
+            {
+                return String::new();
+            }
+            phrase.push(word);
+        }
+        String::new()
+    }
+
     /// Record one row of the notation index as an entry per symbol it names.
     ///
     /// The first cell of a row holds the symbols and the rest hold the meaning, so the row is
@@ -452,9 +583,13 @@ impl Notation {
             || (self.continued_declaration && matches!(connective, "and" | "or" | "," | ", and"));
         self.continued_declaration = cued;
         let mut introduced = self.defined(text);
-        let meaning = self.meaning(tail, following);
         let names = self.named(text);
         let expanded = symbols::expanded(text, &self.aliases);
+        let mut meaning = self.meaning(tail, following);
+        let apposed = meaning.is_empty() && !display && Self::introduces(&expanded, names.first());
+        if apposed {
+            meaning = Self::apposition(tail);
+        }
         let infix = (self.language == "latex"
             && ["denotes ", "means "]
                 .iter()
@@ -549,6 +684,9 @@ impl Notation {
                         specialized["symbol"] = json!(endpoint);
                         self.sites.push(specialized);
                     }
+                }
+                if apposed && subject == Some(name) && !meaning.is_empty() {
+                    self.appositions.push(self.sites.len());
                 }
                 self.sites.push(site);
             }

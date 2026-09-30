@@ -663,7 +663,7 @@ fn read_subscript(characters: &[char], index: usize) -> (String, usize) {
         };
         end += 1;
     }
-    let script: String = characters[index + 2..end.saturating_sub(1)]
+    let script: String = characters[index + 2..end.saturating_sub(1).max(index + 2)]
         .iter()
         .collect();
     let quantities = named(&script);

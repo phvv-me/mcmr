@@ -17,7 +17,10 @@ def symbol_introduced_under_two_meanings(
     ----------
     One symbol carrying two meanings is the defect a cold reader loses the most time to, because
     nothing tells them the meaning changed. Compare explicit role phrases such as `let K denote
-    the reduction depth`, after normalizing case, whitespace, and a leading article. Report two
+    the reduction depth`, and noun phrases set in apposition such as `the byte budget $\\beta$`
+    or `at radix $\\beta=2$`, after normalizing case, whitespace, and a leading article. An
+    apposition names only a span that is its symbol alone or that symbol stated by a relation,
+    and only a run of at most three plain words opened by an article or preposition. Report two
     different such roles, even within one section, when the notation index
     separates no senses. Identical definitions and same-meaning reminders do not create a second
     role. An equality alone supplies no evidence that the symbol's meaning changed.
@@ -45,7 +48,8 @@ def symbol_introduced_under_two_meanings(
     Bad
     ~~~
     `$K$` introduced as a reduction depth in chapter one and as a kernel matrix in chapter two,
-    with one index row, returns `1`.
+    with one index row, returns `1`, and so do `At radix $\\beta=2$` and `The byte budget
+    $\\beta\\in\\mathbb N$` under one index row for `$\\beta$`.
 
     Good
     ~~~~

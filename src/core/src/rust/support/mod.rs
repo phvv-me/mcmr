@@ -60,14 +60,7 @@ pub(super) fn rendered_expression(expression: &syn::Expr) -> String {
 
 /// Return the span one piece of syntax covers, in the shape the Python models validate.
 pub(super) fn source_span(source: &Source, span: Span) -> crate::protocol::Span {
-    let (start, end) = (span.start(), span.end());
-    crate::protocol::Span {
-        path: source.relative.clone(),
-        start_line: start.line,
-        start_column: start.column,
-        end_line: end.line,
-        end_column: end.column,
-    }
+    source.span(source.range_location(span.start()..span.end()))
 }
 
 pub(super) fn locate(source: &Source, span: Span) -> Value {

@@ -5,7 +5,7 @@ import pytest
 from mcmr import MCMRConfiguration, Numeric, RulePolicies
 from mcmr.checking.engine import RuleEngine
 from mcmr.commands.quality import Judgment
-from mcmr.facts import CallFact, FunctionFact
+from mcmr.facts import CallFact, FunctionFact, SyntaxFact
 from mcmr.plugins import RepositoryTables
 from mcmr.query.runtime import TableRunner
 from mcmr.table import AnalysisSession
@@ -89,10 +89,11 @@ def policies(rules: Sequence[RuleContract]) -> dict[str, Numeric]:
 
 
 def repository_tables(session: AnalysisSession) -> RepositoryTables:
-    """Combine call and function tables from one analysis session."""
+    """Combine call, function, and syntax tables from one analysis session."""
     tables = RepositoryTables()
     tables.add(session.call_tables())
     tables.add(session.function_tables())
+    tables.add(session.syntax_tables())
     return tables
 
 
@@ -103,7 +104,7 @@ async def test_complete_call_plan_runs_every_rule_once_with_findings_and_repairs
     session = AnalysisSession(
         repository(tmp_path),
         suffixes=[".py", ".cu"],
-        typed_families=(CallFact, FunctionFact),
+        typed_families=(CallFact, FunctionFact, SyntaxFact),
     )
     selected = all_call_rules()
     by_name = {rule.qualname: rule.callable_path for rule in selected}
@@ -153,7 +154,7 @@ async def test_call_plan_preserves_exclusions_and_language_scope(tmp_path: Path)
     session = AnalysisSession(
         repository(tmp_path),
         suffixes=[".py", ".cu"],
-        typed_families=(CallFact, FunctionFact),
+        typed_families=(CallFact, FunctionFact, SyntaxFact),
     )
     selected = all_call_rules()
     exclusions = {rule.callable_path: ["subject.py"] for rule in selected}
@@ -215,7 +216,9 @@ def test_one_table_session_combines_all_requested_native_families(tmp_path: Path
 
     assert judged.engine.rule_execution_count == len(selection)
     assert judged.engine.table_query_count == len(selection)
-    assert judged.engine.provider_read_count == 5
+    # The four families, the per-file language probe, and the SyntaxFact PY-NUMB0004 reads for the
+    # `Constant[...]` fields of a record.
+    assert judged.engine.provider_read_count == 6
     assert set(judged.engine.table_queries_by_family) == {
         "CallFact",
         "ClassFact",

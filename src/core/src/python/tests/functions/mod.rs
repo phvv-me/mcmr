@@ -1,5 +1,7 @@
 use super::*;
 
+mod devices;
+
 fn function_named<Name: AsRef<str>>(source: &str, name: FactName<Name>) -> Value {
     facts_for(source, FactFamily("FunctionFact"))
         .into_iter()
@@ -115,65 +117,6 @@ fn a_decorator_says_what_binds_a_member_and_who_calls_it() {
     assert_eq!(
         function_named(source, FactName("size"))["is_protocol_member"],
         true
-    );
-}
-
-#[test]
-fn cuda_jit_marks_a_kernel_and_a_device_function_in_every_spelling_it_takes() {
-    let source = concat!(
-        "from numba import cuda\n",
-        "from numba.cuda import jit\n\n\n",
-        "@cuda.jit\n",
-        "def add(x, y, out):\n",
-        "    position = cuda.grid(1)\n",
-        "    out[position] = x[position] + y[position]\n\n\n",
-        "@cuda.jit(device=True)\n",
-        "def scale(value, factor):\n",
-        "    return value * factor\n\n\n",
-        "@numba.cuda.jit(device=True, inline=True)\n",
-        "def add_one(value):\n",
-        "    return value + 1\n\n\n",
-        "@jit\n",
-        "def double(value):\n",
-        "    return value * 2\n\n\n",
-        "def plain(value):\n",
-        "    return value\n",
-    );
-
-    assert_eq!(
-        function_named(source, FactName("add"))["is_device_kernel"],
-        true
-    );
-    assert_eq!(
-        function_named(source, FactName("scale"))["is_device_kernel"],
-        true
-    );
-    assert_eq!(
-        function_named(source, FactName("add_one"))["is_device_kernel"],
-        true
-    );
-    assert_eq!(
-        function_named(source, FactName("double"))["is_device_kernel"],
-        true
-    );
-    assert_eq!(
-        function_named(source, FactName("plain"))["is_device_kernel"],
-        false
-    );
-}
-
-#[test]
-fn a_bare_jit_only_counts_when_this_file_imported_it_from_numba_cuda() {
-    let source = concat!(
-        "from jax import jit\n\n\n",
-        "@jit\n",
-        "def transform(value):\n",
-        "    return value\n",
-    );
-
-    assert_eq!(
-        function_named(source, FactName("transform"))["is_device_kernel"],
-        false
     );
 }
 

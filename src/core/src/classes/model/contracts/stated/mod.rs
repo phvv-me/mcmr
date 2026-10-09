@@ -1,4 +1,5 @@
 use super::declared::Declared;
+use crate::python::imports::ImportTargets;
 
 mod shape;
 mod usage;
@@ -13,5 +14,6 @@ pub(in crate::classes) struct Stated {
     pub(in crate::classes) shape: ModuleShape,
     pub(in crate::classes) declared: Vec<Declared>,
     pub(in crate::classes) imported: Vec<(String, String)>,
+    pub(in crate::classes) targets: ImportTargets,
     pub(in crate::classes) usage: ModuleUsage,
 }

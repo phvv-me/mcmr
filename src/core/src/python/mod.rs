@@ -6,6 +6,7 @@ use crate::discovery::{Document, Packages};
 use crate::extraction::RecordTargets;
 use crate::families;
 use crate::functions::FunctionRecord;
+use crate::graph::ImportingModule;
 use crate::protocol::{JsonObject, Stats};
 use crate::source::Source;
 use ruff_python_ast::ModModule;
@@ -32,11 +33,12 @@ impl RecordTargets<'_> {
         &mut self,
         source: &Source,
         module: &ModModule,
+        importer: ImportingModule<'_>,
         facts: &mut BTreeMap<String, Vec<Value>>,
     ) {
         self.extract_attribute_accesses(source, module, facts);
         self.extract_calls(source, module, facts);
-        self.extract_functions(source, module, facts);
+        self.extract_functions(source, module, importer, facts);
         self.extract_string_expressions(source, module, facts);
     }
 
@@ -44,12 +46,13 @@ impl RecordTargets<'_> {
         &mut self,
         source: &Source,
         module: &ModModule,
+        importer: ImportingModule<'_>,
         facts: &mut BTreeMap<String, Vec<Value>>,
     ) {
         if !facts.contains_key("FunctionFact") && self.functions.is_none() {
             return;
         }
-        let records = function_facts(source, module);
+        let records = function_facts(source, module, importer);
         if let Some(stream) = facts.get_mut("FunctionFact") {
             stream.extend(records.iter().cloned().map(FunctionRecord::into_json));
         }
@@ -140,8 +143,10 @@ fn extract_into(
     };
     let source = Source::new(document);
     let module = parsed.syntax();
+    let name = packages.module_name(&document.relative);
+    let importer = ImportingModule::for_document(&name, document);
     deliver_declarations(&source, packages, module, parsed.tokens(), facts);
-    records.extract_all(&source, module, facts);
+    records.extract_all(&source, module, importer, facts);
     deliver_documentation(&source, module, parsed.tokens(), facts);
     deliver_families(&source, module, facts);
 }
@@ -232,6 +237,7 @@ mod comments;
 mod functions;
 pub(crate) mod imports;
 
+pub(crate) use functions::DeviceRole;
 pub use functions::function_facts;
 
 use calls::call_fact;

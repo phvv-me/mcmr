@@ -1,4 +1,5 @@
 use crate::functions::FunctionRecord;
+use crate::graph::ImportingModule;
 use crate::source::Source;
 use crate::walk::{blocks, body_range, docstring, expressions, qualified_name, statements};
 use ruff_python_ast::{Expr, ModModule, Stmt, StmtClassDef, StmtFunctionDef};
@@ -8,8 +9,11 @@ use std::collections::BTreeSet;
 mod analysis;
 mod asyncio;
 mod collector;
+mod device;
 mod references;
 pub(super) mod support;
+
+pub(crate) use device::DeviceRole;
 
 use super::reference_index::ReferenceIndex;
 use collector::FunctionCollector;
@@ -21,8 +25,12 @@ use support::{
     parameters, returns_query_plan, root_name,
 };
 
-pub fn function_facts(source: &Source, module: &ModModule) -> Vec<FunctionRecord> {
-    let mut collector = FunctionCollector::new(source, module);
+pub fn function_facts(
+    source: &Source,
+    module: &ModModule,
+    importer: ImportingModule<'_>,
+) -> Vec<FunctionRecord> {
+    let mut collector = FunctionCollector::new(source, module, importer);
     collect_functions(&mut collector, &module.body, None, "module");
     let mut facts = collector.facts;
     let sites = call_sites(source, module);
@@ -104,20 +112,6 @@ impl<'a> Callable<'a> {
             decorators: decorator_texts(source, &item.decorator_list),
             body: executable(&item.body),
         }
-    }
-
-    /// Whether Numba's CUDA JIT compiles this callable as a kernel or a device function.
-    ///
-    /// `cuda.jit` and `numba.cuda.jit` are read as literal dotted paths, with or without the call
-    /// that carries `device=True`, because the launch contract is the same either way. A bare
-    /// `jit` only counts when this file imported it from `numba.cuda`, since the same short name
-    /// binds an unrelated JIT in `numba` itself and in other libraries.
-    fn is_device_kernel(&self) -> bool {
-        self.decorators.iter().any(|decorator| {
-            let applied = decorator.split('(').next().unwrap_or(decorator).trim();
-            matches!(applied, "cuda.jit" | "numba.cuda.jit")
-                || (applied == "jit" && self.context.import_origin("jit") == Some("numba.cuda"))
-        })
     }
 
     /// Return the cache this callable is stored in, when a decorator puts it in one.
@@ -281,7 +275,10 @@ impl<'a> Callable<'a> {
         fact.semantics.roles.is_abstract = self.wears(&["abstractmethod", "abstractproperty"]);
         fact.semantics.outcomes.is_overload = self.wears(&["overload"]);
         fact.semantics.outcomes.is_polymorphic = self.wears(&["override"]);
-        fact.semantics.outcomes.is_device_kernel = self.is_device_kernel();
+        fact.semantics.outcomes.device_role =
+            DeviceRole::of(&self.decorators, |name| self.context.targets.resolve(name))
+                .as_str()
+                .to_string();
         fact.validation.input.is_pydantic_validator = self.wears(VALIDATOR_DECORATORS);
         fact.presentation.cache_decorator = self.cache_decorator().to_string();
         fact.semantics.outcomes.is_protocol_member =

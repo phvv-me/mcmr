@@ -4,7 +4,7 @@ from ...... import rule
 from ......facts import FunctionFact, SyntaxFact
 from ......query import CountQuery
 from ......table import SyntaxRelation, Table
-from ...gpu_relations import counted_syntax, numba_kernels
+from ...gpu_relations import compiled_declarations, counted_syntax
 
 
 @rule("PY-NUMB0001")
@@ -17,9 +17,10 @@ def kernel_return_value(
 
     Definition
     ----------
-    Report a `return` statement with a value inside a module function compiled by `cuda.jit` as a
-    kernel. CUDA kernels cannot return values to their host caller. Results must be written through
-    an array or device buffer passed to the kernel.
+    Report a `return` statement with a value inside a function compiled as a kernel, by Numba's
+    `cuda.jit` or by patos.cuda's `kernel`, a record's kernel methods included. CUDA kernels cannot
+    return values to their host caller. Results must be written through an array or device buffer
+    passed to the kernel.
 
     Evidence
     --------
@@ -28,8 +29,9 @@ def kernel_return_value(
 
     Exceptions
     ----------
-    A bare `return` is accepted because it only stops the current thread. A function compiled with
-    `device=True` is also accepted because device functions may return values.
+    A bare `return` is accepted because it only stops the current thread. A device function,
+    compiled with `device=True` or patos.cuda's `device`, is also accepted because device functions
+    may return values.
 
     Examples
     --------
@@ -54,14 +56,7 @@ def kernel_return_value(
     Cites "Numba CUDA documentation", writing CUDA kernels and kernel declaration
     https://nvidia.github.io/numba-cuda/user/kernels.html#kernel-declaration
     """
-    facts = subject.lazy(SyntaxRelation.FACTS)
-    kernels = numba_kernels(functions)
-    kernel_facts = facts.join(
-        kernels,
-        left_on=["path", "qualname"],
-        right_on=["path", "name"],
-        how="inner",
-    ).select("fact_id", "qualname")
+    kernel_facts = compiled_declarations(subject, functions, "kernel")
     returned_values = (
         subject.lazy(SyntaxRelation.NODES)
         .filter(pl.col("kind") == "return")

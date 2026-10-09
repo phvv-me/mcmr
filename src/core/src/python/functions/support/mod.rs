@@ -1,5 +1,7 @@
 use super::asyncio::Asyncio;
 use crate::functions::FunctionParameter;
+use crate::graph::ImportingModule;
+use crate::python::imports::ImportTargets;
 use crate::source::Source;
 use crate::walk::{annotation_name, children, docstring};
 use ruff_python_ast::{Expr, ModModule, Parameters, Stmt, StmtClassDef, StmtFunctionDef};
@@ -23,20 +25,17 @@ use vocabulary::{TensorOrigins, is_tensor_library, tensor_origins};
 /// What the file around a callable already answered, read once rather than once per callable.
 pub(super) struct ModuleContext {
     pub(super) asyncio: Asyncio,
+    pub(super) targets: ImportTargets,
     import_origins: TensorOrigins,
 }
 
 impl ModuleContext {
-    pub(super) fn of(module: &ModModule) -> Self {
+    pub(super) fn of(module: &ModModule, importer: ImportingModule<'_>) -> Self {
         Self {
             asyncio: Asyncio::of(module),
+            targets: ImportTargets::of(module, importer),
             import_origins: tensor_origins(module),
         }
-    }
-
-    /// Return the module one bare name in this file was imported from, when it was imported.
-    pub(super) fn import_origin(&self, name: &str) -> Option<&str> {
-        self.import_origins.get(name).map(String::as_str)
     }
 
     /// Whether one annotation names a value carrying a shape and an element type.

@@ -1,5 +1,6 @@
 use super::*;
 
+mod devices;
 mod inheritance;
 mod models;
 

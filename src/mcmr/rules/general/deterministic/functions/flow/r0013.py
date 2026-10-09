@@ -1,7 +1,7 @@
 import polars as pl
 
 from ...... import Numeric, rule
-from ......facts import FunctionFact
+from ......facts import ControlKind, FunctionFact
 from ......query import CountQuery, FindingQuery, RuleQuery
 from ......table import FunctionRelation, Table
 
@@ -12,12 +12,14 @@ def nesting_depth(subject: Table[FunctionFact]) -> CountQuery:
 
     Definition
     ----------
-    Read the nesting depth a provider recorded for every control structure inside one callable and
-    return the deepest one. Depth counts the structures enclosing a structure rather than the
-    structure itself, so the outermost loop of a body sits at depth zero and a condition written
-    inside it sits at depth one. Depth is what forces a reader to hold earlier conditions in mind
-    while reading the innermost statement, which is why it is measured on its own rather than
-    folded into a single complexity number.
+    Read the nesting depth a provider recorded for every condition, loop, switch, and handler
+    inside one callable and return the deepest one. Depth counts the structures enclosing a
+    structure rather than the structure itself, so the outermost loop of a body sits at depth zero
+    and a condition written inside it sits at depth one. Depth is what forces a reader to hold
+    earlier conditions in mind while reading the innermost statement, which is why it is measured
+    on its own rather than folded into a single complexity number. A jump such as `break` or
+    `continue` ends a path rather than opening a level, and an alternative arm sits at the depth of
+    the decision it continues, so neither makes a callable deeper.
 
     Evidence
     --------
@@ -28,17 +30,14 @@ def nesting_depth(subject: Table[FunctionFact]) -> CountQuery:
     ----------
     A callable with no resolved control structure has depth zero. Guard clauses that return early
     keep depth low by construction and are the usual repair, so the measurement rewards them
-    without naming them. A Numba CUDA kernel or device function has depth zero outright, because
-    its nesting is the algorithm the kernel exists to run, and flattening it into a guard clause
-    or a device function spends registers a launch already rations. Depth is measured instead on
-    the host launcher that wraps the kernel.
+    without naming them.
 
     Examples
     --------
     A loop holding a condition holding a second condition returns `2`, since the loop is at depth
-    zero and the two conditions at depths one and two. The same logic written as three sequential
-    guard clauses returns `0`, because no structure encloses another. A callable with no control
-    structure at all also returns `0`.
+    zero and the two conditions at depths one and two. A `break` inside the second condition leaves
+    it at `2`. The same logic written as three sequential guard clauses returns `0`, because no
+    structure encloses another. A callable with no control structure at all also returns `0`.
 
     References
     ----------
@@ -51,6 +50,7 @@ def nesting_depth(subject: Table[FunctionFact]) -> CountQuery:
     """
     depths = (
         subject.lazy(FunctionRelation.CONTROLS)
+        .filter(pl.col("kind").is_in(ControlKind.nesting()))
         .group_by("function_id")
         .agg(pl.col("nesting_depth").max())
     )
@@ -64,11 +64,7 @@ def nesting_depth(subject: Table[FunctionFact]) -> CountQuery:
         )
         .with_columns(pl.col("nesting_depth").fill_null(0))
     )
-    value = (
-        pl.when(pl.col("is_device_kernel"))
-        .then(pl.lit(0, dtype=pl.UInt64))
-        .otherwise(pl.col("nesting_depth"))
-    )
+    value = pl.col("nesting_depth")
     return RuleQuery.integer(
         frame,
         value,

@@ -1,7 +1,7 @@
 use crate::discovery::Document;
 use crate::protocol::{Node, Span};
 use proc_macro2::LineColumn;
-use ruff_source_file::{LineIndex, OneIndexed};
+use ruff_source_file::{LineIndex, OneIndexed, PositionEncoding, SourceLocation};
 use ruff_text_size::{Ranged, TextRange, TextSize};
 use std::ops::Range;
 
@@ -76,17 +76,9 @@ impl Source {
         self.node(kind, ranged.range())
     }
 
-    /// Return the byte range covered by one-based lines and zero-based byte columns.
+    /// Return the byte range covered by proc-macro2 positions, which count characters in a line.
     pub fn range_location(&self, location: Range<LineColumn>) -> TextRange {
-        let start_line = OneIndexed::new(location.start.line).expect("a source line is one based");
-        let end_line = OneIndexed::new(location.end.line).expect("a source line is one based");
-        let start = self.lines.line_start(start_line, &self.text)
-            + TextSize::try_from(location.start.column)
-                .expect("a source column fits the text index");
-        let end = self.lines.line_start(end_line, &self.text)
-            + TextSize::try_from(location.end.column)
-                .expect("a source column fits the text index");
-        TextRange::new(start, end)
+        TextRange::new(self.offset_of(location.start), self.offset_of(location.end))
     }
 
     /// Return the exact source one range covers.
@@ -94,7 +86,7 @@ impl Source {
         &self.text[usize::from(range.start())..usize::from(range.end())]
     }
 
-    /// Return the exact source covered by one-based lines and zero-based byte columns.
+    /// Return the exact source covered by proc-macro2 positions.
     pub fn slice_location(&self, location: Range<LineColumn>) -> &str {
         self.slice(self.range_location(location))
     }
@@ -112,6 +104,17 @@ impl Source {
             end_line: end.line.get(),
             end_column: usize::from(end_column),
         }
+    }
+
+    fn offset_of(&self, position: LineColumn) -> TextSize {
+        self.lines.offset(
+            SourceLocation {
+                line: OneIndexed::new(position.line).expect("a source line is one based"),
+                character_offset: OneIndexed::from_zero_indexed(position.column),
+            },
+            &self.text,
+            PositionEncoding::Utf32,
+        )
     }
 }
 
@@ -137,14 +140,34 @@ mod tests {
             source.slice_location(
                 LineColumn {
                     line: 1,
-                    column: 12
+                    column: 11
                 }..LineColumn {
                     line: 1,
-                    column: 17,
+                    column: 16,
                 }
             ),
             "value"
         );
+    }
+
+    #[test]
+    fn character_columns_after_wide_characters_land_on_character_boundaries() {
+        let text = "style\n    .progress_chars(\"█▓░\")\n";
+        let document = Document {
+            relative: "src/example.rs".to_string(),
+            source: text.to_string(),
+        };
+        let source = Source::new(&document);
+        let range = source.range_location(
+            LineColumn { line: 1, column: 0 }..LineColumn {
+                line: 2,
+                column: 26,
+            },
+        );
+
+        assert_eq!(source.slice(range), "style\n    .progress_chars(\"█▓░\")");
+        let span = source.span(range);
+        assert_eq!((span.end_line, span.end_column), (2, 32));
     }
 
     #[test]

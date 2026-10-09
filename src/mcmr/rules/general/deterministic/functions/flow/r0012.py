@@ -6,13 +6,6 @@ from ......facts import ControlKind, FunctionFact
 from ......query import CountQuery, FindingQuery, RuleQuery
 from ......table import FunctionRelation, Table
 
-_NESTING_KINDS = [
-    ControlKind.CONDITIONAL,
-    ControlKind.LOOP,
-    ControlKind.SWITCH,
-    ControlKind.CATCH,
-]
-
 
 @rule("ALL-FUNC0008", policy=Numeric(maximum=8))
 def cognitive_complexity(
@@ -23,11 +16,13 @@ def cognitive_complexity(
     Definition
     ----------
     Score the control structures a provider resolved inside one callable. Every structure that
-    breaks the linear flow adds one. A structure that also nests adds `nesting_penalty` for each
-    enclosing structure it sits inside. A jump, a recursion, and a sequence of mixed Boolean
-    operators add one without a nesting penalty, because they interrupt reading without adding a
-    level to hold in mind. An alternative arm such as `else` or `elif` adds one on its own since a
-    reader must carry the earlier condition into it.
+    breaks the linear flow adds one. A condition, a loop, a switch, and a handler also add
+    `nesting_penalty` for each enclosing structure they sit inside. A jump such as `break` or
+    `continue` adds one without a nesting penalty, because it interrupts reading without adding a
+    level to hold in mind. An alternative arm such as `else`, `elif`, or `else if` adds one on its
+    own since a reader must carry the earlier condition into it. The paper this score adapts also
+    charges recursion and every sequence of mixed Boolean operators, and no provider resolves
+    either yet, so neither is counted.
 
     The measure is deliberately not cyclomatic complexity. A `switch` over twenty cases reads far
     more easily than three nested conditions, and only a nesting-aware score says so. The provider
@@ -43,10 +38,7 @@ def cognitive_complexity(
     ----------
     A callable whose structures a provider could not resolve scores zero rather than a guess. The
     score is a measurement and a project policy decides the acceptable ceiling, which differs
-    between a parser, a request handler, and a test. A Numba CUDA kernel or device function scores
-    zero outright, because its structures are the algorithm the kernel exists to run, and lowering
-    the score by moving structure into a device function spends registers a launch already
-    rations. The score falls instead on the host launcher that wraps the kernel.
+    between a parser, a request handler, and a test.
 
     Examples
     --------
@@ -70,7 +62,7 @@ def cognitive_complexity(
         .agg(
             pl.len().cast(pl.UInt64).alias("control_count"),
             pl.col("nesting_depth")
-            .filter(pl.col("kind").is_in([str(kind) for kind in _NESTING_KINDS]))
+            .filter(pl.col("kind").is_in(ControlKind.nesting()))
             .sum()
             .alias("nesting_sum"),
         )
@@ -88,11 +80,7 @@ def cognitive_complexity(
             pl.col("nesting_sum").fill_null(0),
         )
     )
-    value = (
-        pl.when(pl.col("is_device_kernel"))
-        .then(pl.lit(0, dtype=pl.UInt64))
-        .otherwise(pl.col("control_count") + pl.col("nesting_sum") * nesting_penalty)
-    )
+    value = pl.col("control_count") + pl.col("nesting_sum") * nesting_penalty
     return RuleQuery.integer(
         frame,
         value,

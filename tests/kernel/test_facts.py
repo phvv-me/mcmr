@@ -147,7 +147,7 @@ def run() -> None:
 
 @needs_kernel
 def test_a_cuda_jit_decorator_marks_a_kernel_or_a_device_function(tmp_path: Path) -> None:
-    """A launched kernel and a called device function both read as one, plain functions do not."""
+    """A launched kernel and a called device function each state their role, plain ones none."""
     (tmp_path / "kernel.py").write_text(
         """from numba import cuda
 
@@ -173,9 +173,9 @@ def plain(value):
     )
     functions = {function.name: function for function in workspace.stream(FunctionFact)}
 
-    assert functions["add"].is_device_kernel
-    assert functions["scale"].is_device_kernel
-    assert not functions["plain"].is_device_kernel
+    assert functions["add"].device_role == "kernel"
+    assert functions["scale"].device_role == "device"
+    assert functions["plain"].device_role == ""
 
 
 @needs_kernel

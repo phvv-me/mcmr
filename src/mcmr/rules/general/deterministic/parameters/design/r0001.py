@@ -39,11 +39,7 @@ def swappable_parameter_pair(subject: Table[FunctionFact]) -> CountQuery:
     whose names make the order self-evident at the call site, such as `width` and `height`, still
     count because the risk lives in the call, not the declaration. The usual repairs are a distinct
     type for each role or a keyword-only contract, which is why a language with mandatory named
-    arguments reports none. A Numba CUDA kernel or device function is excluded too, because it is
-    launched or called from exactly one typed site, `kernel[blocks, threads, stream](*arguments)`
-    or a direct positional call, so a transposed pair is caught by the same review that wrote that
-    site, and the calling convention accepts positional device arrays and scalars only, which
-    forecloses the keyword-only repair this rule otherwise asks for.
+    arguments reports none.
 
     Examples
     --------
@@ -80,12 +76,7 @@ def swappable_parameter_pair(subject: Table[FunctionFact]) -> CountQuery:
     frame = (
         subject.lazy(FunctionRelation.FUNCTIONS)
         .join(counts, left_on="entity_id", right_on="function_id", how="left")
-        .with_columns(
-            pl.when(pl.col("is_device_kernel"))
-            .then(pl.lit(0, dtype=pl.UInt64))
-            .otherwise(pl.col("value").fill_null(0))
-            .alias("value")
-        )
+        .with_columns(pl.col("value").fill_null(0))
     )
     finding_rows = pairs.join(
         subject.lazy(FunctionRelation.FUNCTIONS),

@@ -57,6 +57,25 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 
 ### Changed
 
+- General rules judge CUDA kernels and device functions as the ordinary Python functions they
+  are. `ALL-PARA0001`, `ALL-NAMI0001`, `ALL-FUNC0007`, `ALL-FUNC0008`, `ALL-FUNC0009`,
+  `ALL-FUNC0010`, and `ALL-CONT0004` no longer score them zero, and `ALL-NAMI0001` and
+  `ALL-CONT0004` no longer read `FunctionFact` at all.
+- `FunctionFact.device_role` (`kernel`, `device`, or empty) replaces `is_device_kernel`. It reads
+  every decorator through the absolute name it binds, relative imports resolved against the
+  importing module and re-exports followed through the project's own modules, so Numba's
+  `cuda.jit` and patos.cuda's `kernel`, `device`, and `ptx` are recognized however a project
+  imports them, including `from ..types import kernel` over a module re-exporting
+  `patos.cuda.typed`, while a same-named decorator from another library is not.
+- The Numba rules read that role instead of matching `cuda.jit` text on module functions, so a
+  record's kernel and device methods are judged too. `PY-NUMB0002`, `PY-NUMB0003`, and
+  `PY-NUMB0004` cover device functions as well as kernels, since a barrier, a grid index, and a
+  local array shape mean the same inside both. `PY-NUMB0004` recognizes `cuda.local.array` and
+  `cuda.shared.array` through a re-exported `cuda`, and accepts a shape read from a record's
+  `Constant[...]` field, which patos.cuda compiles as a literal. `PY-NUMB0006` documents that a
+  patos.cuda launch, `kernel[items]` on the current CuPy stream, is not a Numba launch.
+- `ALL-NAMI0001` takes its conventional short names from a `conventional_names` setting with
+  the previous defaults, and reports a name once per declaration rather than once per binding.
 - Raise the default `ALL-CLAS0004` declared-field limit from 7 to 64. Explicit project
   overrides and the underlying field measurement are unchanged.
 - The workspace manifest is `mainboard.toml`. The kernel reads that filename, treats it as
@@ -77,6 +96,17 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
   through a controlled transport, import `httpx2` instead.
 
 ### Fixed
+
+- Rust sources with wide characters before a call on the same line no longer panic the kernel.
+  proc-macro2 counts columns in characters, which the kernel added to a line start as bytes, so
+  a span ending after `"█▓░"` landed inside a character. Rust spans now carry byte columns like
+  every other language.
+
+- `ALL-FUNC0009` measures the depth of conditions, loops, switches, and handlers only, so a
+  `break` or `continue` no longer deepens the callable holding it by one level.
+- `ALL-FUNC0007` and `ALL-FUNC0008` describe what they count. The first counts `if` statements,
+  whose `elif` and `else` arms it never counted, and the second scores jumps and alternative arms
+  but neither recursion nor Boolean operator sequences, which no provider resolves.
 
 - Scanning a Python package itself retains the scan-root `__init__.py` and package name.
   Valid sibling and nested relative imports no longer appear out of bounds or leave their

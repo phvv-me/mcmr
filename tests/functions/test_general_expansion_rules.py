@@ -104,7 +104,10 @@ def call_table(root: Path, name: str, *, source: str) -> Table[Fact]:
 
 
 def test_cognitive_complexity_charges_nesting_but_not_sequence(tmp_path: Path) -> None:
-    """A structure inside another costs more than the same structures written in sequence."""
+    """A structure inside another costs more than the same structures written in sequence.
+
+    The `break` inside the condition adds one to the score and no level to the depth.
+    """
     table = function_table(
         tmp_path,
         """def nested(items):
@@ -133,7 +136,7 @@ def empty():
     assert scalar(penalized, function_id(table, "nested")) == 5
     assert scalar(complexity, function_id(table, "sequential")) == 2
     assert scalar(complexity, function_id(table, "empty")) == 0
-    assert scalar(depth, function_id(table, "nested")) == 2
+    assert scalar(depth, function_id(table, "nested")) == 1
     assert scalar(depth, function_id(table, "empty")) == 0
 
 
@@ -204,17 +207,23 @@ def {name}(
 """
 
 
-def test_numba_cuda_device_kernels_are_excluded_from_five_shape_rules(tmp_path: Path) -> None:
-    """Eight same-typed parameters and deep nesting report nothing for a kernel, plenty plain."""
-    table = function_table(
-        tmp_path,
-        "from numba import cuda, float32\n\n\n"
-        + "@cuda.jit\n"
-        + _CUDA_KERNEL_BODY.format(name="kernel_add")
-        + "\n\n"
-        + _CUDA_KERNEL_BODY.format(name="plain_add"),
-    )
-    kernel = function_id(table, "kernel_add")
+_DEVICE_TWINS = (
+    "from numba import cuda, float32\n"
+    + "from patos.cuda.typed import kernel\n\n\n"
+    + "@cuda.jit\n"
+    + _CUDA_KERNEL_BODY.format(name="numba_add")
+    + "\n\n@kernel(threads=256)\n"
+    + _CUDA_KERNEL_BODY.format(name="patos_add")
+    + "\n\n"
+    + _CUDA_KERNEL_BODY.format(name="plain_add")
+)
+
+
+def test_device_kernels_are_judged_like_their_plain_twin_by_five_shape_rules(
+    tmp_path: Path,
+) -> None:
+    """Eight same-typed parameters and deep nesting cost a kernel what they cost host code."""
+    table = function_table(tmp_path, _DEVICE_TWINS)
     plain = function_id(table, "plain_add")
 
     for rule in (
@@ -226,43 +235,33 @@ def test_numba_cuda_device_kernels_are_excluded_from_five_shape_rules(tmp_path: 
     ):
         query = native_query(table, rule)
 
-        assert scalar(query, kernel) == 0, rule.id
         assert scalar(query, plain) != 0, rule.id
+        for kernel in ("numba_add", "patos_add"):
+            assert scalar(query, function_id(table, kernel)) == scalar(query, plain), rule.id
 
 
-def test_numba_cuda_device_kernels_are_excluded_from_naming_and_nesting_rules(
+def test_device_kernels_are_judged_like_their_plain_twin_by_naming_and_nesting_rules(
     tmp_path: Path,
 ) -> None:
-    """The same kernel and plain twin report nothing and something for the two SyntaxFact rules."""
-    (tmp_path / "subject.py").write_text(
-        "from numba import cuda, float32\n\n\n"
-        + "@cuda.jit\n"
-        + _CUDA_KERNEL_BODY.format(name="kernel_add")
-        + "\n\n"
-        + _CUDA_KERNEL_BODY.format(name="plain_add"),
-        encoding="utf-8",
-    )
-    session = AnalysisSession(
-        tmp_path, suffixes=(".py",), typed_families=(FunctionFact, SyntaxFact)
-    )
-    functions = session.function_tables()
-    syntax = session.syntax_tables()
+    """The kernels and their plain twin report the same for the two SyntaxFact rules."""
+    (tmp_path / "subject.py").write_text(_DEVICE_TWINS, encoding="utf-8")
+    syntax = AnalysisSession(
+        tmp_path, suffixes=(".py",), typed_families=(SyntaxFact,)
+    ).syntax_tables()
     tables = RepositoryTables()
-    tables.add(functions)
     tables.add(syntax)
     facts = syntax.frame(SyntaxRelation.FACTS)
-    kernel = facts.filter(facts["qualname"] == "kernel_add").item(0, "fact_id")
-    plain = facts.filter(facts["qualname"] == "plain_add").item(0, "fact_id")
-
     names = cast(
         "RuleQuery", uninformative_local_name.invoke(tables, settings={}, dependencies={})
     )
     nesting = cast("RuleQuery", deeply_nested_body.invoke(tables, settings={}, dependencies={}))
 
-    assert scalar(names, kernel) == 0
-    assert scalar(names, plain) != 0
-    assert scalar(nesting, kernel) is False
-    assert scalar(nesting, plain) is True
+    for kernel in ("numba_add", "patos_add"):
+        declared = facts.filter(facts["qualname"] == kernel).item(0, "fact_id")
+        plain = facts.filter(facts["qualname"] == "plain_add").item(0, "fact_id")
+
+        assert scalar(names, declared) == scalar(names, plain) == 2
+        assert scalar(nesting, declared) is scalar(nesting, plain) is True
 
 
 def test_configuration_object_parameter_counts_attribute_only_inputs() -> None:

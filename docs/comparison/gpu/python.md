@@ -11,15 +11,28 @@ development moves toward Numba-CUDA-MLIR.
 
 ## Implemented Numba CUDA rules
 
+A function is device code when `FunctionFact.device_role` says so. The kernel reads every decorator
+through the absolute name it binds, so Numba's `cuda.jit` and the patos.cuda dialect built on it,
+`kernel`, `device`, and `ptx` from `patos.cuda.typed`, are recognized through aliases, relative
+imports, and re-exports through the project's own modules. A patos.cuda record's kernel and device
+methods are device code too, and its declaration joins its function by the decorator both start
+at, so `Record.method` meets `method`.
+
 | Rule | Question answered | Typed evidence |
 | --- | --- | --- |
-| `PY-NUMB0001` | Does a kernel return a value to its host caller | `SyntaxFact` joined with `FunctionFact` decorators |
-| `PY-NUMB0002` | Is a block barrier nested in divergent control flow | syntax subtree intervals inside decorated kernels |
+| `PY-NUMB0001` | Does a kernel return a value to its host caller | `SyntaxFact` joined with `FunctionFact.device_role` by definition span |
+| `PY-NUMB0002` | Is a block barrier nested in divergent control flow | syntax subtree intervals inside kernels and device functions |
 | `PY-NUMB0003` | Is a grid index never read by bounded control flow | binding, call, name, branch, and loop syntax relations |
-| `PY-NUMB0004` | Does a local or shared array shape depend on a kernel parameter | call expressions joined with kernel parameters and source bounds |
+| `PY-NUMB0004` | Does a local or shared array shape depend on a kernel parameter | call expressions joined with parameters, source bounds, and a record's `Constant` fields |
 | `PY-NUMB0005` | Does a transfer omit the stream used by its module | resolved calls, positional arguments, and keywords |
-| `PY-NUMB0006` | Does a real decorated kernel launch omit its stream | call, index, collection, decorator, and module stream relations |
+| `PY-NUMB0006` | Does a real decorated kernel launch omit its stream | call, index, collection, device role, and module stream relations |
 | `PY-NUMB0007` | Does a stream-using module wait for every device stream | resolved stream creation and `cuda.synchronize` calls |
+
+The patos.cuda dialect changes what two of them may conclude. A patos.cuda kernel launches as
+`kernel[items]` or `record.kernel[items]` on the current CuPy stream with the grid its decorator's
+`per`, `threads`, and `strided` imply, so `PY-NUMB0006` never asks it for a Numba stream item. A
+record field declared `Constant[...]` is part of the record's device type, so `PY-NUMB0004` reads
+`self.width` as a literal where `self.count` stays a launch-time value.
 
 ## Implemented CUDA Python rules
 

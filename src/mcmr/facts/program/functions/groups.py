@@ -41,6 +41,12 @@ class FunctionFields:
             default="",
             description="decorator that caches this callable's result, empty when none applies",
         )
+        device_role: Literal["", "kernel", "device"] = Field(
+            default="",
+            description="what a CUDA JIT compiles the function as, read through the absolute name "
+            "each decorator binds: a Numba `cuda.jit` or patos.cuda `kernel`, a device function "
+            "(`device=True`, `device`, `ptx`), empty for host code",
+        )
 
     class Identity(Execution):
         """Retain documentation, tensor semantics, and callable identity."""
@@ -146,11 +152,6 @@ class FunctionFields:
         )
         is_overload: bool = Field(
             default=False, description="whether the function wears an overload decorator"
-        )
-        is_device_kernel: bool = Field(
-            default=False,
-            description="whether the function wears a cuda.jit decorator, as a Numba CUDA "
-            "kernel or a device function",
         )
         is_property: bool = Field(
             default=False,

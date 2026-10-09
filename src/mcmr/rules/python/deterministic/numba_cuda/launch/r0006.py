@@ -4,7 +4,7 @@ from ...... import rule
 from ......facts import CallFact, FunctionFact, SyntaxFact
 from ......query import CountQuery
 from ......table import SyntaxRelation, Table
-from ...gpu_relations import call_rows, counted_syntax, numba_kernels
+from ...gpu_relations import call_rows, compiled_functions, counted_syntax
 
 
 @rule("PY-NUMB0006")
@@ -31,7 +31,10 @@ def default_stream_numba_kernel_launch(
     ----------
     A module that creates no stream has no local overlap to drain. An explicit third configuration
     item is accepted. Nested tuples used for multidimensional grids count as one item because the
-    syntax tree retains the top-level configuration shape.
+    syntax tree retains the top-level configuration shape. A patos.cuda kernel launches as
+    `kernel[items]` or `record.kernel[items]` on the current CuPy stream, its grid following from
+    its decorator, so a launch with one configuration item names no Numba stream to omit and is
+    not reported.
 
     Examples
     --------
@@ -108,7 +111,9 @@ def default_stream_numba_kernel_launch(
         )
         .select("fact_id", "index_ordinal", "kernel_name")
         .join(
-            numba_kernels(functions).select("path", pl.col("name").alias("kernel_name")),
+            compiled_functions(functions, "kernel").select(
+                "path", pl.col("name").alias("kernel_name")
+            ),
             on="kernel_name",
             how="inner",
         )

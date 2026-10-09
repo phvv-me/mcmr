@@ -3,16 +3,15 @@ from pydantic import NonNegativeInt
 
 from ...... import rule
 from ......domain.contracts import Unit
-from ......facts import FunctionFact, SyntaxFact
+from ......facts import SyntaxFact
 from ......query import FindingQuery, RuleQuery
-from ......table import FunctionRelation, SyntaxRelation, Table
+from ......table import SyntaxRelation, Table
 
 
 @rule("ALL-CONT0004")
 def deeply_nested_body(
     subject: Table[SyntaxFact],
     *,
-    functions: Table[FunctionFact],
     maximum_depth: NonNegativeInt = 3,
     body_kinds: tuple[str, ...] = ("branch", "loop", "guard", "scope"),
 ) -> RuleQuery[bool]:
@@ -51,10 +50,7 @@ def deeply_nested_body(
     written, because nothing then locates it against what holds it. A declaration whose family was
     never asked for carries no tree and is not judged. `body_kinds` names the constructs that open
     a body, so a language whose block construct this list has not met is configured rather than
-    reimplemented. A Numba CUDA kernel or device function is never reported, because its nesting
-    is the algorithm the kernel exists to run, and lifting a level out into a device function to
-    pass this ceiling spends registers a launch already rations. Nesting is judged instead on the
-    host launcher that wraps the kernel.
+    reimplemented.
 
     Examples
     --------
@@ -148,20 +144,10 @@ def deeply_nested_body(
         .group_by("fact_id", maintain_order=True)
         .agg(pl.col("depth").max())
     )
-    kernel_declarations = (
-        functions.lazy(FunctionRelation.FUNCTIONS)
-        .filter(pl.col("is_device_kernel"))
-        .select("path", pl.col("name").alias("qualname"), "is_device_kernel")
+    values = facts.join(depths, on="fact_id", how="left").with_columns(
+        pl.col("depth").fill_null(0)
     )
-    values = (
-        facts.join(depths, on="fact_id", how="left")
-        .join(kernel_declarations, on=["path", "qualname"], how="left")
-        .with_columns(
-            pl.col("depth").fill_null(0),
-            pl.col("is_device_kernel").fill_null(False),
-        )
-    )
-    exceeds = (pl.col("depth") > maximum_depth) & ~pl.col("is_device_kernel")
+    exceeds = pl.col("depth") > maximum_depth
     findings = FindingQuery.build(
         values,
         pl.concat_str(

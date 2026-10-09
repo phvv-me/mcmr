@@ -5,6 +5,7 @@ pub(crate) use module::is_approved_foundation_module;
 
 use crate::discovery::{Document, Packages};
 use crate::graph::ImportingModule;
+use crate::python::imports::ImportTargets;
 use crate::source::Source;
 use ruff_python_parser::parse_module;
 
@@ -24,6 +25,7 @@ impl Stated {
         Some(Self {
             declared: declarations(&source, module),
             imported: imports(module, importer),
+            targets: ImportTargets::of(module, importer),
             module: name,
             path: document.relative.clone(),
             shape: ModuleShape {

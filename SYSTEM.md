@@ -167,6 +167,15 @@ Repeated bindings, shadowed imports, and compound calls remain unresolved. `ALL-
 these facts to recognize standard-library queue absence, not to exempt exceptions by spelling.
 This is bounded lexical analysis, not intermodule exception inference or proof of runtime types.
 
+`FunctionFact.device_role` states whether a CUDA JIT compiles a callable as a kernel or a device
+function. Each decorator is read through the absolute name it binds: a relative import resolves
+against the importing module, and the repository pass that already indexes every module follows a
+name its project module imported from elsewhere until the name leaves the project, stopping where
+a cycle closes. Numba's `cuda.jit` and patos.cuda's `kernel`, `device`, and `ptx` are the names
+recognized, and only the Numba rules read the role, since every general rule judges device code
+as the ordinary Python it is. A decorator bound by assignment, computed at run time, or reached
+through a star import is not followed.
+
 Rule documentation is part of the contract. It states a summary, definition, evidence,
 exceptions, examples, and references. Catalog tests validate the format and upstream references.
 

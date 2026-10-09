@@ -3,7 +3,9 @@ use super::{ClassAddress, Repository, SubclassReference};
 use crate::classes::model::Identity;
 use crate::classes::records::{ClassAnalysisRecord, ClassRecord};
 use crate::functions::FunctionRecord;
+use crate::python::DeviceRole;
 use serde_json::{Value, json};
+use std::collections::BTreeSet;
 
 /// What settles whether one class is a foundation rather than a model of its own.
 struct FoundationEvidence {
@@ -142,7 +144,8 @@ impl<'repository> Repository<'repository> {
         }
     }
 
-    /// Write onto one callable fact whether it takes part in dispatch across the repository.
+    /// Write onto one callable fact whether it takes part in dispatch across the repository and
+    /// what a CUDA JIT compiles it as.
     pub(in crate::classes) fn state_callable(&self, fact: &mut Value) {
         let path = fact["span"]["path"]
             .as_str()
@@ -150,22 +153,81 @@ impl<'repository> Repository<'repository> {
         let name = fact["name"]
             .as_str()
             .expect("FunctionFact.name must be text");
-        if !self.relations.dispatched.contains(&(path, name)) {
-            return;
+        let dispatched = self.relations.dispatched.contains(&(path, name));
+        let decorators: Vec<String> = fact["decorators"]
+            .as_array()
+            .expect("FunctionFact.decorators must be an array")
+            .iter()
+            .map(|decorator| {
+                decorator
+                    .as_str()
+                    .expect("FunctionFact.decorators must hold text")
+                    .to_string()
+            })
+            .collect();
+        let role = self.device_role(path, &decorators);
+        let object = fact
+            .as_object_mut()
+            .expect("FunctionFact must be an object");
+        if dispatched {
+            object.insert("is_polymorphic".to_string(), json!(true));
         }
-        fact.as_object_mut()
-            .expect("FunctionFact must be an object")
-            .insert("is_polymorphic".to_string(), json!(true));
+        if let Some(role) = role {
+            object.insert("device_role".to_string(), json!(role.as_str()));
+        }
     }
 
-    /// Write repository dispatch evidence directly onto one typed callable row.
+    /// Write repository dispatch and device evidence directly onto one typed callable row.
     pub(in crate::classes) fn state_function(&self, function: &mut FunctionRecord) {
-        if self.relations.dispatched.contains(&(
-            function.identity.span().path.as_str(),
-            function.identity.name(),
-        )) {
+        let path = function.identity.span().path.as_str();
+        if self
+            .relations
+            .dispatched
+            .contains(&(path, function.identity.name()))
+        {
             function.semantics.outcomes.is_polymorphic = true;
         }
+        if let Some(role) = self.device_role(path, &function.structure.decorators) {
+            function.semantics.outcomes.device_role = role.as_str().to_string();
+        }
+    }
+
+    /// Return what a CUDA JIT compiles one Python callable as, reading its decorators through
+    /// every re-export this repository holds, or nothing for a file no Python module states.
+    fn device_role(&self, path: &str, decorators: &[String]) -> Option<DeviceRole> {
+        let module = self.index.modules.get(self.index.owners.get(path)?)?;
+        Some(DeviceRole::of(decorators, |name| {
+            self.reexported(module.targets.resolve(name))
+        }))
+    }
+
+    /// Return what one absolute name finally stands for, following imports through this project.
+    ///
+    /// `cutoken.types.kernel` names whatever `cutoken.types` imported as `kernel`, so a name keeps
+    /// moving while it lands on an import some module of this repository states, and stops at the
+    /// first one defined here or living outside the project. A cycle of re-exports stops where it
+    /// closes rather than looping.
+    fn reexported(&self, mut target: String) -> String {
+        let mut visited = BTreeSet::new();
+        while visited.insert(target.clone()) {
+            let Some(next) = self.imported_through(&target) else {
+                break;
+            };
+            target = next;
+        }
+        target
+    }
+
+    /// Return what one absolute name reaches through the import of the project module holding it.
+    fn imported_through(&self, target: &str) -> Option<String> {
+        let mut boundary = target.len();
+        while let Some(dot) = target[..boundary].rfind('.') {
+            if let Some(module) = self.index.modules.get(&target[..dot]) {
+                return module.targets.reached(&target[dot + 1..]);
+            }
+            boundary = dot;
+        }
+        None
     }
 
     /// Return what the repository concludes about one class, field by field.

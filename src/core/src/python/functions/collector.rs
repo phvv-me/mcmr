@@ -1,4 +1,5 @@
 use crate::functions::FunctionRecord;
+use crate::graph::ImportingModule;
 use crate::source::Source;
 use ruff_python_ast::ModModule;
 
@@ -11,10 +12,14 @@ pub(super) struct FunctionCollector<'a> {
 }
 
 impl<'a> FunctionCollector<'a> {
-    pub(super) fn new(source: &'a Source, module: &ModModule) -> Self {
+    pub(super) fn new(
+        source: &'a Source,
+        module: &ModModule,
+        importer: ImportingModule<'_>,
+    ) -> Self {
         Self {
             source,
-            context: ModuleContext::of(module),
+            context: ModuleContext::of(module, importer),
             facts: Vec::new(),
         }
     }

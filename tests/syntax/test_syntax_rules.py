@@ -47,10 +47,11 @@ def syntax_values(result: RuleQuery, subject: RepositoryTables) -> dict[str, Rul
 
 
 def test_a_name_too_short_to_say_what_it_holds_is_reported(tmp_path: Path) -> None:
-    """A brief local name is reported and a conventional index is left alone.
+    """A brief local name is reported once per declaration and a conventional one is left alone.
 
     A local name is the cheapest documentation a body has and the only one that cannot stale, while
-    `i` in a loop is a convention older than the code and reads fine.
+    `i` in a loop is a convention older than the code and reads fine. One rename repairs every
+    rebinding, and a project names its own domain's short vocabulary as conventional.
     """
     subject = syntax_table(
         tmp_path,
@@ -59,22 +60,37 @@ def test_a_name_too_short_to_say_what_it_holds_is_reported(tmp_path: Path) -> No
     d = read()
     raw = read()
     r = read()
+    d = read(d)
+    d += 1
 
 
 def indexes():
     i = read()
     n = read()
+
+
+class Cursor:
+    def walk(self):
+        lo = 0
+        hi = lo + 1
 """
         },
     )
 
     default = syntax_values(query(uninformative_local_name, subject), subject)
+    domain = syntax_values(
+        query(uninformative_local_name, subject, conventional_names=["i", "n", "lo", "hi"]),
+        subject,
+    )
     permissive = syntax_values(
         query(uninformative_local_name, subject, minimum_length=1),
         subject,
     )
     assert default["load"] == 2
     assert default["indexes"] == 0
+    assert default["Cursor.walk"] == 2
+    assert domain["Cursor.walk"] == 0
+    assert domain["load"] == 2
     assert permissive["load"] == 0
 
 

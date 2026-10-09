@@ -4,7 +4,7 @@ from ...... import rule
 from ......facts import FunctionFact, SyntaxFact
 from ......query import CountQuery
 from ......table import SyntaxRelation, Table
-from ...gpu_relations import counted_syntax, numba_kernels
+from ...gpu_relations import compiled_declarations, counted_syntax
 
 
 @rule("PY-NUMB0003")
@@ -17,14 +17,16 @@ def unguarded_grid_index(
 
     Definition
     ----------
-    Report a value assigned from `cuda.grid()` when no branch or loop in the kernel reads that
-    value. Launch grids normally round up to a whole block, so the extra threads need a bounds
-    check or a grid-stride loop before indexing an array.
+    Report a value assigned from `cuda.grid()` when no branch or loop in the same kernel or device
+    function reads that value, whether Numba's `cuda.jit` or patos.cuda's `kernel`, `device`, and
+    `ptx` compiled it. Launch grids normally round up to a whole block, and a patos.cuda launch
+    over `items` rounds the same way, so the extra threads need a bounds check or a grid-stride
+    loop before indexing an array.
 
     Evidence
     --------
-    Each finding identifies the grid index assignment and kernel. The value is the number of grid
-    indices that never participate in bounded control flow.
+    Each finding identifies the grid index assignment and its function. The value is the number of
+    grid indices that never participate in bounded control flow.
 
     Exceptions
     ----------
@@ -56,13 +58,7 @@ def unguarded_grid_index(
     Cites "Numba CUDA documentation", CUDA Kernel API and `forall`
     https://nvidia.github.io/numba-cuda/reference/kernel.html#numba.cuda.compiler.Dispatcher.forall
     """
-    facts = subject.lazy(SyntaxRelation.FACTS)
-    kernel_facts = facts.join(
-        numba_kernels(functions),
-        left_on=["path", "qualname"],
-        right_on=["path", "name"],
-        how="inner",
-    ).select("fact_id", "qualname")
+    kernel_facts = compiled_declarations(subject, functions, "kernel", "device")
     nodes = subject.lazy(SyntaxRelation.NODES)
     children = subject.lazy(SyntaxRelation.CHILDREN)
     grids = nodes.filter(

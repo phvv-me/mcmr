@@ -19,6 +19,15 @@ class FunctionTypes:
         RECURSION = auto()
         SEQUENCE = auto()
 
+        @classmethod
+        def nesting(cls) -> list[str]:
+            """Return the kinds that open a level a reader holds while reading inside them.
+
+            An alternative arm sits at the depth of the decision it continues, and a jump ends a
+            path rather than opening one.
+            """
+            return [str(kind) for kind in (cls.CONDITIONAL, cls.LOOP, cls.SWITCH, cls.CATCH)]
+
     class ControlIncrement(FrozenModel):
         """Retain one control structure and its nesting depth."""
 

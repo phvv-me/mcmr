@@ -253,6 +253,31 @@ fn a_call_and_a_construction_reach_what_this_crate_declares() {
     );
 }
 
+/// proc-macro2 counts a column in characters, so a call ending after wide characters on its last
+/// line used to resolve to a byte inside one of them.
+#[test]
+fn a_call_ending_after_wide_characters_is_addressed_in_bytes() {
+    let facts = facts_for(
+        "fn bar() -> usize {\n    let style = ProgressStyle::default_bar()\n        .progress_chars(\"█▓░\");\n    style.len()\n}\n",
+        FactFamily("CallFact"),
+    );
+    let call = facts[0]["calls"]
+        .as_array()
+        .and_then(|calls| {
+            calls
+                .iter()
+                .find(|call| call["qualified_name"] == "progress_chars")
+        })
+        .expect("the method call is recorded");
+
+    assert_eq!(
+        call["node"]["text"],
+        "ProgressStyle::default_bar()\n        .progress_chars(\"█▓░\")"
+    );
+    assert_eq!(call["node"]["span"]["end_line"], 3);
+    assert_eq!(call["node"]["span"]["end_column"], 36);
+}
+
 #[test]
 fn an_annotation_states_every_position_it_names_a_lifetime_in() {
     let facts = facts_for(

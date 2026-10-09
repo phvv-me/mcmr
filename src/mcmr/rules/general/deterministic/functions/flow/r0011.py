@@ -10,40 +10,39 @@ from ......table import FunctionRelation, Table
 def function_conditional_count(
     subject: Table[FunctionFact],
 ) -> CountQuery:
-    """Limit explicit `if` branches inside one function or method.
+    """Limit explicit `if` statements inside one function or method.
 
     Definition
     ----------
-    Count every `if` and `elif` statement owned by each synchronous or asynchronous callable.
-    Nested functions and classes start independent scopes. Return the conditional count for this
-    callable. A separate policy can compare the value with a project ceiling such as two.
+    Count every `if` statement owned by each synchronous or asynchronous callable, at any depth.
+    Nested functions and classes start independent scopes. An `elif`, `else if`, or `else` arm
+    continues the decision its `if` opened, so it is not counted again here, and ALL-FUNC0008
+    scores each arm instead. Return the conditional count for this callable. A separate policy can
+    compare the value with a project ceiling such as two.
 
     Evidence
     --------
     Evidence records the callable source range and its conditional count. This intentionally
     narrower measurement complements cyclomatic complexity. It makes repeated type or mode switches
-    visible even when each branch body is small. The value is the number of `if` and `elif`
-    statements this callable owns.
+    visible even when each branch body is small. The value is the number of `if` statements this
+    callable owns.
 
     Exceptions
     ----------
-    Generated and vendored code may be excluded through globs. Guard clauses, `elif` branches,
-    and nested conditionals all count because several independent decisions in one callable are
-    still several reasons for it to change. Pattern matching and conditional expressions are not
-    `if` statements and remain outside this rule. A Numba CUDA kernel or device function is
-    excluded too, because its branches are the algorithm the kernel exists to run, and moving them
-    into a device function to lower this count spends registers a launch already rations. The
-    measurement falls instead on the host launcher that wraps the kernel, which is an ordinary
-    Python function this rule already reads.
+    Generated and vendored code may be excluded through globs. Guard clauses and nested
+    conditionals all count because several independent decisions in one callable are still several
+    reasons for it to change. Pattern matching and conditional expressions are not `if` statements
+    and remain outside this rule.
 
     Examples
     --------
     Bad
     ~~~
     A function that checks `BooleanPolicy`, `NumericPolicy`, and `CategoryPolicy` with three
-    `isinstance` branches is reported. Replace the closed type switch with one abstract operation
-    implemented by concrete policy or evaluator classes. When the operation cannot live on those
-    classes, use `functools.singledispatch` to keep type registration open to new implementations.
+    `isinstance` guard statements is reported under a ceiling of two. Replace the closed type
+    switch with one abstract operation implemented by concrete policy or evaluator classes. When
+    the operation cannot live on those classes, use `functools.singledispatch` to keep type
+    registration open to new implementations.
 
     Good
     ~~~~
@@ -61,11 +60,7 @@ def function_conditional_count(
     Cites "Object-Oriented Software Construction", Open Closed Principle
     """
     frame = subject.lazy(FunctionRelation.FUNCTIONS)
-    value = (
-        pl.when(pl.col("is_device_kernel"))
-        .then(pl.lit(0, dtype=pl.UInt64))
-        .otherwise(pl.col("conditional_count"))
-    )
+    value = pl.col("conditional_count")
     return RuleQuery.integer(
         frame,
         value,

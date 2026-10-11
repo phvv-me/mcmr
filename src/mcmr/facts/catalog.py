@@ -52,7 +52,7 @@ _native_names = {
 
 def buildable() -> dict[str, type[Fact]]:
     """Return every fact family the analysis kernel knows how to build, by name."""
-    pending = [Fact]
+    pending: list[type[Fact]] = [Fact]
     descendants: set[type[Fact]] = set()
     while pending:
         pending.extend(pending.pop().__subclasses__())

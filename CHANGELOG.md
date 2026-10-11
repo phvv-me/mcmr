@@ -57,6 +57,11 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
 
 ### Changed
 
+- `mainboard ci` declares the workflow checks for local use in an installed development
+  environment, including the quality checks on both supported platforms.
+- Rust manuscript tests are grouped by reader, semantic extraction, and Typst behavior, with
+  repeated assertions expressed as tables of cases. Every existing assertion is retained.
+
 - General rules judge CUDA kernels and device functions as the ordinary Python functions they
   are. `ALL-PARA0001`, `ALL-NAMI0001`, `ALL-FUNC0007`, `ALL-FUNC0008`, `ALL-FUNC0009`,
   `ALL-FUNC0010`, and `ALL-CONT0004` no longer score them zero, and `ALL-NAMI0001` and
@@ -96,6 +101,16 @@ The format follows Keep a Changelog, and releases are cut from the version in `p
   through a controlled transport, import `httpx2` instead.
 
 ### Fixed
+
+- Manuscript rule documentation follows the catalog's punctuation and reference grammar.
+  The sentence bounds cite the documented MCMR house policy, and tests cover inverted bounds
+  and inclusive endpoints without changing the 100% statement and branch coverage requirement.
+  CLI tests exercise native analysis failures and narrative exports from both manuscript parsers.
+- The provider variation ledger no longer exempts author counts that now vary in repository
+  history. The unused-return oracle uses a portable declaration without SDK attributes.
+  Documentation examples follow the checked formatter output.
+- Type introspection accepts Pydantic's type forms, SQL references accept SQLGlot's expression
+  base, and plugin factories and fact subclasses retain their declared types without casts.
 
 - Rust sources with wide characters before a call on the same line no longer panic the kernel.
   proc-macro2 counts columns in characters, which the kernel added to a line start as bytes, so

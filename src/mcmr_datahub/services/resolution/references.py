@@ -83,7 +83,7 @@ class SQLReferenceExtractor(FrozenModel):
             return spelling.strip().upper()
 
     @staticmethod
-    def _casts(statement: exp.Expression) -> dict[str, str]:
+    def _casts(statement: exp.Expr) -> dict[str, str]:
         """Map each column the statement casts to the one type it states for it."""
         stated: dict[str, set[str]] = {}
         for cast in statement.find_all(exp.Cast):
@@ -246,7 +246,7 @@ class SQLReferenceExtractor(FrozenModel):
 
     def _statement(
         self,
-        statement: exp.Expression,
+        statement: exp.Expr,
         location: str,
     ) -> tuple[list[DataAssetReference], list[DataFieldReference]]:
         """Resolve the tables and unambiguous columns in one parsed SQL statement.

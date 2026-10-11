@@ -41,7 +41,7 @@ def symbol_introduced_under_two_meanings(
     Different words can express the same meaning. These findings therefore require author review,
     not automatic renaming. Arbitrary semantic equivalence, macro-generated binders, and complex
     dependent or nested binding scopes are unsupported. A declaration whose role cannot be
-    extracted is not evidence of a conflict; it remains visible in the introduction facts.
+    extracted is not evidence of a conflict. It remains visible in the introduction facts.
 
     Examples
     --------

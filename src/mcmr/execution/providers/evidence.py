@@ -2,7 +2,7 @@ from collections.abc import Mapping
 from functools import cached_property
 from importlib import metadata
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from patos import FrozenModel
 from pydantic import JsonValue
@@ -17,7 +17,7 @@ from .contracts import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Collection
+    from collections.abc import Callable, Collection
 
     from ...facts.foundation import Fact
 
@@ -60,7 +60,7 @@ class ExternalEvidence(FrozenModel):
     @cached_property
     def providers(self) -> dict[str, FactProvider]:
         """Load built-in and installed providers in stable entry-point order."""
-        loaded = {
+        loaded: dict[str, Callable[[], FactProvider]] = {
             entry.name: entry.load()
             for entry in sorted(
                 metadata.entry_points(group=self.plugin_group),
@@ -138,10 +138,7 @@ class ExternalEvidence(FrozenModel):
             }
             ready = [name for name in selected if required[name] <= set(available)]
             if not ready:
-                self._raise_dependency_error(
-                    selected,
-                    cast("set[type[Fact]]", set(available)),
-                )
+                self._raise_dependency_error(selected, available)
             for name in ready:
                 requested = selected.pop(name)
                 provider = self.providers[name]
@@ -192,7 +189,7 @@ class ExternalEvidence(FrozenModel):
     def _raise_dependency_error(
         self,
         selected: Mapping[str, set[type[Fact]]],
-        available: Collection[type[Fact]],
+        available: RepositoryTables,
     ) -> None:
         """Distinguish unavailable provider inputs from a provider dependency cycle."""
         pending_outputs = {family for families in selected.values() for family in families}

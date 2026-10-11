@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
     import annotated_types
     from pydantic.fields import FieldInfo
+    from typing_extensions import TypeForm
 
     from ..fixtures import FactValue
 
@@ -49,7 +50,7 @@ class SchemaStrategy(SchemaStrategyBase):
             RepositoryHistoryFact: lambda: self._repository_history(trail),
         }
         if (builder := builders.get(model)) is not None:
-            return typing.cast("st.SearchStrategy[Model]", builder())
+            return builder().map(model.model_validate)
         if model is SyntaxFact:
             nested: list[type[BaseModel]] = [*trail, model]
             fields = {
@@ -59,10 +60,7 @@ class SchemaStrategy(SchemaStrategyBase):
                 for name, field in model.model_fields.items()
             }
             fields["nodes"] = st.just([])
-            return typing.cast(
-                "st.SearchStrategy[Model]",
-                st.fixed_dictionaries(fields).map(self._syntax_fact),
-            )
+            return st.fixed_dictionaries(fields).map(self._syntax_fact).map(model.model_validate)
         return self._model(model, trail)
 
     def _clone_group(self, trail: Sequence[type[BaseModel]]) -> st.SearchStrategy[CloneGroupFact]:
@@ -129,9 +127,9 @@ class SchemaStrategy(SchemaStrategyBase):
             repository_line_count=st.integers(min_value=repeated, max_value=repeated + 40),
         )
 
-    def _collection_field(
+    def _collection_field[T](
         self,
-        annotation: type | TypeAliasType | None,
+        annotation: TypeForm[T] | None,
         trail: Sequence[type[BaseModel]],
         name: str,
     ) -> st.SearchStrategy[FactValue]:
@@ -140,14 +138,10 @@ class SchemaStrategy(SchemaStrategyBase):
         if origin is list:
             elements = self._field(arguments[0], metadata=(), trail=trail, name=name)
             if arguments[0] is Evidence:
-                claims = typing.cast("st.SearchStrategy[Evidence]", elements)
-                return typing.cast(
-                    "st.SearchStrategy[FactValue]",
-                    st.lists(
-                        claims,
-                        max_size=self.collection_size_budget,
-                        unique_by=lambda claim: claim.signal,
-                    ),
+                return st.lists(
+                    elements,
+                    max_size=self.collection_size_budget,
+                    unique_by=lambda claim: Evidence.model_validate(claim).signal,
                 )
             return st.lists(elements, max_size=self.collection_size_budget)
         if origin is tuple:
@@ -165,9 +159,9 @@ class SchemaStrategy(SchemaStrategyBase):
             max_size=self.collection_size_budget,
         )
 
-    def _concrete_scalar(
+    def _concrete_scalar[T](
         self,
-        annotation: type | TypeAliasType,
+        annotation: TypeForm[T],
         interval: Mapping[str, float],
         trail: Sequence[type[BaseModel]],
         name: str,
@@ -253,9 +247,9 @@ class SchemaStrategy(SchemaStrategyBase):
             max_leaves=self.recursive_leaf_budget,
         )
 
-    def _field(
+    def _field[T](
         self,
-        annotation: type | TypeAliasType | None,
+        annotation: TypeForm[T] | None,
         *,
         metadata: Sequence[
             FieldInfo | annotated_types.BaseMetadata | annotated_types.GroupedMetadata
@@ -434,9 +428,9 @@ class SchemaStrategy(SchemaStrategyBase):
             lambda total: self._history_with_total(total, trail)
         )
 
-    def _scalar(
+    def _scalar[T](
         self,
-        annotation: type | TypeAliasType | None,
+        annotation: TypeForm[T] | None,
         interval: Mapping[str, float],
         trail: Sequence[type[BaseModel]],
         name: str,

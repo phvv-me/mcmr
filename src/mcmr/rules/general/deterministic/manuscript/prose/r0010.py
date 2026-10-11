@@ -51,7 +51,7 @@ def sentence_length_outside_house_bounds(
 
     References
     ----------
-    Project manuscript style: ten through forty-eight words per narrative sentence.
+    Cites "MCMR System", manuscript sentence bounds
     """
     if minimum_words > maximum_words:
         raise ValueError("minimum_words must not exceed maximum_words")

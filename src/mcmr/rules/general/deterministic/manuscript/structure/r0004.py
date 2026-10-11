@@ -42,7 +42,7 @@ def numbered_statement_left_without_an_argument(
     A statement argued by the paragraph immediately before it rather than after is reported, and
     that is a real style some manuscripts use, so a project writing that way states its own
     ceiling rather than tuning the rule. An appendix proof whose heading references the statement
-    is attached directly; no forward reference to that appendix is required. This checks that an
+    is attached directly. No forward reference to that appendix is required. This checks that an
     argument exists, not that its mathematics is correct.
 
     A citation in a statement is evidence of attribution, not a certificate that the cited source

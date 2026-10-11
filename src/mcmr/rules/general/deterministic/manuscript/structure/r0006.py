@@ -16,7 +16,7 @@ def float_without_a_text_reference(
     Definition
     ----------
     Report a labeled figure or table that no text references. The object may appear before its
-    numbered discussion; it does not need a forward reference to announce it. Reading order is
+    numbered discussion. It does not need a forward reference to announce it. Reading order is
     checked separately by ALL-MANU0001.
 
     Evidence

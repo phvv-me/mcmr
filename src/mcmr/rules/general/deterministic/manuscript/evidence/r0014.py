@@ -20,7 +20,7 @@ def ratio_published_without_its_parts(
     Definition
     ----------
     A quotient needs its numerator and denominator. An aggregate of per-trial ratios instead needs
-    the ratio and aggregation statistic defined; a median of ratios is not a ratio of medians.
+    the ratio and aggregation statistic defined. A median of ratios is not a ratio of medians.
     Report a derived quantity of at least `minimum_digits` digits without `minimum_parts` numbers
     in its assembled sentence, an explicit ratio definition in the paragraph, or a linked table.
     Inline mathematics belongs to the same sentence as the surrounding words.
@@ -34,7 +34,7 @@ def ratio_published_without_its_parts(
     ----------
     Formula constants and table cells are not running empirical ratio claims. A confidence bound
     is not a percentage merely because the sentence also states its confidence level. A linked
-    table or literal definition provides a place to check; this rule does not prove that the table
+    table or literal definition provides a place to check. This rule does not prove that the table
     columns or the definition are scientifically appropriate. Implicit statistical definitions
     and definitions requiring semantic equivalence remain outside the deterministic check.
 

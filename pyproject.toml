@@ -91,6 +91,25 @@ module-name = "mcmr.kernel_tables"
 python-source = "src"
 python-packages = ["mcmr_datahub"]
 
+# Run after installing the package and dev tools into the active environment. These are the
+# workflow's checks, including the quality steps GitHub runs only on Linux.
+[tool.mainboard.ci]
+os = ["linux", "osx"]
+steps = [
+  { name = "core-build", run = "cargo build --release --manifest-path src/core/Cargo.toml --no-default-features --bin mcmr-kernel" },
+  { name = "core-clippy", run = "cargo clippy --manifest-path src/core/Cargo.toml --all-targets --no-default-features -- -D warnings" },
+  { name = "extension-clippy", run = "cargo clippy --manifest-path src/core/Cargo.toml --all-targets --features python -- -D warnings" },
+  { name = "core-format", run = "cargo fmt --manifest-path src/core/Cargo.toml --check" },
+  { name = "core-test", run = "cargo test --manifest-path src/core/Cargo.toml" },
+  { name = "lint", run = "ruff check ." },
+  { name = "format", run = "ruff format --check ." },
+  { name = "mypy", run = "mypy src" },
+  { name = "pyrefly", run = "pyrefly check" },
+  { name = "ty", run = "env -u PYTHONPATH ty check --error-on-warning" },
+  { name = "test", run = "python -m pytest" },
+  { name = "build", run = "python -m build --outdir .dist" },
+]
+
 [tool.ruff]
 line-length = 99
 namespace-packages = ["src/mcmr/rules", "src/mcmr_datahub/rules"]

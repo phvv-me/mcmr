@@ -33,11 +33,7 @@ relations linked by stable fact identity.
 @rule("PY-IMPO0003")
 def unused_import(subject: Table[ImportBindingFact]) -> OccurrenceQuery:
     frame = subject.lazy(ImportBindingRelation.FACTS)
-    value = (
-        (pl.col("reference_count") == 0)
-        & ~pl.col("is_reexported")
-        & ~pl.col("is_type_only")
-    )
+    value = (pl.col("reference_count") == 0) & ~pl.col("is_reexported") & ~pl.col("is_type_only")
     return RuleQuery.boolean(
         frame,
         value,

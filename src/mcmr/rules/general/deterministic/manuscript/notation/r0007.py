@@ -37,8 +37,8 @@ def symbol_missing_from_the_notation_index(
     which is the convention every index states for itself. Matching is on spelling, so an index
     listing one subscripted form does not automatically cover another. The parser can supply
     additional coverage from an explicit family convention in the index, such as an optional
-    format subscript. Locally bound occurrences use the parser's free-occurrence inventory;
-    unrelated global variants remain distinct. A symbol introduced only inside a display the
+    format subscript. Locally bound occurrences use the parser's free-occurrence inventory.
+    Unrelated global variants remain distinct. A symbol introduced only inside a display the
     index cites is still reported when the index does not name or explicitly cover it.
 
     Examples

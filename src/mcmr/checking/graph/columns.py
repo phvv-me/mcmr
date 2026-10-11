@@ -10,6 +10,8 @@ from ...domain.contracts import ColumnType, FactColumn
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from typing_extensions import TypeForm
+
 # What each leaf stores, checked before the numeric widening a `bool` would otherwise reach.
 _SCALARS = ((bool, ColumnType.BOOLEAN), (int, ColumnType.NUMBER), (float, ColumnType.NUMBER))
 
@@ -30,7 +32,7 @@ def fact_columns(family: type[FrozenModel]) -> list[FactColumn]:
     return _walk(family, prefix="", enclosing=[])
 
 
-def _element(annotation: type | TypeAliasType) -> type:
+def _element[T](annotation: TypeForm[T]) -> type:
     """Return the value one field stores, without its aliases, optionality, or container."""
     while not isinstance(annotation, type):
         if isinstance(annotation, TypeAliasType):

@@ -44,11 +44,11 @@ def forward_reference_to_unread_material(
     to hold an unread thing in mind, and it is the complaint a cold reader makes most often.
 
     The default covers statements, sections, equations, and floats. A different reference
-    command does not make unread material available: `autoref` and `nameref` follow the same
+    command does not make unread material available. Both `autoref` and `nameref` follow the same
     order as `ref`. A typed `proofref` may navigate to a later proof, but only when its
     resolved target is actually a proof. It cannot exempt a prerequisite definition or theorem.
     Projects allowing explicit roadmaps can configure `kinds` or
-    `marked_commands`; the default requires a linear exposition.
+    `marked_commands`. The default requires a linear exposition.
 
     Evidence
     --------
@@ -59,7 +59,7 @@ def forward_reference_to_unread_material(
     Exceptions
     ----------
     A missing label is left to the document build. This check observes source order, not page
-    placement; the rendered PDF still needs review because a typesetter can move a float.
+    placement. The rendered PDF still needs review because a typesetter can move a float.
 
     Examples
     --------

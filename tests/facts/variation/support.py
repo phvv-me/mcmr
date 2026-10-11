@@ -12,6 +12,8 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
 
+    from typing_extensions import TypeForm
+
 _ADDRESS = (NodeRef, SourceSpan, SymbolRef)
 _ENVELOPE = set(Fact.model_fields)
 _STATED = "stated"
@@ -141,7 +143,6 @@ _INVARIANT: dict[str, str] = {
     "RepositoryHistoryFact.unscoped_commit_count": (
         "derived from the checkout, whose one current commit changed requested source"
     ),
-    "RepositoryHistoryFact.files[].author_count": ("derived from the same one-author root commit"),
     "QueryFact.operations[].expire_on_commit": (
         "derived from the keywords a session factory carries, and the one database operation "
         "the corpus states is a commit rather than a factory"
@@ -252,7 +253,7 @@ def unmoved(observed: Mapping[str, set[str]]) -> set[str]:
     return {path for path, values in observed.items() if len(values) == 1 and values != {_STATED}}
 
 
-def held(annotation: type | None) -> type[FrozenModel] | None:
+def held[T](annotation: TypeForm[T] | None) -> type[FrozenModel] | None:
     """Return the model one annotation carries, looking through a list and through a union."""
     if isinstance(annotation, type):
         return annotation if issubclass(annotation, FrozenModel) else None

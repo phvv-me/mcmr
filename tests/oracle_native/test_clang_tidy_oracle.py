@@ -214,11 +214,12 @@ def test_swappable_parameters_counts_pairs_where_clang_tidy_reports_a_run(
 
 
 def test_unused_return_value_agrees_with_clang_tidy(tmp_path: Path) -> None:
-    """Both readers report the discarded `strcmp` result and accept the returned one."""
+    """A declaration without SDK attributes keeps the oracle check identical across platforms."""
     root = written(
         tmp_path,
         {
-            _UNIT: """#include <cstring>
+            _UNIT: """extern "C" int strcmp(const char*, const char*);
+namespace std { using ::strcmp; }
 int discard(const char* left, const char* right) {
   std::strcmp(left, right);
   return 0;
@@ -231,7 +232,7 @@ int keep(const char* left, const char* right) {
     )
     oracle = _UNUSED_RESULT.report(root)
 
-    assert oracle.states(Site.at(_UNIT, 3))
+    assert oracle.states(Site.at(_UNIT, 4))
     differ(
         DeclarationReader(
             rule_id="ALL-CALL0001",

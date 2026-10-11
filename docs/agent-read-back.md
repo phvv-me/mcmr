@@ -242,10 +242,12 @@ from fastmcp.client.transports import StdioTransport
 os.environ["DATAHUB_GMS_URL"] = "http://localhost:8080"
 os.environ["DATA_QUALITY_TOOLS_ENABLED"] = "true"
 
+
 async def main() -> None:
     async with Client(StdioTransport("mcp-server-datahub", [], env=dict(os.environ))) as client:
         for tool in await client.list_tools():
             print(tool.name)
+
 
 asyncio.run(main())
 ```

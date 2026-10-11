@@ -10,13 +10,15 @@ from ..support import kernel_binary, needs_kernel, project_root
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from typing_extensions import TypeForm
+
     from mcmr.plugins import Fact
 
 # Where a fact is rather than what it says, which is never the evidence a rule reasons over.
 _ADDRESS = (NodeRef, SourceSpan, SymbolRef)
 
 
-def held(annotation: type | None) -> type[FrozenModel] | None:
+def held[T](annotation: TypeForm[T] | None) -> type[FrozenModel] | None:
     """Return the model one annotation carries, looking through a list and through a union."""
     if isinstance(annotation, type):
         return annotation if issubclass(annotation, FrozenModel) else None
@@ -26,7 +28,7 @@ def held(annotation: type | None) -> type[FrozenModel] | None:
     )
 
 
-def is_sequence(annotation: type | None) -> bool:
+def is_sequence[T](annotation: TypeForm[T] | None) -> bool:
     """Whether one annotation carries a list of models rather than one model."""
     return get_origin(annotation) is list or any(
         is_sequence(argument) for argument in get_args(annotation)

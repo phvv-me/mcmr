@@ -145,10 +145,10 @@ function binds, what it calls, what literals it holds, and how deeply it nests, 
 anything:
 
 ```python
-subject.tree.names("binding")      # ['bare']
-subject.tree.names("call")         # ['name.lstrip']
-subject.tree.of_kind("text")       # the literals, with their spans
-subject.tree.depth                 # 5
+subject.tree.names("binding")  # ['bare']
+subject.tree.names("call")  # ['name.lstrip']
+subject.tree.of_kind("text")  # the literals, with their spans
+subject.tree.depth  # 5
 ```
 
 Two decisions keep it affordable. The vocabulary is deliberately not a parse tree, because a

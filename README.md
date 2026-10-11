@@ -113,4 +113,7 @@ See the [documentation](https://phvv.me/mcmr/docs/), the
 The docs also cover [contextual setup](https://phvv.me/mcmr/docs/start/contextual-rules/) and
 [rule controls](https://phvv.me/mcmr/docs/reference/rule-control/).
 
+Contributors using mainboard 0.5.4 or newer can run `mainboard ci` from the installed development
+environment, including the repository's 100% statement and branch coverage gate.
+
 MCMR is licensed under Apache 2.0.

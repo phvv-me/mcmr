@@ -675,10 +675,12 @@ from fractions import Fraction
 from numbers import Number
 from pathlib import Path
 
+
 def one(value: object) -> str:
-    if isinstance(value, Number):     # Number counts as a use, correct
+    if isinstance(value, Number):  # Number counts as a use, correct
         return "n"
     return "x"
+
 
 def two(value: object) -> str:
     if value is None:
@@ -687,16 +689,18 @@ def two(value: object) -> str:
         return "d"
     return "x"
 
+
 def three(value: object) -> str:
     if value is None:
         return "none"
     else:
-        return str(Fraction(1))       # Fraction counts as a use, correct
+        return str(Fraction(1))  # Fraction counts as a use, correct
+
 
 def four(value: object) -> str:
     try:
         return str(value)
-    except Path as error:             # Path is reported unused, wrong
+    except Path as error:  # Path is reported unused, wrong
         return str(error)
 ```
 

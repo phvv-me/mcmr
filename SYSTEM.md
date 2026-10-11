@@ -254,8 +254,7 @@ from mcmr.plugins import ProviderContext, RepositoryTables, provider
 class DataHubProvider:
     families = {DataAssetFact: set()}
 
-    async def tables(self, context: ProviderContext) -> RepositoryTables:
-        ...
+    async def tables(self, context: ProviderContext) -> RepositoryTables: ...
 ```
 
 Provider ownership is exact. Two providers cannot claim the same requested family. The `families`
@@ -656,12 +655,16 @@ families that should become Hypothesis properties, and module-generated parametr
 silently multiply collection. Findings remain review signals because static reach cannot prove that
 runtime behavior, marks, or domain meaning are redundant.
 
-The main contribution gate is the following.
+After installing the package and development tools, `mainboard ci` runs the commands declared in
+`[tool.mainboard.ci]`. They mirror the GitHub workflow, including its Linux quality checks on both
+local platforms. Installation remains the workflow's separate bootstrap step. The gate builds the
+native executable, checks both Rust feature sets and formatting, runs the Rust tests and Python
+linters and type checkers, requires 100% statement and branch coverage, and builds distributions.
+Use the dependency versions declared by this package for oracle comparisons. A shared environment
+with newer upstream tools can change their inventories and diagnostics independently of MCMR.
+Schema introspection accepts type forms, including aliases and container annotations, while
+external provider factories retain their runtime protocol checks at the loading boundary.
 
 ```sh
-uv run ruff check . && uv run ruff format --check .
-uv run mypy src && uv run pyrefly check && env -u PYTHONPATH uv run ty check --error-on-warning
-uv run pytest
-cargo clippy --manifest-path src/core/Cargo.toml --all-targets -- -D warnings
-cargo test --manifest-path src/core/Cargo.toml
+mainboard ci
 ```

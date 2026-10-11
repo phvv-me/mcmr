@@ -133,6 +133,12 @@
       "link": "https://www.oreilly.com/library/view/large-scale-c-software/0201633620/"
     },
     {
+      "title": "MCMR System",
+      "kind": "documentation",
+      "author": "Pedro Valois",
+      "link": "https://github.com/phvv-me/mcmr/blob/main/SYSTEM.md#manuscripts"
+    },
+    {
       "title": "Mathematical Writing",
       "kind": "book",
       "author": "Donald E. Knuth, Tracy Larrabee and Paul M. Roberts",

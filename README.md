@@ -11,7 +11,10 @@
 
 </div>
 
-> **Warning** MCMR is early `0.0.x` software. Its rules and command line may still change.
+> **Deprecated (2026-10-23).** MCMR is no longer developed. Its rules run in
+> [mainboard](https://github.com/phvv-me/mainboard)'s SQL rule engine (`mainboard rules check`,
+> `mainboard lint`): 206 of its 301 rules are ported, 16 are left to Ruff, and the contextual (LLM) lane and
+> the DataHub were dropped. `0.0.4` stays installable; no further releases are planned.
 
 ## Installation
 

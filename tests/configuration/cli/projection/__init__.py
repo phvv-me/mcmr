@@ -1,1 +1,0 @@
-"""CLI projection behavior."""

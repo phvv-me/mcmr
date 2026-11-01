@@ -1,122 +1,24 @@
-<div align="center">
+# MCMR (deprecated)
 
-[![My Code, My Rules banner](https://raw.githubusercontent.com/phvv-me/mcmr/main/docs/assets/banner.png)](https://phvv.me/mcmr/)
-
-[![CI](https://github.com/phvv-me/mcmr/actions/workflows/ci.yml/badge.svg)](https://github.com/phvv-me/mcmr/actions/workflows/ci.yml)
-[![Publish](https://github.com/phvv-me/mcmr/actions/workflows/publish.yml/badge.svg)](https://github.com/phvv-me/mcmr/actions/workflows/publish.yml)
-[![PyPI](https://img.shields.io/pypi/v/mcmr)](https://pypi.org/project/mcmr/)
-[![Python](https://img.shields.io/pypi/pyversions/mcmr)](https://pypi.org/project/mcmr/)
-[![Docs](https://img.shields.io/badge/docs-phvv.me%2Fmcmr-C6281C)](https://phvv.me/mcmr/)
-[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/phvv-me/mcmr/actions/workflows/ci.yml)
-
-</div>
-
-> **Deprecated (2026-10-23).** MCMR is no longer developed. Its rules run in
-> [mainboard](https://github.com/phvv-me/mainboard)'s SQL rule engine (`mainboard rules check`,
-> `mainboard lint`): 206 of its 301 rules are ported, 16 are left to Ruff, and the contextual (LLM) lane and
-> the DataHub were dropped. `0.0.4` stays installable; no further releases are planned.
-
-## Installation
-
-MCMR requires Git and Python 3.14 or newer. Use standard CPython for the simple PyPI install.
+MCMR, "My Code, My Rules", is no longer developed. Its rules moved into
+[mainboard](https://github.com/phvv-me/mainboard), which keeps them as SQL over code facts and runs
+them with `mb code rules`:
 
 ```sh
-pip install mcmr
-mcmr check .
+mb code rules check     # every finding of the rules, grouped by rule
+mb code rules fix       # fix what is fixable, proving each fix before keeping it
+mb code lint            # fix, then check, the files that changed
+mb code rules explain   # the catalog, one rule at a time
 ```
 
-Use `uv tool install mcmr` for an isolated command line installation.
+206 of the 301 rules are ported, 16 are left to Ruff, and the contextual (LLM) lane and the DataHub
+were dropped. The ported rules live in
+[`src/mainboard/analysis/rules`](https://github.com/phvv-me/mainboard/tree/main/src/mainboard/analysis/rules).
 
-MCMR also runs on free-threaded Python `3.14t+`. Polars does not yet publish a compatible PyPI
-runtime wheel, so use the source environment described in the
-[install guide](https://phvv.me/mcmr/docs/start/install/) for that interpreter.
-
-## What it is
-
-MCMR is a policy engine for whole repositories. A Rust kernel reads source once into typed fact
-tables. Python rules query the shared evidence and report exact findings with source locations.
-
-- Deterministic rules are local, fast, and enabled by default.
-- Contextual rules use a configured model only when you enable them.
-- External rules can join repository facts with systems such as DataHub.
-- Safe repairs are kept only after MCMR reparses the edit and reruns the rule.
-- Plugins can add rules and evidence providers through public entry points.
-
-Structural limits are configurable: `ALL-CLAS0004`, for example, allows up to 64 declared
-fields per class by default. Project policies can set a different ceiling.
-
-Scanning a Python package directory preserves its package name and relative imports when
-that directory contains `__init__.py`.
-
-Expected queue absence is not an ignored error. `ALL-ERRO0001` distinguishes a resolved
-`queue.Empty` catch around a single queue read from mixed catches or unrelated failed work.
-Unresolved wrappers remain findings; there is no exception-name allowlist.
-
-Manuscript sentence checks use configurable house bounds of 10–48 words, marking paragraph
-openings separately. Captions, table cells, code, and bibliography metadata do not count as
-narrative prose; the checker reports wording without rewriting the author's argument.
-
-MCMR reads Python, Rust, TypeScript, C, C++, and CUDA. It also reads LaTeX manuscripts, in the
-order a reader meets them across every included file, and reports defects of reading order,
-statement structure, notation, prose and evidence. That lane never repairs.
-Explicit local operand lists and numerical-vector entries retain their local scope. Unsupported
-indexed notation still needs review rather than automatic renaming.
-
-The literal Typst frontend resolves local imports without treating module definitions as prose.
-Custom template calls remain explicitly unsupported; an import is not itself runtime content.
-
-Native include checks distinguish source files from same-named headers. Shared declarations
-still resolve together, while genuine self-includes and cycles between headers remain findings.
-
-## Usage
-
-```sh
-mcmr check . --format concise
-mcmr check . --repair preview
-mcmr check . --repair apply
-mcmr check . --repair apply --repair-paths src/changed.py --repair-paths tests/test_changed.py
-mcmr check . --contextual --external
-```
-
-`--repair-paths` is repeatable. Analysis still sees the whole repository, but every source and
-destination of an applied repair must stay inside the named files or directories. A cross-file
-plan is refused as a whole when any part falls outside that scope. The usual safe-plan and
-post-repair verification requirements still apply; other findings remain visible.
-
-`--boundaries packages/other` identifies a nested project analyzed separately.
-Repeat it for other owners. MCMR retains the rest of the owner's complete graph,
-including unchanged callers and root manifests. The report names these boundaries.
-This is owner coverage, not a claim that external clients do not use a public API.
-Boundaries do not expand repair permissions. Shared TypeScript configuration that
-crosses one requires an explicitly shared analysis owner.
-
-A tool-only `pyproject.toml` can inherit its enclosing project's Python version and
-pytest configuration. Explicit local targets still face conflict checks. Reports
-cite the configuration sources without adding enclosing source files to the scan.
-
-Write every verdict to DataHub, then read the history before the next agent changes the code.
-
-```sh
-mcmr check . --external --writeback
-mcmr history .
-```
-
-## Demo
-
-The repository includes a deliberately messy MCP server. Run every enabled rule without changing
-the demo.
-
-```sh
-mcmr check demo/ --contextual --external --writeback --report-only
-```
-
-See the [documentation](https://phvv.me/mcmr/docs/), the
-[rule reference](https://phvv.me/mcmr/docs/rules/), and the
-[recorded DataHub examples](examples/datahub). [SYSTEM.md](SYSTEM.md) documents the architecture.
-The docs also cover [contextual setup](https://phvv.me/mcmr/docs/start/contextual-rules/) and
-[rule controls](https://phvv.me/mcmr/docs/reference/rule-control/).
-
-Contributors using mainboard 0.5.4 or newer can run `mainboard ci` from the installed development
-environment, including the repository's 100% statement and branch coverage gate.
-
-MCMR is licensed under Apache 2.0.
+- `0.0.4` stays installable from [PyPI](https://pypi.org/project/mcmr/); no further releases are
+  planned.
+- The last tree with the code is this repository at commit
+  [`6b86a12`](https://github.com/Pedrexus/mcmr/tree/6b86a12f02f3a890e4df2b7b93562990c8086e80), and
+  its Apache-2.0
+  [license](https://github.com/Pedrexus/mcmr/blob/6b86a12f02f3a890e4df2b7b93562990c8086e80/LICENSE)
+  applies to it.
